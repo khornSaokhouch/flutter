@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/server/auth_service.dart';
-import 'home_screen.dart';
-import 'register_screen.dart'; // <-- Create this screen if you haven’t yet
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:frontend/screen/home_screen.dart';
+import 'package:frontend/screen/register_screen.dart'; // <- import RegisterScreen
+import '../server/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,116 +14,247 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
-  Future<void> _login() async {
-    bool success = await AuthService.login(
-      emailController.text,
-      passwordController.text,
-    );
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Successful!")),
+  // 🔹 Email/Password Login
+  Future<void> signInWithEmail() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final success = await AuthService.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
 
-      // Navigate to Home after short delay
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+      if (success && mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Failed!")),
-      );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login failed. Check your credentials.')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Email login failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Email login failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _loginWithGoogle() {
-    // TODO: Implement Google Sign-In logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Google Login Coming Soon")),
-    );
+  // 🔹 Google Sign-In
+  Future<void> signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return;
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      final idToken = await userCredential.user?.getIdToken();
+
+      if (idToken != null) {
+        final success = await AuthService.firebaseLogin(idToken);
+        if (success && mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Google Sign-In failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google Sign-In failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
-  void _loginWithApple() {
-    // TODO: Implement Apple Sign-In logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Apple Login Coming Soon")),
-    );
+  // 🔹 Apple Sign-In
+  Future<void> signInWithApple() async {
+    setState(() => _isLoading = true);
+    try {
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+      );
+
+      final oAuthProvider = OAuthProvider("apple.com");
+      final credential = oAuthProvider.credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      final idToken = await userCredential.user?.getIdToken();
+
+      if (idToken != null) {
+        final success = await AuthService.firebaseLogin(idToken);
+        if (success && mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Apple Sign-In failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Apple Sign-In failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
-  void _goToRegister() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const RegisterScreen()),
-    );
+  // 🔹 Phone OTP Login
+  Future<void> signInWithPhone(String phoneNumber) async {
+    setState(() => _isLoading = true);
+    try {
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          final userCredential = await _auth.signInWithCredential(credential);
+          final idToken = await userCredential.user?.getIdToken();
+          if (idToken != null) {
+            final success = await AuthService.firebaseLogin(idToken);
+            if (success && mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+              );
+            }
+          }
+        },
+        verificationFailed: (e) {
+          debugPrint('❌ Phone verification failed: ${e.message}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Phone verification failed: ${e.message}')),
+            );
+          }
+        },
+        codeSent: (verificationId, resendToken) {
+          debugPrint('📲 OTP sent! Verification ID: $verificationId');
+        },
+        codeAutoRetrievalTimeout: (verificationId) {},
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _login,
-              child: const Text("Login"),
-            ),
-            const SizedBox(height: 20),
-            const Text("Or continue with"),
-            const SizedBox(height: 10),
+      appBar: AppBar(title: const Text('Firebase + Laravel Login')),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // 🔹 Email/Password Form
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.email),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) =>
+                        value == null || value.isEmpty ? 'Enter your email' : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _passwordController,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: Icon(Icons.lock),
+                        ),
+                        obscureText: true,
+                        validator: (value) =>
+                        value == null || value.isEmpty ? 'Enter your password' : null,
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: signInWithEmail,
+                        child: const Text('Login with Email'),
+                      ),
+                      const Divider(height: 40),
+                    ],
+                  ),
+                ),
 
-            // Google Login Button
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                minimumSize: const Size(double.infinity, 50),
-                side: const BorderSide(color: Colors.grey),
-              ),
-              onPressed: _loginWithGoogle,
-              icon:Icon(Icons.arrow_back),
-              label: const Text("Continue with Google"),
+                // 🔹 Social / Firebase Logins
+                ElevatedButton.icon(
+                  onPressed: signInWithGoogle,
+                  icon: const Icon(Icons.account_circle),
+                  label: const Text('Login with Google'),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton.icon(
+                  onPressed: signInWithApple,
+                  icon: const Icon(Icons.apple),
+                  label: const Text('Login with Apple'),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton.icon(
+                  onPressed: () => signInWithPhone('+855XXXXXXXX'),
+                  icon: const Icon(Icons.phone),
+                  label: const Text('Login with Phone'),
+                ),
+                const SizedBox(height: 20),
+
+                // 🔹 Navigate to Register Screen
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Don't have an account?"),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                        );
+                      },
+                      child: const Text("Register"),
+                    ),
+                  ],
+                ),
+              ],
             ),
-
-            const SizedBox(height: 10),
-
-            // Apple Login Button
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              onPressed: _loginWithApple,
-              icon: const Icon(Icons.apple),
-              label: const Text("Continue with Apple"),
+          ),
+          if (_isLoading)
+            Container(
+              color: Colors.black54,
+              child: const Center(child: CircularProgressIndicator()),
             ),
-
-            const SizedBox(height: 20),
-
-            TextButton(
-              onPressed: _goToRegister,
-              child: const Text("Don't have an account? Register here"),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
