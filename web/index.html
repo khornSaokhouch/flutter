@@ -1,38 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="description" content="A new Flutter project">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Mobile & iOS meta tags -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="frontend">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png">
 
   <title>frontend</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase JS SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.24.0/firebase-auth-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDnXjORgJve6LnXMQqG2kUDGWuuYeTbb0I",
+      authDomain: "drinking-coffee-8eb88.firebaseapp.com",
+      projectId: "drinking-coffee-8eb88",
+      storageBucket: "drinking-coffee-8eb88.firebasestorage.app",
+      messagingSenderId: "1043515983877",
+      appId: "1:1043515983877:web:ebde4f706f4f185434346c",
+      measurementId: "G-RDC9VKB32X"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+<!-- Optional: Container for Google Sign-In button if using renderButton -->
+<div id="g_id_onload"
+     data-client_id="1043515983877-ipec38ce4os1peom2tkj937g3e3dh69r.apps.googleusercontent.com"
+     data-login_uri="YOUR_BACKEND_ENDPOINT"
+     data-auto_prompt="false">
+</div>
+
+<div class="g_id_signin" data-type="standard"></div>
+
+<script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
