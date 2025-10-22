@@ -1,20 +1,19 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import '../config/api_endpoints.dart';
+import '../models/user.dart';
+
 
 class AuthService {
-  // static const String baseUrl = 'http://192.168.18.83:8000/api'; // Replace with your server IP
-  static  String baseUrl = dotenv.env['API_URL'] ?? 'default_url';
-  // final String apiKey = dotenv.env['API_KEY'] ?? 'default_key';
-
   // 🔹 Register user
-  static Future<bool> register(
+  static Future<UserModel?> register(
       String name, String email, String password, String passwordConfirmation) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/register'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConfig.baseUrl}/register'),
+        headers: ApiConfig.headers,
         body: jsonEncode({
           'name': name,
           'email': email,
@@ -25,67 +24,115 @@ class AuthService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
+
+        // Save token if available
         if (data['token'] != null) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', data['token']);
         }
-        return true;
+
+        // Return parsed user model
+        return UserModel.fromJson(data);
       } else {
-        print('Register failed: ${response.body}');
-        return false;
+        print('❌ Register failed: ${response.body}');
+        return null;
       }
     } catch (e) {
-      print('Error during register: $e');
-      return false;
+      print('⚠️ Error during register: $e');
+      return null;
     }
   }
 
   // 🔹 Login user
-  static Future<bool> login(String email, String password) async {
+  static Future<UserModel?> login(String login, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+        Uri.parse('${ApiConfig.baseUrl}/login'),
+        headers: ApiConfig.headers,
+        body: jsonEncode({'login': login, 'password': password}),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', data['token']);
-        return true;
+
+        if (data['token'] != null) {
+          await prefs.setString('token', data['token']);
+        }
+
+        return UserModel.fromJson(data);
       } else {
-        print('Login failed: ${response.body}');
-        return false;
+        print('❌ Login failed: ${response.body}');
+        return null;
       }
     } catch (e) {
-      print('Error during login: $e');
-      return false;
+      print('⚠️ Error during login: $e');
+      return null;
     }
   }
 
-  // 🔹 Send Firebase token to Laravel backend
-  static Future<bool> firebaseLogin(String idToken) async {
+  // 🔹 Firebase login (Google/Apple sign-in)
+  static Future<UserModel?> firebaseLogin(String idToken) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/firebase-login'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConfig.baseUrl}/firebase-login'),
+        headers: ApiConfig.headers,
         body: jsonEncode({'id_token': idToken}),
       );
-      print(response.body);
+
+      print('Firebase response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', data['token']);
-        return true;
+
+        if (data['token'] != null) {
+          await prefs.setString('token', data['token']);
+        }
+
+        return UserModel.fromJson(data);
       } else {
-        print('Firebase login failed: ${response.body}');
-        return false;
+        print('❌ Firebase login failed: ${response.body}');
+        return null;
       }
     } catch (e) {
-      print('Error during Firebase login: $e');
-      return false;
+      print('⚠️ Error during Firebase login: $e');
+      return null;
     }
+  }
+
+  // 🔹 Get current user from /me
+  static Future<UserModel?> getCurrentUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) return null;
+
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return UserModel.fromJson(data);
+      } else {
+        print('❌ Failed to fetch user: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('⚠️ Error fetching user: $e');
+      return null;
+    }
+  }
+
+  // 🔹 Logout user
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
   }
 }

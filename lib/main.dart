@@ -1,7 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:frontend/screen/login_screen.dart';
+import 'package:frontend/screen/login/login_screen.dart';
+import 'package:frontend/screen/login/splash_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(),
+       home: const SplashScreen(),
     );
   }
 }
@@ -46,9 +47,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Welcome to Flutter + Laravel Auth'),
-      ),
       body:_lstSrceen[0]
     );
   }
