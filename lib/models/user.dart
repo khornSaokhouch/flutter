@@ -1,25 +1,35 @@
 class UserModel {
   String? message;
   User? user;
+  String? token;        // JWT token from backend
+  bool? needsPhone;     // Does the user need phone verification?
+  String? tempToken;
 
 
-  UserModel({this.message, this.user});
+  UserModel({this.message, this.user, this.token, this.needsPhone, this.tempToken});
 
-  UserModel.fromJson(Map<String, dynamic> json) {
-    message = json['message'];
-    user = json['user'] != null ? User.fromJson(json['user']) : null;
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      message: json['message'],
+      user: json['user'] != null ? User.fromJson(json['user']) : null,
+      token: json['token'],
+      needsPhone: json['needs_phone'],
+      tempToken: json['tempToken'],
+    );
   }
-
 
 
   Map<String, dynamic> toJson() {
     final data = <String, dynamic>{};
     data['message'] = message;
-    if (user != null) {
-      data['user'] = user!.toJson();
-    }
+    if (user != null) data['user'] = user!.toJson();
+    data['token'] = token;
+    data['needs_phone'] = needsPhone;
+    data['tempToken'] = tempToken;
     return data;
   }
+
+  operator [](String other) {}
 }
 
 class User {
@@ -47,31 +57,33 @@ class User {
     this.updatedAt,
   });
 
-  User.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    name = json['name'];
-    email = json['email'];
-    phone = json['phone'];
-    firebaseUid = json['firebase_uid'];
-    profileImage = json['profile_image'];
-    role = json['role'];
-    emailVerifiedAt = json['email_verified_at'];
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'],
+      name: json['name'],
+      email: json['email'],
+      phone: json['phone'],
+      firebaseUid: json['firebase_uid'],
+      profileImage: json['profile_image'],
+      role: json['role'],
+      emailVerifiedAt: json['email_verified_at'],
+      createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
+    );
   }
 
   Map<String, dynamic> toJson() {
-    final data = <String, dynamic>{};
-    data['id'] = id;
-    data['name'] = name;
-    data['email'] = email;
-    data['phone'] = phone;
-    data['firebase_uid'] = firebaseUid;
-    data['profile_image'] = profileImage;
-    data['role'] = role;
-    data['email_verified_at'] = emailVerifiedAt;
-    data['created_at'] = createdAt;
-    data['updated_at'] = updatedAt;
-    return data;
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'firebase_uid': firebaseUid,
+      'profile_image': profileImage,
+      'role': role,
+      'email_verified_at': emailVerifiedAt,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+    };
   }
 }

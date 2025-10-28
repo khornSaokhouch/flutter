@@ -9,14 +9,14 @@ import '../models/user.dart';
 class AuthService {
   // 🔹 Register user
   static Future<UserModel?> register(
-      String name, String email, String password, String passwordConfirmation) async {
+      String name, String phone, String password, String passwordConfirmation) async {
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/register'),
+        Uri.parse('${ApiConfig.baseUrl}/register-by-phone'),
         headers: ApiConfig.headers,
         body: jsonEncode({
           'name': name,
-          'email': email,
+          'phone': phone,
           'password': password,
           'password_confirmation': passwordConfirmation,
         }),
@@ -72,6 +72,36 @@ class AuthService {
   }
 
   // 🔹 Firebase login (Google/Apple sign-in)
+  // static Future<UserModel?> firebaseLogin(String idToken) async {
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse('${ApiConfig.baseUrl}/firebase-login'),
+  //       headers: ApiConfig.headers,
+  //       body: jsonEncode({'id_token': idToken}),
+  //     );
+  //
+  //     print('Firebase response: ${response.body}');
+  //
+  //     if (response.statusCode == 200) {
+  //       final data = json.decode(response.body);
+  //       final prefs = await SharedPreferences.getInstance();
+  //
+  //       if (data['token'] != null) {
+  //         await prefs.setString('token', data['token']);
+  //       }
+  //
+  //       return UserModel.fromJson(data);
+  //     } else {
+  //       print('❌ Firebase login failed: ${response.body}');
+  //       return null;
+  //     }
+  //   } catch (e) {
+  //     print('⚠️ Error during Firebase login: $e');
+  //     return null;
+  //   }
+  // }
+
+  // 🔹 Firebase login (Google/Apple sign-in)
   static Future<UserModel?> firebaseLogin(String idToken) async {
     try {
       final response = await http.post(
@@ -86,8 +116,9 @@ class AuthService {
         final data = json.decode(response.body);
         final prefs = await SharedPreferences.getInstance();
 
-        if (data['token'] != null) {
-          await prefs.setString('token', data['token']);
+        if (data['token'] != null) await prefs.setString('token', data['token']);
+        if (data['needs_phone'] == true && data['tempToken'] != null) {
+          await prefs.setString('tempToken', data['tempToken']);
         }
 
         return UserModel.fromJson(data);
@@ -100,6 +131,8 @@ class AuthService {
       return null;
     }
   }
+
+
 
   // 🔹 Get current user from /me
   static Future<UserModel?> getCurrentUser() async {
@@ -135,4 +168,48 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
   }
+
+  /// Register or login user using Firebase ID token
+  static Future<UserModel?> registerWithFirebase({
+    required String name,
+    required String phone,
+    required String password,
+    required String passwordConfirmation,
+    required String idToken,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/sign-up-by-phone'),
+        headers: ApiConfig.headers,
+        body: jsonEncode({
+          'name': name,
+          'phone': phone,
+          'password': password,
+          'password_confirmation': passwordConfirmation,
+          'id_token': idToken,
+        }),
+      );
+
+      print('Register response: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+
+        // Save token to SharedPreferences
+        if (data['token'] != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', data['token']);
+        }
+
+        return UserModel.fromJson(data);
+      } else {
+        print('❌ Register failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('⚠️ Error during register: $e');
+      return null;
+    }
+  }
+
 }

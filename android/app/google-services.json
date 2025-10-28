@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "1043515983877-bth02g9oj8jmbepv2l5gc1b0a45f2lc9.apps.googleusercontent.com",
+          "client_id": "1043515983877-ruspujkngv161n64io2spueeeg2pqh5r.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.drinkingcoffee.frontend",
-            "certificate_hash": "f88b906ea97947868fcb949684aa5baa60f19615"
+            "certificate_hash": "c8b0f44fa80a850d402135927f3690c933dca8fd"
           }
         },
         {
