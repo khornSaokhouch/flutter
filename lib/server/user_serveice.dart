@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../config/api_endpoints.dart';
+import '../models/user.dart';
+
 class UserService {
   static final String baseUrl = dotenv.env['API_URL'] ?? 'http://192.168.110.6:8000/api';
 
@@ -181,4 +184,31 @@ class UserService {
       return null;
     }
   }
+
+  /// 🔹 Get single user by ID (with JWT token)
+  static Future<UserModel?> getUserById(int id,{String? token}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) return null;
+
+      final headers = await ApiConfig.authHeaders(token);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/users/$id'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return UserModel.fromJson(data);
+      } else {
+        print('Get user failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error getting user: $e');
+      return null;
+    }
+  }
+
 }
