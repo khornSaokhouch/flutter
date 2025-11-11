@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/user.dart';
-import '../../server/user_serveice.dart';
+import '../../server/user_service.dart';
 import '../../screen/auth/login_screen.dart';
 
 class AuthUtils {

@@ -4,7 +4,7 @@ class AppTheme {
   // ----- Light Theme -----
   static final lightTheme = ThemeData(
     brightness: Brightness.light,
-    scaffoldBackgroundColor: const Color(0xFFF6F2ED), // Frothy White
+    scaffoldBackgroundColor: const Color(0xfff7f0e8), // Frothy White0xFFF6F2ED
     primaryColor: const Color(0xFF4B2C20), // Espresso Brown
     colorScheme: const ColorScheme.light(
       primary: Color(0xFF4B2C20),

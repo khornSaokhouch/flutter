@@ -51,7 +51,7 @@ class CustomHomeAppBar extends StatelessWidget implements PreferredSizeWidget {
 
 // Example of how to use this AppBar in a Scaffold:
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({Key? key, required int userId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
