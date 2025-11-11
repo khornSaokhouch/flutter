@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:http_parser/http_parser.dart';
 import '../config/api_endpoints.dart';
+import '../core/utils/utils.dart';
 import '../models/user.dart';
 
 class UserService {
@@ -125,24 +127,40 @@ class UserService {
         String? phone,
         String? password,
         String? passwordConfirmation,
+        File? image, // <-- Added image parameter
       }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token');
+      final token = prefs.getString('token');
       if (token == null) return {'error': 'No token found'};
 
-      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/users/$id?_method=PUT'));
+      final uri = Uri.parse('${ApiConfig.baseUrl}/users/$id?_method=PUT');
+      final request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $token';
 
+      // Add text fields
       if (name != null) request.fields['name'] = name;
       if (email != null) request.fields['email'] = email;
       if (phone != null) request.fields['phone'] = phone;
       if (password != null) request.fields['password'] = password;
-      if (passwordConfirmation != null) request.fields['password_confirmation'] = passwordConfirmation;
+      if (passwordConfirmation != null) {
+        request.fields['password_confirmation'] = passwordConfirmation;
+      }
+
+      // Add image file
+      if (image != null && await image.exists()) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'profile_image',
+          image.path,
+          filename: image.path.split('/').last,
+          contentType: MediaType('image', getMimeType(image.path)),
+        ));
+      }
+
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-
+      print('Response body: ${response.body}');
       return jsonDecode(response.body);
     } catch (e) {
       return {'error': e.toString()};

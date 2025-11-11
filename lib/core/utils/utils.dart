@@ -39,3 +39,34 @@ String getGreeting() {
   if (hour < 17) return "Afternoon";
   return "Evening";
 }
+
+
+/// Convert file extension to MIME type
+String getMimeType(String path) {
+  final ext = path.split('.').last.toLowerCase();
+  switch (ext) {
+    case 'png':
+      return 'png';
+    case 'jpg':
+    case 'jpeg':
+      return 'jpeg';
+    case 'heic': // iOS default format
+      return 'jpeg'; // Convert HEIC to jpeg
+    case 'gif':
+      return 'gif';
+    default:
+      return 'jpeg';
+  }
+}
+
+
+String formatTime(String? timeString) {
+  if (timeString == null) return '--:--';
+  final parts = timeString.split(':');
+  if (parts.length < 2) return timeString;
+  final hour = int.tryParse(parts[0]) ?? 0;
+  final minute = parts[1];
+  final suffix = hour >= 12 ? 'PM' : 'AM';
+  final formattedHour = (hour % 12 == 0) ? 12 : hour % 12;
+  return '$formattedHour:$minute $suffix';
+}

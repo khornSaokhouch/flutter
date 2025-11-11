@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,7 +63,9 @@ class AuthService {
 
         return UserModel.fromJson(data);
       } else {
-        print('❌ Login failed: ${response.body}');
+        if (kDebugMode) {
+          print('❌ Login failed: ${response.body}');
+        }
         return null;
       }
     } catch (e) {
@@ -211,5 +214,33 @@ class AuthService {
       return null;
     }
   }
+
+  static Future<UserModel?> appleLogin(String idToken, {String? phone}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/firebase/apple-login'),
+        headers: ApiConfig.headers,
+        body: jsonEncode({'token': idToken, 'phone': phone}),
+      );
+
+      print('🍎 Apple login response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final prefs = await SharedPreferences.getInstance();
+
+        if (data['token'] != null) await prefs.setString('token', data['token']);
+        return UserModel.fromJson(data);
+      } else {
+        print('❌ Apple login failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('⚠️ Error during Apple login: $e');
+      return null;
+    }
+  }
+
+
 
 }

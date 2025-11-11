@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../config/constants/api_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/auth_utils.dart';
 import '../../models/user.dart';
-import '../../server/user_serveice.dart';
+import '../../server/user_service.dart';
 
 class ScanPayScreen extends StatefulWidget {
   final int userId;
@@ -188,14 +189,10 @@ class _ScanPayScreenState extends State<ScanPayScreen>
     return Row(
       children: [
         CircleAvatar(
-          radius: 28,
-          backgroundColor: Colors.black12,
+          radius: 40,
           backgroundImage: user?.profileImage != null
-              ? NetworkImage(user!.profileImage!)
-              : null,
-          child: user?.profileImage == null
-              ? const Icon(Icons.person, size: 40)
-              : null,
+              ?NetworkImage('${ApiConstants.baseStorageUrl}/${user!.profileImage!}')  // User has profile image
+              : const AssetImage('assets/images/default_avatar.png') as ImageProvider, // Default image
         ),
         const SizedBox(width: 16),
         Column(
