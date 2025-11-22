@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/store/pickup_delivery_toggle.dart';
+import '../../../models/shop.dart';
+import '../../../server/shop_serviec.dart';
 import 'select_store_page.dart';
-import '../../../core/widgets/store/pickup_delivery_toggle.dart'; // Ensure this widget exists
 
 class GuestNoStoreNearbyScreen extends StatefulWidget {
-  // Make userId nullable to support guest mode
+  // userId is nullable for guest mode
   final int? userId;
   const GuestNoStoreNearbyScreen({Key? key, this.userId}) : super(key: key);
 
   @override
-  State<GuestNoStoreNearbyScreen> createState() => _GuestNoStoreNearbyScreen();
+  State<GuestNoStoreNearbyScreen> createState() =>
+      _GuestNoStoreNearbyScreenState();
 }
 
-class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
+class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
   bool _checkingLocation = true;
   bool _hasNearbyStore = false;
-  bool _isPickupSelected = true; // State for the toggle
+  bool _isPickupSelected = true;
+
+  Position? _currentPosition;
+  bool _bottomSheetClosed = false;
+
+  static const double _nearbyRadiusMeters = 5000.0; // 5 km
 
   @override
   void initState() {
@@ -26,37 +35,48 @@ class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
 
   Future<void> _checkNearbyStores() async {
     setState(() {
-      _checkingLocation = true; // Set to true at start of check
+      _checkingLocation = true;
     });
+
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        // If permission is denied, we can't check for nearby stores, so just show the "No Store Nearby" message
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         setState(() => _checkingLocation = false);
         return;
       }
 
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      _currentPosition = position;
 
-      // Replace this with your real API or store list
-      List<Map<String, double>> dummyStores = [
-        {'lat': 11.562108, 'lng': 104.888535}, // Example store
-        {'lat': 11.565000, 'lng': 104.890000}, // Another example store nearby
-      ];
+      // Fetch shops from API
+      final response = await ShopService.fetchShops();
+      final allShops = response?.data ?? <Shop>[];
 
-      bool hasNearby = dummyStores.any((store) {
-        double distance = Geolocator.distanceBetween(
+      bool hasNearby = false;
+
+      for (final shop in allShops) {
+        if (shop.latitude == null || shop.longitude == null) continue;
+
+        final distance = Geolocator.distanceBetween(
           position.latitude,
           position.longitude,
-          store['lat']!,
-          store['lng']!,
+          shop.latitude!,
+          shop.longitude!,
         );
-        return distance <= 5000; // 5 km radius
-      });
+
+        shop.distanceInKm = distance / 1000.0;
+
+        if (distance <= _nearbyRadiusMeters) {
+          hasNearby = true;
+        }
+      }
 
       if (hasNearby) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -92,13 +112,16 @@ class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
             controller: scrollController,
             child: SizedBox(
               height: MediaQuery.of(context).size.height * 0.9,
-              // Pass the nullable userId
-              child: GuestSelectStorePage( stores: []),
+              child: const GuestSelectStorePage(),
             ),
           );
         },
       ),
-    );
+    ).whenComplete(() {
+      setState(() {
+        _bottomSheetClosed = true;
+      });
+    });
   }
 
   @override
@@ -125,22 +148,17 @@ class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
       );
     }
 
-    // If a nearby store was found and the bottom sheet is open,
-    // we don't need to show the "No Store Nearby" UI.
-    // The sheet will be dismissed if the user picks a store or closes it.
-    if (_hasNearbyStore) {
-      return const Scaffold(
-        backgroundColor: Colors.white, // Or a background matching your app for when the sheet is active
-      );
+    // While the auto-open bottom sheet is active, keep this blank
+    if (_hasNearbyStore && !_bottomSheetClosed) {
+      return const Scaffold();
     }
 
-    // This is the main "No Store Nearby" UI
+    // "No Store Nearby" UI (or user closed the sheet)
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        // Only show back button if userId is not null (i.e., user is logged in)
         leading: widget.userId != null
             ? IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
@@ -161,8 +179,10 @@ class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
       ),
       body: Column(
         children: [
+          // Top row: Select Store + toggle
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -181,7 +201,6 @@ class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
                     ],
                   ),
                 ),
-                // Pickup/Delivery Toggle - from GuestNoStoreNearbyScreen
                 PickupDeliveryToggle(
                   isPickupSelected: _isPickupSelected,
                   onToggle: (val) => setState(() => _isPickupSelected = val),
@@ -189,6 +208,7 @@ class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
               ],
             ),
           ),
+          // Center: no store nearby message
           Expanded(
             child: Center(
               child: Column(
@@ -197,14 +217,19 @@ class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
                   Stack(
                     alignment: Alignment.center,
                     children: [
-                      Icon(Icons.circle, size: 120, color: Colors.grey.shade300),
-                      const Icon(Icons.location_on_rounded, size: 40, color: Colors.grey),
+                      Icon(Icons.circle,
+                          size: 120, color: Colors.grey.shade300),
+                      const Icon(Icons.location_on_rounded,
+                          size: 40, color: Colors.grey),
                     ],
                   ),
                   const SizedBox(height: 24),
                   const Text(
                     'No Store Nearby',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87),
                   ),
                   const SizedBox(height: 8),
                   Padding(
@@ -212,7 +237,8 @@ class _GuestNoStoreNearbyScreen extends State<GuestNoStoreNearbyScreen> {
                     child: Text(
                       'There is no available store nearby. Please select one manually.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                      style: TextStyle(
+                          fontSize: 16, color: Colors.grey.shade600),
                     ),
                   ),
                   const SizedBox(height: 24),

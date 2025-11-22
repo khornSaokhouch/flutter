@@ -6,9 +6,8 @@ import '../../../models/shop.dart';
 import '../../../server/shop_serviec.dart';
 import 'guest_menu_Items_list_screen.dart';
 
-
 class GuestSelectStorePage extends StatefulWidget {
-  const GuestSelectStorePage({Key? key, required List stores}) : super(key: key);
+  const GuestSelectStorePage({super.key});
 
   @override
   State<GuestSelectStorePage> createState() => _GuestSelectStorePageState();
@@ -64,47 +63,28 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                 userPosition!.longitude,
                 shop.latitude!,
                 shop.longitude!) /
-                1000; // meters → km
+                1000;
           } else {
             shop.distanceInKm = 0.0;
           }
         }
 
-        // Optional: Sort by nearest
+        // Sort by nearest
         fetchedShops.sort(
-                (a, b) => (a.distanceInKm ?? 0).compareTo(b.distanceInKm ?? 0));
+              (a, b) => (a.distanceInKm ?? 0).compareTo(b.distanceInKm ?? 0),
+        );
 
         setState(() {
           shops = fetchedShops;
           loading = false;
         });
       } else {
-        setState(() {
-          loading = false;
-        });
+        setState(() => loading = false);
       }
     } catch (e) {
       print('Error loading shops or location: $e');
-      setState(() {
-        loading = false;
-      });
+      setState(() => loading = false);
     }
-  }
-
-  void _showMenuBottomSheet(BuildContext context, int userId, String storeName) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return SizedBox(
-          height: MediaQuery.of(context).size.height * 0.9,
-        );
-      },
-    );
   }
 
   @override
@@ -143,7 +123,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
           ),
           IconButton(
             icon: const Icon(Icons.location_on_outlined, color: Colors.grey),
-            onPressed: () {},
+            onPressed: () => loadShops(),
           ),
           const SizedBox(width: 8),
         ],
@@ -158,7 +138,8 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
           final imageUrl = shop.imageUrl;
 
           return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            margin:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
             elevation: 3,
@@ -166,10 +147,11 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GuestMenuScreen(shopId: shop.id),
+                    builder: (context) =>
+                        GuestMenuScreen(shopId: shop.id),
                   ),
                 );
               },
@@ -186,7 +168,8 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                         width: 90,
                         height: 90,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
+                        errorBuilder:
+                            (context, error, stackTrace) {
                           return Container(
                             width: 90,
                             height: 90,
@@ -228,7 +211,8 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                                     ? '${shop.distanceInKm!.toStringAsFixed(1)} km'
                                     : '0.0 km',
                                 style: TextStyle(
-                                    color: Colors.grey[600], fontSize: 13),
+                                    color: Colors.grey[600],
+                                    fontSize: 13),
                               ),
                             ],
                           ),
@@ -243,7 +227,8 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                                 child: Text(
                                   shop.location ?? '',
                                   style: TextStyle(
-                                      color: Colors.grey[600], fontSize: 13),
+                                      color: Colors.grey[600],
+                                      fontSize: 13),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -258,7 +243,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                               const SizedBox(width: 4),
                               Text(
                                 'Open: ${formatTime(shop.openTime)} - ${formatTime(shop.closeTime)}',
-                                style: TextStyle(
+                                style: const TextStyle(
                                     color: Colors.grey, fontSize: 13),
                               ),
                             ],

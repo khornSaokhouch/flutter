@@ -124,8 +124,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       CircleAvatar(
                         radius: 28,
-                        backgroundImage: user?.profileImage != null
-                            ? NetworkImage('${ApiConstants.baseStorageUrl}/${user!.profileImage!}') // Combine base URL + relative path
+                        backgroundImage: user?.imageUrl != null
+                            ? NetworkImage(user!.imageUrl!) // Combine base URL + relative path
                             : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
                       ),
 

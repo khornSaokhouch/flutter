@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http; // Make sure this is still needed for y
 import 'package:http_parser/http_parser.dart'; // Make sure this is still needed for your UserService
 
 // Assuming these imports are correct based on your project structure
-import '../../config/constants/api_constants.dart';
 import '../../core/utils/auth_utils.dart';
 import '../../core/utils/message_utils.dart';
 import '../../core/utils/utils.dart';
@@ -172,14 +171,19 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   // Helper to build the current profile image
   Widget _buildProfileImage() {
     ImageProvider imageProvider;
+
+    // 🟢 New local image selected
     if (_image != null) {
-      // New image picked
       imageProvider = FileImage(_image!);
-    } else if (user?.profileImage != null && user!.profileImage!.isNotEmpty) {
-      // Existing network image
-      imageProvider = NetworkImage('${ApiConstants.baseStorageUrl}/${user!.profileImage!}');
-    } else {
-      // Default placeholder
+    }
+
+    // 🟢 Existing network image
+    else if (user?.imageUrl != null && user!.imageUrl!.isNotEmpty) {
+      imageProvider = NetworkImage(user!.imageUrl!);
+    }
+
+    // 🟢 Default placeholder
+    else {
       imageProvider = const AssetImage('assets/images/default_avatar.png');
     }
 
@@ -190,21 +194,20 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         children: [
           CircleAvatar(
             radius: 60,
-            backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            backgroundColor:
+            Theme.of(context).colorScheme.primary.withOpacity(0.1),
             child: CircleAvatar(
-              radius: 56, // Slightly smaller to show a border
+              radius: 56,
               backgroundImage: imageProvider,
-              backgroundColor: Colors.grey.shade200, // Placeholder background
+              backgroundColor: Colors.grey.shade200,
               onBackgroundImageError: (exception, stackTrace) {
-                // Fallback for network image loading errors
                 debugPrint('Error loading image: $exception');
-                setState(() {
-                  // Optionally set a fallback image or show an error icon
-                  // For now, it will just show the grey background.
-                });
+                setState(() {});
               },
             ),
           ),
+
+          // 📸 Camera Icon
           Positioned(
             bottom: 0,
             right: 0,
@@ -226,6 +229,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

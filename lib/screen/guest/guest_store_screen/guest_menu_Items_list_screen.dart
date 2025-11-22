@@ -98,7 +98,7 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
             controller: scrollController,
             child: SizedBox(
               height: MediaQuery.of(context).size.height * 0.9,
-              child: GuestSelectStorePage(stores: const []),
+              child: const GuestSelectStorePage(), // 👈 no stores param
             ),
           );
         },
@@ -128,22 +128,17 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
     }
   }
 
-
   /// Group items by category, include empty categories
   Map<String, List<ShopItem>> _groupMenuItems() {
     final Map<String, List<ShopItem>> grouped = {};
 
     for (var cat in categories) {
-      // Get items for this category
       final items = shopItems.where((i) => i.category.id == cat.id).toList();
-
-      // Add category even if items list is empty
-      grouped[cat.name] = items;
+      grouped[cat.name] = items; // include empty categories too
     }
 
     return grouped;
   }
-
 
   void _scrollToCategory(String categoryId) {
     final key = _categoryKeys[categoryId];
@@ -175,7 +170,8 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
           decoration: BoxDecoration(
             color: AppTheme.lightTheme.scaffoldBackgroundColor,
             border: Border(
-                bottom: BorderSide(color: Colors.grey[200]!, width: 1)),
+              bottom: BorderSide(color: Colors.grey[200]!, width: 1),
+            ),
           ),
           child: Column(
             children: [
@@ -243,10 +239,11 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
               children: categories.map((cat) {
                 return CategoryTile(
                   category: cat,
-                  iconAsset: 'assets/images/coffee.png', // fallback if API image fails
+                  iconAsset: 'assets/images/coffee.png',
                   isSelected: _selectedCategoryId == cat.id.toString(),
                   onTap: () {
-                    setState(() => _selectedCategoryId = cat.id.toString());
+                    setState(
+                            () => _selectedCategoryId = cat.id.toString());
                     _scrollToCategory(cat.id.toString());
                   },
                 );
@@ -265,7 +262,8 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
                   children: groupedItems.entries.map((entry) {
                     final categoryForSection = categories
                         .firstWhere((c) => c.name == entry.key);
-                    final String categoryId = categoryForSection.id.toString();
+                    final String categoryId =
+                    categoryForSection.id.toString();
 
                     return Container(
                       key: _categoryKeys[categoryId],
@@ -282,13 +280,15 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
                                   height: 20,
                                   width: 4,
                                   color: theme.colorScheme.secondary,
-                                  margin: const EdgeInsets.only(right: 8),
+                                  margin:
+                                  const EdgeInsets.only(right: 8),
                                 ),
                                 Text(
                                   entry.key,
-                                  style:
-                                  theme.textTheme.titleLarge?.copyWith(
-                                    color: theme.colorScheme.onBackground,
+                                  style: theme.textTheme.titleLarge
+                                      ?.copyWith(
+                                    color: theme
+                                        .colorScheme.onBackground,
                                   ),
                                 ),
                               ],
@@ -298,14 +298,16 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
                                 (shopItem) => MenuItemCard(
                               item: MenuItem(
                                 id: shopItem.item.id.toString(),
-                                categoryId: shopItem.category.id.toString(),
+                                categoryId:
+                                shopItem.category.id.toString(),
                                 name: shopItem.item.name,
                                 price:
                                 '\$${(shopItem.item.priceCents / 100).toStringAsFixed(2)}',
                                 imageUrl: shopItem.item.imageUrl,
                               ),
+                              shopItem: shopItem,
                             ),
-                          ).toList(),
+                          ),
                         ],
                       ),
                     );

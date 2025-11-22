@@ -1,18 +1,21 @@
 // utils.dart
 
 /// Formats a phone number to E.164 format for Cambodia (+855)
+/// Formats a phone number to E.164 format for Cambodia (+855)
+/// If the input is an email, returns it unchanged.
 String formatPhoneNumber(String input) {
   input = input.trim();
 
-  // Remove leading 0 if present
+  // 🔹 If it's an email, return as is
+  if (input.contains('@')) return input;
+
+  // 🔹 Handle phone numbers
   if (input.startsWith('0')) input = input.substring(1);
 
-  // Add country code if missing
   if (!input.startsWith('+855')) input = '+855$input';
 
   return input;
 }
-
 /// Checks if a password is strong
 /// Rules:
 /// - Minimum 8 characters
@@ -69,4 +72,35 @@ String formatTime(String? timeString) {
   final suffix = hour >= 12 ? 'PM' : 'AM';
   final formattedHour = (hour % 12 == 0) ? 12 : hour % 12;
   return '$formattedHour:$minute $suffix';
+}
+
+bool checkIfOpen(String? openTime, String? closeTime) {
+  if (openTime == null || closeTime == null) return false;
+
+  try {
+    final now = DateTime.now();
+
+    // Parse "HH:mm"
+    final openParts = openTime.split(":");
+    final closeParts = closeTime.split(":");
+
+    final openHour = int.parse(openParts[0]);
+    final openMinute = int.parse(openParts[1]);
+
+    final closeHour = int.parse(closeParts[0]);
+    final closeMinute = int.parse(closeParts[1]);
+
+    // Today’s open/close times
+    final openDate = DateTime(now.year, now.month, now.day, openHour, openMinute);
+    var closeDate = DateTime(now.year, now.month, now.day, closeHour, closeMinute);
+
+    // If close time is past midnight (e.g. closes at 02:00)
+    if (closeDate.isBefore(openDate)) {
+      closeDate = closeDate.add(const Duration(days: 1));
+    }
+
+    return now.isAfter(openDate) && now.isBefore(closeDate);
+  } catch (e) {
+    return false;
+  }
 }

@@ -7,8 +7,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/utils/auth_utils.dart';
 import '../../core/utils/message_utils.dart';
 import '../../core/utils/utils.dart';
+import '../../core/widgets/loader_widgets.dart';
 import '../../server/auth_service.dart';
 import '../user/layout.dart';
 import 'VerifyPhonePage.dart';
@@ -54,12 +56,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final user = userModel!.user!;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_name', user.name ?? '');
-
+        await prefs.setString('role', user.role ?? 'customer');
+        // ✅ Save the remember_token
+        if (userModel.rememberToken != null) {
+          await prefs.setString('remember_token', userModel.rememberToken!);
+        }
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => Layout(userId: user.id!)),
-          );
+          AuthUtils.navigateByRole(context, user); // 👈 from utils
         }
         showMessage(context, 'Login successful!', color: Colors.green);
       } else {
@@ -76,10 +79,29 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return;
+      final googleSignIn = Platform.isIOS || Platform.isMacOS
+          ? GoogleSignIn(
+        clientId: '1043515983877-7ai2eljhepol58vkep9hgi5gb2244cfb.apps.googleusercontent.com',
+        scopes: ['email'],
+      )
+          : GoogleSignIn(scopes: ['email']);
+
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        showMessage(context, 'Google Sign-In cancelled.', color: Colors.orange);
+        return;
+      }
 
       final googleAuth = await googleUser.authentication;
+      if (googleAuth.idToken == null) {
+        showMessage(
+          context,
+          'No idToken from Google (check iOS clientId / Firebase config).',
+          color: Colors.red,
+        );
+        return;
+      }
+
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -87,26 +109,36 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final userCredential = await _auth.signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
+      if (idToken == null) {
+        showMessage(context, 'Could not get Firebase ID token.', color: Colors.red);
+        return;
+      }
 
-      if (idToken != null) {
-        final userModel = await AuthService.firebaseLogin(idToken);
+      final userModel = await AuthService.firebaseLogin(idToken);
 
-        if (userModel != null && mounted) {
-          if (userModel.needsPhone == true && userModel.tempToken != null) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => VerifyPhonePage(tempToken: userModel.tempToken!)),
-            );
-          } else {
-            final prefs = await SharedPreferences.getInstance();
-            if (userModel.token != null) await prefs.setString('token', userModel.token!);
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => Layout(userId: userModel.user!.id!)),
-            );
+      if (userModel != null && mounted) {
+        if (userModel.needsPhone == true && userModel.tempToken != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => VerifyPhonePage(tempToken: userModel.tempToken!),
+            ),
+          );
+        } else {
+          final prefs = await SharedPreferences.getInstance();
+          if (userModel.token != null) {
+            await prefs.setString('token', userModel.token!);
           }
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => Layout(userId: userModel.user!.id!),
+            ),
+          );
         }
+      } else {
+        showMessage(context, 'Backend Google login failed.', color: Colors.red);
       }
     } catch (e) {
       showMessage(context, 'Google Sign-In failed: $e', color: Colors.red);
@@ -115,8 +147,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+
   // 🔹 Apple login (iOS/macOS only)
   Future<void> signInWithApple() async {
+    // Only iOS/macOS
     if (!(Platform.isIOS || Platform.isMacOS)) return;
     if (!mounted) return;
 
@@ -130,9 +164,9 @@ class _LoginScreenState extends State<LoginScreen> {
           AppleIDAuthorizationScopes.fullName,
         ],
         webAuthenticationOptions: WebAuthenticationOptions(
-          clientId: 'com.kheangsenghorng.frontend.service', // Must match Apple Services ID
+          clientId: 'com.kheangsenghorng.frontend.service', // Apple Services ID
           redirectUri: Uri.parse(
-            'https://drinking-coffee-8eb88.firebaseapp.com/__/auth/handler', // Must match Services ID Redirect URI
+            'https://drinking-coffee-8eb88.firebaseapp.com/__/auth/handler',
           ),
         ),
       );
@@ -144,16 +178,14 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       // 🔹 Sign in with Firebase
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+      final userCredential =
+      await FirebaseAuth.instance.signInWithCredential(oauthCredential);
 
       // 🔹 Get ID token for backend
       final idToken = await userCredential.user?.getIdToken();
+      if (idToken == null) throw Exception("Failed to get Firebase ID token");
 
-      if (idToken == null) {
-        throw Exception("Failed to get Firebase ID token");
-      }
-
-      // 🔹 Ask user for phone number
+      // 🔹 Ask user for phone number if needed
       final phoneNumber = await showDialog<String>(
         context: context,
         builder: (_) {
@@ -177,27 +209,37 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // 🔹 Call backend to complete login
       final userModel = await AuthService.appleLogin(idToken, phone: phoneNumber);
-      final user = userModel?.user;
+      var user = userModel?.user;
 
       if (user != null && mounted) {
-        // Save token locally
         final prefs = await SharedPreferences.getInstance();
-        if (userModel?.token != null) await prefs.setString('token', userModel!.token!);
 
-        // Navigate to main layout
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => Layout(userId: user.id!)),
-        );
+        // 🔹 Ensure role is set even if backend does not return it
+        final role = user.role ?? 'user';
+        await prefs.setString('role', role);
+
+        // 🔹 Save JWT token and remember_token if available
+        if (userModel?.token != null) await prefs.setString('token', userModel!.token!);
+        if (userModel?.rememberToken != null) {
+          await prefs.setString('remember_token', userModel!.rememberToken!);
+        }
+
+        // 🔹 Update user object with default role if missing
+
+        // 🔹 Navigate based on role
+        AuthUtils.navigateByRole(context, user);
+
+        showMessage(context, 'Apple login successful!', color: Colors.green);
       } else if (mounted) {
         showMessage(context, 'Apple login failed.', color: Colors.red);
       }
     } catch (e) {
-      if (mounted) showMessage(context, 'Apple Sign-In failed: $e', color: Colors.red);
+      if (mounted) showMessage(context, 'Apple Sign-In failed', color: Colors.red);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
 
 
 
@@ -363,11 +405,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-          if (_isLoading)
-            Container(
-              color: Colors.black54,
-              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
-            ),
+          // Loading indicator
+          buildFullScreenLoader(_isLoading), // ← now works!
         ],
       ),
     );

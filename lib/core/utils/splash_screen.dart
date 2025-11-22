@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
+//import 'package:geolocator/geolocator.dart';
+//import 'package:permission_handler/permission_handler.dart';
 
 import '../../screen/guest/guest_screen.dart';
 import '../../screen/user/coffeeAppHome.dart';
@@ -56,27 +56,27 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   // ✅ Function to request permission and get location
-  Future<void> _checkLocationPermission() async {
-    // Request permission using permission_handler
-    var status = await Permission.location.request();
-
-    if (status.isGranted) {
-      // Permission granted, get current location
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      print("📍 User location: ${position.latitude}, ${position.longitude}");
-
-      // Optional: Save location locally
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setDouble('latitude', position.latitude);
-      prefs.setDouble('longitude', position.longitude);
-    } else if (status.isDenied) {
-      print("⚠️ Location permission denied");
-    } else if (status.isPermanentlyDenied) {
-      openAppSettings(); // Let user enable it manually
-    }
-  }
+  // Future<void> _checkLocationPermission() async {
+  //   // Request permission using permission_handler
+  //   var status = await Permission.location.request();
+  //
+  //   if (status.isGranted) {
+  //     // Permission granted, get current location
+  //     Position position = await Geolocator.getCurrentPosition(
+  //       desiredAccuracy: LocationAccuracy.high,
+  //     );
+  //     print("📍 User location: ${position.latitude}, ${position.longitude}");
+  //
+  //     // Optional: Save location locally
+  //     final prefs = await SharedPreferences.getInstance();
+  //     prefs.setDouble('latitude', position.latitude);
+  //     prefs.setDouble('longitude', position.longitude);
+  //   } else if (status.isDenied) {
+  //     print("⚠️ Location permission denied");
+  //   } else if (status.isPermanentlyDenied) {
+  //     openAppSettings(); // Let user enable it manually
+  //   }
+  // }
 
   Future<void> _navigateAfterDelay() async {
     final prefs = await SharedPreferences.getInstance();

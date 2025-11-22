@@ -48,6 +48,7 @@ class MyApp extends StatelessWidget {
       // First screen to show
       home: const SplashScreen(),
 
+
       // Define routes for navigation
       // routes: {
       //   FooterNavRoutes.home: (context) => HomeScreen(

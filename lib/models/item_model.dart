@@ -18,6 +18,7 @@ class ItemsResponse {
     );
   }
 
+
   Map<String, dynamic> toJson() => {
     'message': message,
     'data': data.map((e) => e.toJson()).toList(),
@@ -90,7 +91,7 @@ class Item {
   final int id;
   final String name;
   final String? description;
-  final int priceCents;
+  final double priceCents;
   final String imageUrl;
   final int isAvailable;
 
@@ -104,13 +105,18 @@ class Item {
   });
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
-    id: json['id'] ?? 0,
+    id: json['id'] is String ? int.parse(json['id']) : (json['id'] ?? 0),
     name: json['name'] ?? '',
     description: json['description'],
-    priceCents: json['price_cents'] ?? 0,
+    priceCents: json['price_cents'] is String
+        ? double.tryParse(json['price_cents']) ?? 0.0
+        : (json['price_cents']?.toDouble() ?? 0.0),
     imageUrl: json['image_url'] ?? '',
-    isAvailable: json['is_available'] ?? 0,
+    isAvailable: json['is_available'] is String
+        ? int.parse(json['is_available'])
+        : (json['is_available'] ?? 0),
   );
+
 
   Map<String, dynamic> toJson() => {
     'id': id,

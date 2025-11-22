@@ -98,10 +98,10 @@ class _AccountPageState extends State<AccountPage> {
                         decoration: BoxDecoration(
                           color: Colors.black12,
                           borderRadius: BorderRadius.circular(12),
-                          image: user?.profileImage != null
+                          image: user?.imageUrl != null
                               ? DecorationImage(
                             fit: BoxFit.cover,
-                            image:NetworkImage('${ApiConstants.baseStorageUrl}/${user!.profileImage!}')
+                            image:NetworkImage(user!.imageUrl!)
                           )
                               : const DecorationImage(
                             image: AssetImage(

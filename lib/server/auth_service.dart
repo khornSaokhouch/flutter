@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../config/api_endpoints.dart';
 import '../models/user.dart';
 
@@ -35,11 +34,9 @@ class AuthService {
         // Return parsed user model
         return UserModel.fromJson(data);
       } else {
-        print('❌ Register failed: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('⚠️ Error during register: $e');
       return null;
     }
   }
@@ -69,40 +66,10 @@ class AuthService {
         return null;
       }
     } catch (e) {
-      print('⚠️ Error during login: $e');
       return null;
     }
   }
 
-  // 🔹 Firebase login (Google/Apple sign-in)
-  // static Future<UserModel?> firebaseLogin(String idToken) async {
-  //   try {
-  //     final response = await http.post(
-  //       Uri.parse('${ApiConfig.baseUrl}/firebase-login'),
-  //       headers: ApiConfig.headers,
-  //       body: jsonEncode({'id_token': idToken}),
-  //     );
-  //
-  //     print('Firebase response: ${response.body}');
-  //
-  //     if (response.statusCode == 200) {
-  //       final data = json.decode(response.body);
-  //       final prefs = await SharedPreferences.getInstance();
-  //
-  //       if (data['token'] != null) {
-  //         await prefs.setString('token', data['token']);
-  //       }
-  //
-  //       return UserModel.fromJson(data);
-  //     } else {
-  //       print('❌ Firebase login failed: ${response.body}');
-  //       return null;
-  //     }
-  //   } catch (e) {
-  //     print('⚠️ Error during Firebase login: $e');
-  //     return null;
-  //   }
-  // }
 
   // 🔹 Firebase login (Google/Apple sign-in)
   static Future<UserModel?> firebaseLogin(String idToken) async {
@@ -113,7 +80,6 @@ class AuthService {
         body: jsonEncode({'id_token': idToken}),
       );
 
-      print('Firebase response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -126,11 +92,9 @@ class AuthService {
 
         return UserModel.fromJson(data);
       } else {
-        print('❌ Firebase login failed: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('⚠️ Error during Firebase login: $e');
       return null;
     }
   }
@@ -157,11 +121,9 @@ class AuthService {
         final data = json.decode(response.body);
         return UserModel.fromJson(data);
       } else {
-        print('❌ Failed to fetch user: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('⚠️ Error fetching user: $e');
       return null;
     }
   }
@@ -193,8 +155,6 @@ class AuthService {
         }),
       );
 
-      print('Register response: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
 
@@ -206,11 +166,9 @@ class AuthService {
 
         return UserModel.fromJson(data);
       } else {
-        print('❌ Register failed: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('⚠️ Error during register: $e');
       return null;
     }
   }
@@ -223,8 +181,6 @@ class AuthService {
         body: jsonEncode({'token': idToken, 'phone': phone}),
       );
 
-      print('🍎 Apple login response: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final prefs = await SharedPreferences.getInstance();
@@ -232,11 +188,9 @@ class AuthService {
         if (data['token'] != null) await prefs.setString('token', data['token']);
         return UserModel.fromJson(data);
       } else {
-        print('❌ Apple login failed: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('⚠️ Error during Apple login: $e');
       return null;
     }
   }

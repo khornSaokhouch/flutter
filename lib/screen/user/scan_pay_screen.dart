@@ -190,8 +190,8 @@ class _ScanPayScreenState extends State<ScanPayScreen>
       children: [
         CircleAvatar(
           radius: 40,
-          backgroundImage: user?.profileImage != null
-              ?NetworkImage('${ApiConstants.baseStorageUrl}/${user!.profileImage!}')  // User has profile image
+          backgroundImage: user?.imageUrl != null
+              ?NetworkImage(user!.imageUrl!)  // User has profile image
               : const AssetImage('assets/images/default_avatar.png') as ImageProvider, // Default image
         ),
         const SizedBox(width: 16),
