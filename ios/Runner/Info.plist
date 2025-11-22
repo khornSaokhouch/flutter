@@ -27,12 +27,8 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.1043515983877-ipec38ce4os1peom2tkj937g3e3dh69r</string>
+				<string>com.googleusercontent.apps.1043515983877-7ai2eljhepol58vkep9hgi5gb2244cfb</string>
 			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
@@ -42,7 +38,7 @@
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>google</string>
-		<string>com.googleusercontent.apps.1043515983877-ipec38ce4os1peom2tkj937g3e3dh69r</string>
+		<string>com.googleusercontent.apps.1043515983877-7ai2eljhepol58vkep9hgi5gb2244cfb</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
@@ -64,6 +60,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>fetch</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>

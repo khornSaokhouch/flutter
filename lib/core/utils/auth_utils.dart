@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/user.dart';
+import '../../screen/shops/screens/shops_dashboard.dart';
+import '../../screen/user/layout.dart';
 import '../../server/user_service.dart';
 import '../../screen/auth/login_screen.dart';
 
@@ -35,4 +37,32 @@ class AuthUtils {
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
+  /// Navigate to the correct layout based on user role.
+  ///
+  static Future<void> navigateByRole(BuildContext context, dynamic user) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Save user info for later
+    await prefs.setString('user_name', user.name ?? '');
+    await prefs.setString('role', user.role ?? 'customer');
+    if (user.id != null) await prefs.setInt('user_id', user.id!);
+    // Navigate by role
+    final userIdString = user.id?.toString() ?? '';
+
+    if (user.role == 'owner') {
+      Navigator.pushReplacement(
+        context,
+          // Navigate by role
+        MaterialPageRoute(
+          builder: (_) => ShopsDashboard(userId: userIdString),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => Layout(userId: user.id!)),
+      );
+    }
+  }
+
 }

@@ -218,6 +218,7 @@ class UserService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print(data);
         return UserModel.fromJson(data);
       } else {
         print('Get user failed: ${response.body}');

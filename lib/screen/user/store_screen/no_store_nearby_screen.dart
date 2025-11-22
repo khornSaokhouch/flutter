@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../../core/theme/app_theme.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/store/pickup_delivery_toggle.dart';
+import '../../../models/shop.dart';
 import '../../../server/shop_serviec.dart';
 import 'select_store_page.dart';
 
 class NoStoreNearbyScreen extends StatefulWidget {
   final int userId;
-  const NoStoreNearbyScreen({Key? key, required this.userId}) : super(key: key);
+
+  const NoStoreNearbyScreen({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<NoStoreNearbyScreen> createState() => _NoStoreNearbyScreenState();
@@ -17,6 +23,15 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
   bool _checkingLocation = true;
   bool _hasNearbyStore = false;
 
+  Position? _currentPosition;
+  List<Shop> _nearbyStores = [];
+  List<Shop> _allStores = []; // keep all shops
+
+  bool _bottomSheetClosed = false;
+  bool _isPickupSelected = true; // 👈 needed for PickupDeliveryToggle
+
+  static const double _nearbyRadiusMeters = 5000.0; // 5 km
+
   @override
   void initState() {
     super.initState();
@@ -25,7 +40,7 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
 
   Future<void> _checkNearbyStores() async {
     try {
-      // Step 1: Request location permission
+      // 1. Request location permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -37,42 +52,66 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
         return;
       }
 
-      // Step 2: Get current position
-      Position position =
-      await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      // 2. Get current position
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
-      // Step 3: Check for nearby stores (dummy example)
-      List<Map<String, double>> dummyStores = [
-        {'lat': 11.562108, 'lng': 104.888535}, // Example store
-      ];
+      // 3. Fetch shops from server
+      final response = await ShopService.fetchShops();
+      final allStores = response?.data ?? <Shop>[];
 
-      bool hasNearby = dummyStores.any((store) {
-        double distance = Geolocator.distanceBetween(
+      // 4. Filter by distance (nearby shops)
+      final nearby = allStores.where((shop) {
+        if (shop.latitude == null || shop.longitude == null) return false;
+
+        final distanceMeters = Geolocator.distanceBetween(
           position.latitude,
           position.longitude,
-          store['lat']!,
-          store['lng']!,
+          shop.latitude!,
+          shop.longitude!,
         );
-        return distance <= 5000; // 5 km radius
+
+        shop.distanceInKm = distanceMeters / 1000.0; // store for UI
+
+        return distanceMeters <= _nearbyRadiusMeters;
+      }).toList();
+
+      // sort nearby shops by distance
+      nearby.sort((a, b) {
+        final da = a.distanceInKm ?? 999999;
+        final db = b.distanceInKm ?? 999999;
+        return da.compareTo(db);
       });
 
-      if (hasNearby) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _openSelectStoreSheet(context);
-        });
-      }
+      final hasNearby = nearby.isNotEmpty;
+
+      if (!mounted) return;
 
       setState(() {
+        _currentPosition = position;
+        _allStores = allStores;
+        _nearbyStores = nearby;
         _hasNearbyStore = hasNearby;
         _checkingLocation = false;
       });
+
+      // 5. If there are nearby stores, open the select store bottom sheet
+      if (hasNearby) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _openSelectStoreSheet(context, _nearbyStores);
+        });
+      }
     } catch (e) {
-      print("Error checking location: $e");
+      debugPrint("Error checking location: $e");
+      if (!mounted) return;
       setState(() => _checkingLocation = false);
     }
   }
 
-  void _openSelectStoreSheet(BuildContext context) {
+  void _openSelectStoreSheet(BuildContext context, List<Shop> stores) {
+    if (stores.isEmpty) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -90,15 +129,22 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
             controller: scrollController,
             child: SizedBox(
               height: MediaQuery.of(context).size.height * 0.9,
-              child: SelectStorePage(userId: widget.userId, stores: []),
+              child: SelectStorePage(
+                userId: widget.userId,
+                stores: stores,
+                userPosition: _currentPosition,
+              ),
             ),
           );
         },
       ),
-    );
+    ).whenComplete(() {
+      // user closed the sheet (Cancel or swipe down)
+      setState(() {
+        _bottomSheetClosed = true;
+      });
+    });
   }
-
-  /// ✅ Move this function INSIDE the State class
 
   @override
   Widget build(BuildContext context) {
@@ -108,14 +154,16 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
       );
     }
 
-    if (_hasNearbyStore) {
+    // If we already pushed the bottom sheet, just keep an empty scaffold
+    if (_hasNearbyStore && !_bottomSheetClosed) {
+      // auto-open bottom sheet → keep blank because bottom sheet is on top
       return const Scaffold();
     }
 
+    // No nearby store: show your "No Store Nearby" UI
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
@@ -135,6 +183,40 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
       ),
       body: Column(
         children: [
+          // Top row: "Select Store" + Pickup/Delivery toggle
+          Padding(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    _openSelectStoreSheet(
+                      context,
+                      _allStores.isNotEmpty ? _allStores : _nearbyStores,
+                    );
+                  },
+                  child: const Row(
+                    children: [
+                      Text(
+                        'Select Store',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Icon(Icons.keyboard_arrow_down, color: Colors.orange),
+                    ],
+                  ),
+                ),
+                PickupDeliveryToggle(
+                  isPickupSelected: _isPickupSelected,
+                  onToggle: (val) => setState(() => _isPickupSelected = val),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: Center(
               child: Column(
@@ -144,8 +226,11 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
                     alignment: Alignment.center,
                     children: [
                       Icon(Icons.circle, size: 120, color: Colors.grey.shade300),
-                      const Icon(Icons.location_on_rounded,
-                          size: 40, color: Colors.grey),
+                      const Icon(
+                        Icons.location_on_rounded,
+                        size: 40,
+                        color: Colors.grey,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -163,13 +248,21 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
                     child: Text(
                       'There is no available store nearby. Please select one manually.',
                       textAlign: TextAlign.center,
-                      style:
-                      TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   TextButton(
-                    onPressed: () => _openSelectStoreSheet(context),
+                    onPressed: () {
+                      // if no nearby, open ALL shops so user can still choose
+                      _openSelectStoreSheet(
+                        context,
+                        _allStores.isNotEmpty ? _allStores : _nearbyStores,
+                      );
+                    },
                     child: const Text(
                       'Select Store',
                       style: TextStyle(

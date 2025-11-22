@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CustomStatusBar extends StatelessWidget implements PreferredSizeWidget {
-  const CustomStatusBar({Key? key}) : super(key: key);
+  const CustomStatusBar({super.key});
 
   @override
   Size get preferredSize => const Size.fromHeight(40.0);
@@ -9,7 +9,7 @@ class CustomStatusBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final String time = TimeOfDay.now().format(context);
+    TimeOfDay.now().format(context);
 
     return Container(
       padding: EdgeInsets.only(

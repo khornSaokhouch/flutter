@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/utils/auth_utils.dart';
 import '../../../core/widgets/store/category_list.dart';
 import '../../../core/widgets/store/menu_item_card.dart';
@@ -25,7 +25,7 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  int _selectedIndex = 2;
+  final int _selectedIndex = 2;
   String? _selectedCategoryId;
   bool isPickupSelected = true;
   bool loading = true;
@@ -36,6 +36,11 @@ class _MenuScreenState extends State<MenuScreen> {
 
   List<Category> categories = [];
   List<ShopItem> shopItems = [];
+
+  // 🔹 For store selector
+  List<Shop> _stores = [];
+  Position? _currentPosition;
+  bool _bottomSheetClosed = false;
 
   @override
   void initState() {
@@ -65,7 +70,8 @@ class _MenuScreenState extends State<MenuScreen> {
     setState(() => loading = true);
 
     final fetchedShop = await ShopService.fetchShopById(widget.shopId);
-    final fetchedItems = await ItemService.fetchItemsByShopCheckToken(widget.shopId);
+    final fetchedItems =
+    await ItemService.fetchItemsByShopCheckToken(widget.shopId);
 
     if (fetchedItems != null) {
       shopItems = fetchedItems.data;
@@ -83,7 +89,8 @@ class _MenuScreenState extends State<MenuScreen> {
         _categoryKeys[cat.id.toString()] = GlobalKey();
       }
 
-      _selectedCategoryId = categories.isNotEmpty ? categories.first.id.toString() : null;
+      _selectedCategoryId =
+      categories.isNotEmpty ? categories.first.id.toString() : null;
     }
 
     setState(() {
@@ -92,11 +99,48 @@ class _MenuScreenState extends State<MenuScreen> {
     });
   }
 
-  void _openSelectStoreSheet(BuildContext context) {
+  /// 🔹 Helper: called when user taps store name / arrow
+  Future<void> _handleSelectStoreTap(BuildContext context) async {
+    try {
+      // 1) Fetch all stores if not already loaded
+      if (_stores.isEmpty) {
+        final response = await ShopService.fetchShops();
+        _stores = response?.data ?? <Shop>[];
+      }
+
+      if (_stores.isEmpty) return;
+
+      // 2) Try to get current position (optional, ignore errors)
+      try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+
+        if (permission != LocationPermission.denied &&
+            permission != LocationPermission.deniedForever) {
+          _currentPosition = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+          );
+        }
+      } catch (_) {
+        // ignore location errors, we can still show store list
+      }
+
+      if (!mounted) return;
+      // 3) Open bottom sheet with your desired signature
+      _openSelectStoreSheet(context, _stores);
+    } catch (e) {
+      debugPrint('Error preparing stores for select sheet: $e');
+    }
+  }
+
+  /// 🔹 EXACT signature & behavior you requested
+  void _openSelectStoreSheet(BuildContext context, List<Shop> stores) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -110,12 +154,21 @@ class _MenuScreenState extends State<MenuScreen> {
             controller: scrollController,
             child: SizedBox(
               height: MediaQuery.of(context).size.height * 0.9,
-              child: SelectStorePage(userId: widget.userId, stores: const []),
+              child: SelectStorePage(
+                userId: widget.userId,
+                stores: stores,
+                userPosition: _currentPosition,
+              ),
             ),
           );
         },
       ),
-    );
+    ).whenComplete(() {
+      // user closed the sheet (Cancel or swipe down)
+      setState(() {
+        _bottomSheetClosed = true;
+      });
+    });
   }
 
   void _onItemTapped(int index) {
@@ -132,8 +185,9 @@ class _MenuScreenState extends State<MenuScreen> {
   Map<String, List<ShopItem>> _groupMenuItems() {
     final Map<String, List<ShopItem>> grouped = {};
     for (var cat in categories) {
-      final items =
-      shopItems.where((i) => i.category.id.toString() == cat.id.toString()).toList();
+      final items = shopItems
+          .where((i) => i.category.id.toString() == cat.id.toString())
+          .toList();
       if (items.isNotEmpty) grouped[cat.name] = items;
     }
     return grouped;
@@ -168,12 +222,16 @@ class _MenuScreenState extends State<MenuScreen> {
           padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
           decoration: BoxDecoration(
             color: AppTheme.lightTheme.scaffoldBackgroundColor,
-            border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 1)),
+            border: Border(
+              bottom: BorderSide(color: Colors.grey[200]!, width: 1),
+            ),
           ),
           child: Column(
             children: [
+              // Top row: title + search
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Row(
                   children: [
                     const Spacer(),
@@ -188,12 +246,14 @@ class _MenuScreenState extends State<MenuScreen> {
                   ],
                 ),
               ),
+              // Second row: store name + pickup/delivery toggle
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Row(
                   children: [
                     GestureDetector(
-                      onTap: () => _openSelectStoreSheet(context),
+                      onTap: () => _handleSelectStoreTap(context),
                       child: Text(
                         shop?.name ?? 'Unknown Store',
                         style: TextStyle(
@@ -204,7 +264,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => _openSelectStoreSheet(context),
+                      onTap: () => _handleSelectStoreTap(context),
                       child: Icon(
                         Icons.keyboard_arrow_down,
                         color: theme.colorScheme.secondary,
@@ -214,7 +274,8 @@ class _MenuScreenState extends State<MenuScreen> {
                     const Spacer(),
                     PickupDeliveryToggle(
                       isPickupSelected: isPickupSelected,
-                      onToggle: (val) => setState(() => isPickupSelected = val),
+                      onToggle: (val) =>
+                          setState(() => isPickupSelected = val),
                     ),
                   ],
                 ),
@@ -237,7 +298,8 @@ class _MenuScreenState extends State<MenuScreen> {
                   iconAsset: 'assets/images/coffee.png',
                   isSelected: _selectedCategoryId == cat.id.toString(),
                   onTap: () {
-                    setState(() => _selectedCategoryId = cat.id.toString());
+                    setState(
+                            () => _selectedCategoryId = cat.id.toString());
                     _scrollToCategory(cat.id.toString());
                   },
                 );
@@ -252,7 +314,8 @@ class _MenuScreenState extends State<MenuScreen> {
                 children: groupedItems.entries.map((entry) {
                   final categoryForSection =
                   categories.firstWhere((c) => c.name == entry.key);
-                  final String categoryId = categoryForSection.id.toString();
+                  final String categoryId =
+                  categoryForSection.id.toString();
 
                   return Container(
                     key: _categoryKeys[categoryId],
@@ -260,9 +323,12 @@ class _MenuScreenState extends State<MenuScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Section header
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16.0, vertical: 12.0),
+                            horizontal: 16.0,
+                            vertical: 12.0,
+                          ),
                           child: Row(
                             children: [
                               Container(
@@ -273,25 +339,29 @@ class _MenuScreenState extends State<MenuScreen> {
                               ),
                               Text(
                                 entry.key,
-                                style: theme.textTheme.titleLarge?.copyWith(
+                                style:
+                                theme.textTheme.titleLarge?.copyWith(
                                   color: theme.colorScheme.onBackground,
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        // Items in section
                         ...entry.value.map(
                               (shopItem) => MenuItemCard(
                             item: MenuItem(
                               id: shopItem.item.id.toString(),
-                              categoryId: shopItem.category.id.toString(),
+                              categoryId:
+                              shopItem.category.id.toString(),
                               name: shopItem.item.name,
                               price:
                               '\$${(shopItem.item.priceCents / 100).toStringAsFixed(2)}',
                               imageUrl: shopItem.item.imageUrl,
                             ),
+                            shopItem: shopItem,
                           ),
-                        ).toList(),
+                        ),
                       ],
                     ),
                   );
