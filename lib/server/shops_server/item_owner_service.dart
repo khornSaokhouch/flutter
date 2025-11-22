@@ -1,11 +1,23 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-
-import '../../config/api_endpoints.dart';
+import '../../config/api_endpoints.dart'; // contains ApiConfig
+import '../../models/item_model.dart';
 import '../../models/shops_models/shop_item_owner_models.dart';
 import '../../response/shops_response/shop_item_response.dart';
+
+/// Simple API exception to throw structured errors
+class ApiException implements Exception {
+  final int statusCode;
+  final String message;
+  ApiException(this.statusCode, this.message);
+  @override
+  String toString() => 'ApiException($statusCode): $message';
+}
 
 class ItemOwnerService {
   /// Load token from SharedPreferences
@@ -19,7 +31,9 @@ class ItemOwnerService {
     final token = await _getToken();
 
     if (token != null && token.isNotEmpty) {
-      return ApiConfig.authHeaders(token);
+      // If ApiConfig.authHeaders returns a Future<Map<...>>, await it
+      final auth = await ApiConfig.authHeaders(token);
+      return auth;
     }
 
     return ApiConfig.headers;
@@ -34,21 +48,21 @@ class ItemOwnerService {
       "${ApiConfig.baseUrl}/shop/items?shop_id=$shopId&category_id=$categoryId",
     );
 
-    final headers = await _headers();  // 🔥 now token-aware
+    final headers = await _headers(); // token-aware
 
     final response = await http.get(url, headers: headers);
 
     if (response.statusCode == 200) {
-      final jsonBody = jsonDecode(response.body);
-      final itemResponse = ItemResponse.fromJson(jsonBody);
-
+      final jsonBody = json.decode(response.body);
+      final itemResponse = ItemResponse.fromJson(Map<String, dynamic>.from(jsonBody));
       return itemResponse.data;
     } else {
-      throw Exception("Failed to load items: ${response.body}");
+      // you can throw ApiException instead for consistency
+      throw ApiException(response.statusCode, response.body);
     }
   }
-  /// 🔥 Update inactive status (0/1) for an ItemOwner
-  /// 🔥 Update inactive status (0/1) for an ItemOwner
+
+  /// Update inactive status (0/1) for an ItemOwner
   static Future<void> updateStatus({
     required int id,
     required int inactive, // 1 = active, 0 = inactive
@@ -61,19 +75,49 @@ class ItemOwnerService {
     final headers = await _headers();
 
     final body = jsonEncode({
-      "inactive": inactive, // Laravel validates 'inactive' as boolean
+      "inactive": inactive,
     });
 
     final response = await http.patch(url, headers: headers, body: body);
 
     if (response.statusCode != 200) {
-      // You can inspect response.body if needed
-      throw Exception(
-        "Failed to update status: ${response.statusCode} ${response.body}",
+      throw ApiException(
+        response.statusCode,
+        "Failed to update status: ${response.body}",
       );
     }
+  }
 
-    // We don't parse ItemOwner here – we just trust backend succeeded.
+  /// Fetch all items for a category using backend's showAllByCategory($categoryId)
+  static Future<List<Item>> fetchItemsByCategory(int categoryId) async {
+    // NOTE: fixed string quoting and route. Adjust route if your backend uses a different path.
+    final url = Uri.parse("${ApiConfig.baseUrl}/shop/items/category/$categoryId");
+
+    final headers = await _headers();
+
+    final resp = await http.get(url, headers: headers);
+
+    if (resp.statusCode == 200) {
+      final Map<String, dynamic> body = json.decode(resp.body);
+      // expected: { "message": "...", "data": [ ... ] }
+      final data = body['data'];
+      if (data is List) {
+        return data
+            .map((e) => Item.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+      } else {
+        return [];
+      }
+    }
+
+    // Common errors from your controller: 404, 400
+    if (resp.statusCode == 404 || resp.statusCode == 400) {
+      final Map<String, dynamic> err = json.decode(resp.body);
+      final message = err['error'] ?? err['message'] ?? 'Unknown error';
+      throw ApiException(resp.statusCode, message);
+    }
+
+    // other failures
+    throw ApiException(resp.statusCode, 'Failed to fetch items');
   }
 }
-
