@@ -55,7 +55,7 @@ class MenuItemCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '\$${(item.priceCents).toStringAsFixed(2)}', // format cents to dollars
+                    '\$${(item.priceCents / 100).toStringAsFixed(2)}', // format cents to dollars
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],

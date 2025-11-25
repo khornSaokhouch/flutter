@@ -12,7 +12,7 @@ import 'dart:ui';
   import '../../server/auth_service.dart';
   import '../core/utils/auth_utils.dart';
   import '../core/widgets/loader_widgets.dart';
-import 'auth/VerifyPhonePage.dart';
+// import 'auth/VerifyPhonePage.dart';
   import 'auth/sign_up_screen.dart';
 
   class LoginBottomSheet extends StatefulWidget {
@@ -112,31 +112,40 @@ import 'auth/VerifyPhonePage.dart';
         }
 
         final userModel = await AuthService.firebaseLogin(idToken);
-
-        if (userModel != null && mounted) {
-          if (userModel.needsPhone == true && userModel.tempToken != null) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => VerifyPhonePage(tempToken: userModel.tempToken!),
-              ),
-            );
-          } else {
-            final prefs = await SharedPreferences.getInstance();
-            if (userModel.token != null) {
-              await prefs.setString('token', userModel.token!);
-            }
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => Layout(userId: userModel.user!.id!),
-              ),
-            );
-          }
-        } else {
-          showMessage(context, 'Backend Google login failed.', color: Colors.red);
-        }
+       if (userModel != null && mounted) {
+         Navigator.pushReplacement(
+                 context,
+                 MaterialPageRoute(
+                   builder: (_) => Layout(userId: userModel.user!.id!),
+                 ),
+               );
+           } else {
+               showMessage(context, 'Backend Google login failed.', color: Colors.red);
+           }
+        // if (userModel != null && mounted) {
+        //   if (userModel.needsPhone == true && userModel.tempToken != null) {
+        //     Navigator.pushReplacement(
+        //       context,
+        //       MaterialPageRoute(
+        //         builder: (_) => VerifyPhonePage(tempToken: userModel.tempToken!),
+        //       ),
+        //     );
+        //   } else {
+        //     final prefs = await SharedPreferences.getInstance();
+        //     if (userModel.token != null) {
+        //       await prefs.setString('token', userModel.token!);
+        //     }
+        //
+        //     Navigator.pushReplacement(
+        //       context,
+        //       MaterialPageRoute(
+        //         builder: (_) => Layout(userId: userModel.user!.id!),
+        //       ),
+        //     );
+        //   }
+        // } else {
+        //   showMessage(context, 'Backend Google login failed.', color: Colors.red);
+        // }
       } catch (e) {
         showMessage(context, 'Google Sign-In failed: $e', color: Colors.red);
       } finally {
@@ -174,28 +183,30 @@ import 'auth/VerifyPhonePage.dart';
         final idToken = await userCredential.user?.getIdToken();
         if (idToken == null) throw Exception("Failed to get Firebase ID token");
 
-        final phoneNumber = await showDialog<String>(
-          context: context,
-          builder: (_) {
-            String? tempPhone;
-            return AlertDialog(
-              title: const Text('Enter your phone number'),
-              content: TextField(
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(hintText: 'Phone number'),
-                onChanged: (value) => tempPhone = value,
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, tempPhone),
-                  child: const Text('Submit'),
-                ),
-              ],
-            );
-          },
-        );
+        // final phoneNumber = await showDialog<String>(
+        //   context: context,
+        //   builder: (_) {
+        //     String? tempPhone;
+        //     return AlertDialog(
+        //       title: const Text('Enter your phone number'),
+        //       content: TextField(
+        //         keyboardType: TextInputType.phone,
+        //         decoration: const InputDecoration(hintText: 'Phone number'),
+        //         onChanged: (value) => tempPhone = value,
+        //       ),
+        //       actions: [
+        //         TextButton(
+        //           onPressed: () => Navigator.pop(context, tempPhone),
+        //           child: const Text('Submit'),
+        //         ),
+        //       ],
+        //     );
+        //   },
+        // );
 
-        final userModel = await AuthService.appleLogin(idToken, phone: phoneNumber);
+
+       // final userModel = await AuthService.appleLogin(idToken, phone: phoneNumber);
+        final userModel = await AuthService.appleLogin(idToken);
         var user = userModel?.user;
 
         if (user != null && mounted) {
