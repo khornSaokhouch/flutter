@@ -117,19 +117,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final userModel = await AuthService.firebaseLogin(idToken);
 
       if (userModel != null && mounted) {
-        if (userModel.needsPhone == true && userModel.tempToken != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => VerifyPhonePage(tempToken: userModel.tempToken!),
-            ),
-          );
-        } else {
-          final prefs = await SharedPreferences.getInstance();
-          if (userModel.token != null) {
-            await prefs.setString('token', userModel.token!);
-          }
-
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -137,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         }
-      } else {
+       else {
         showMessage(context, 'Backend Google login failed.', color: Colors.red);
       }
     } catch (e) {
@@ -186,29 +173,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (idToken == null) throw Exception("Failed to get Firebase ID token");
 
       // 🔹 Ask user for phone number if needed
-      final phoneNumber = await showDialog<String>(
-        context: context,
-        builder: (_) {
-          String? tempPhone;
-          return AlertDialog(
-            title: const Text('Enter your phone number'),
-            content: TextField(
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(hintText: 'Phone number'),
-              onChanged: (value) => tempPhone = value,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, tempPhone),
-                child: const Text('Submit'),
-              ),
-            ],
-          );
-        },
-      );
+
 
       // 🔹 Call backend to complete login
-      final userModel = await AuthService.appleLogin(idToken, phone: phoneNumber);
+      final userModel = await AuthService.appleLogin(idToken);
       var user = userModel?.user;
 
       if (user != null && mounted) {

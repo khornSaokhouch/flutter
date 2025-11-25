@@ -211,9 +211,9 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     final q = query.toLowerCase();
     return _products.where((p) {
       // Defensive: item or category or shop might be null depending on your model
-      final itemName = (p.item?.name ?? '').toString().toLowerCase();
-      final categoryName = (p.category?.name ?? '').toString().toLowerCase();
-      final shopName = (p.shop?.name ?? '').toString().toLowerCase();
+      final itemName = (p.item.name).toString().toLowerCase();
+      final categoryName = (p.category.name).toString().toLowerCase();
+      final shopName = (p.shop.name).toString().toLowerCase();
       return itemName.contains(q) ||
           categoryName.contains(q) ||
           shopName.contains(q);

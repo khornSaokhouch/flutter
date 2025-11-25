@@ -80,7 +80,7 @@ class _DetailItemState extends State<DetailItem> {
   }
 
   void _calculateSubtotal() {
-    double basePrice = item.priceCents;
+    double basePrice = item.priceCents / 100;
     double optionsPrice = 0.0;
 
     selectedOptions.forEach((key, option) {
