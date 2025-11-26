@@ -35,7 +35,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   // Create account (calls AuthService.register)
   Future<void> createAccount() async {
     final username = usernameCtrl.text.trim();
-    final phone = phoneCtrl.text.trim();
+    final phone = formatPhoneNumber(phoneCtrl.text); // ✅ Add +855 here
     final password = passwordCtrl.text.trim();
     final confirmPassword = confirmPasswordCtrl.text.trim();
 
@@ -67,10 +67,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Use positional args to match your AuthService.register signature
       final userModel = await AuthService.register(
         username,
-        phone,
+        phone,            // ✅ Already formatted with +855
         password,
         confirmPassword,
       );
@@ -90,14 +89,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
           _navigateToLayout(userModel);
         }
       } else {
-        // Show server message or a fallback
         final msg = userModel.message ?? 'Registration succeeded but no user returned';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
-    }  catch (e) {
-      // If you use AuthException from your AuthService, surface the first validation message
     } catch (e) {
-      // Generic error (network, decode, etc.)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Sign up failed: ${e.toString()}')),
       );
@@ -105,6 +100,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
 
   // Google Sign-In (keeps existing behaviour, then call server)
   Future<void> signInWithGoogle() async {
