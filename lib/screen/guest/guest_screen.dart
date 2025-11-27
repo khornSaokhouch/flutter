@@ -1,5 +1,4 @@
-import 'package:flutter/material.dart';
-import '../auth/login_screen.dart'; // Your login bottom sheet
+import 'package:flutter/material.dart';// Your login bottom sheet
 import '../home_screen.dart';
 import '../guest/guest_store_screen/guest_no_store_nearby_screen.dart';
 import 'guest_home_screen.dart';

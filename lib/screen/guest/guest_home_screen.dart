@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
-import '../../core/utils/utils.dart';
-import '../../core/widgets/card/drink_card.dart';
-// import '../../routes/footer_nav_routes.dart';
-import '../auth/login_screen.dart';
-import '../home_screen.dart'; // Make sure FooterNav is imported correctly
+import '../../server/category_service.dart';
+import '../../models/category.dart';
+import './category_Items_screen.dart';
 
 class GuestScreen extends StatefulWidget {
   const GuestScreen({Key? key}) : super(key: key);
@@ -14,13 +11,16 @@ class GuestScreen extends StatefulWidget {
 }
 
 class _GuestScreenState extends State<GuestScreen> {
+  late Future<List<Category>> _categoriesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _categoriesFuture = CategoryService.fetchCategories();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = AppTheme.lightTheme;
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60.0),
@@ -30,174 +30,258 @@ class _GuestScreenState extends State<GuestScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Greeting Section
+            // ===== Banner Section =====
             Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Good ${getGreeting()}',
-                    style: textTheme.headlineSmall?.copyWith(
-                      color: colorScheme.onBackground,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        'Login and get free',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(Icons.coffee, size: 18, color: Colors.grey[700]),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Rewards Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
               child: Container(
-                padding: const EdgeInsets.all(16.0),
+                height: 200,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4A6B5C),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Join the Rewards program to enjoy free beverages, special offers and more!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // Handle Join Now
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6F4E37),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              'JOIN NOW',
-                              style: TextStyle(
-                                  fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // Handle Guest Order
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD4B499),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              'GUEST ORDER',
-                              style: TextStyle(
-                                  fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ],
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
                     ),
                   ],
+                  image: const DecorationImage(
+                    image: AssetImage("assets/images/banner.jpg"),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(20.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.black.withOpacity(0.0),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Join the Rewards program to enjoy free beverages, special offers and more!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                          fontFamily: 'Roboto',
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black87,
+                                elevation: 0,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                              child: const Text(
+                                'JOIN NOW',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {},
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(
+                                    color: Colors.white, width: 1.5),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                              child: const Text(
+                                'GUEST ORDER',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-
-            // Login Section
+            
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Column(
-                children: [
-                  Text(
-                    'Already have an account?',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => LoginScreen()),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF4A6B5C), width: 1.5),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text(
-                      'LOGIN',
-                      style: TextStyle(
-                          fontSize: 16, color: Color(0xFF4A6B5C), fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
+  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Section Header
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Categories',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1B4D3E), // Deep Forest Green
             ),
+          ),
+          // Optional: "See All" button for better UX if list is long
+          TextButton(
+            onPressed: () {}, 
+            child: const Text(
+              "See All", 
+              style: TextStyle(color: Color(0xFF4A6B5C)),
+            )
+          )
+        ],
+      ),
+      const SizedBox(height: 12),
 
-            // Drinks Section
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text('Drinks',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text('See all', style: TextStyle(fontSize: 14, color: Color(0xFF4A6B5C))),
+      // Visual Category List
+      FutureBuilder<List<Category>>(
+        future: _categoriesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              height: 110,
+              child: Center(
+                child: CircularProgressIndicator(color: Color(0xFF1B4D3E)),
+              ),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const SizedBox(
+              height: 110,
+              child: Center(child: Text('No categories found')),
+            );
+          }
+
+          final categories = snapshot.data!;
+          return SizedBox(
+            height: 115, // Sufficient height for Card + Image + Text
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 16),
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                
+                // --- IMAGE URL FIX (Keeping your logic) ---
+                String imageUrl = category.imageCategoryUrl ?? '';
+                if (imageUrl.contains('127.0.0.1') || imageUrl.contains('localhost')) {
+                  imageUrl = imageUrl.replaceAll(RegExp(r'127\.0\.0\.1|localhost'), '10.1.86.72');
+                }
+                if (imageUrl.contains(':8000')) {
+                   imageUrl = imageUrl.replaceAll(':8000', '');
+                }
+                if (!imageUrl.contains('/Year4/server/public') && imageUrl.contains('/storage/')) {
+                  imageUrl = imageUrl.replaceAll('/storage/', '/Year4/server/public/storage/');
+                }
+                // ------------------------------------------
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CategoryItemsScreen(
+                          categoryId: category.id,
+                          categoryName: category.name,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      // 1. The Image Card
+                      Container(
+                        width: 70, 
+                        height: 70,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18), // Soft rounded corners
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF1B4D3E).withOpacity(0.15), // Green shadow
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: imageUrl.isNotEmpty
+                              ? Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  headers: const {"Connection": "Keep-Alive"},
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: const Color(0xFF1B4D3E).withOpacity(0.1),
+                                    child: const Icon(Icons.local_cafe, color: Color(0xFF1B4D3E)),
+                                  ),
+                                )
+                              : Container(
+                                  color: const Color(0xFF1B4D3E).withOpacity(0.1),
+                                  child: const Icon(Icons.category, color: Color(0xFF1B4D3E)),
+                                ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 8),
+
+                      // 2. The Text Label
+                      SizedBox(
+                        width: 75, // Limits text width to match image
+                        child: Text(
+                          category.name,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1B4D3E), // Deep Green Text
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: const [
-                      Expanded(
-                          child: DrinkCard(image: 'assets/images/coffee.png', title: 'Hot Coffees')),
-                      SizedBox(width: 16),
-                      Expanded(
-                          child: DrinkCard(image: 'assets/images/coffee.png', title: 'Hot Teas')),
-                      SizedBox(width: 16),
-                      Expanded(
-                          child: DrinkCard(image: 'assets/images/coffee.png', title: 'Hot Drinks')),
-                    ],
-                  ),
-                ],
-              ),
+                );
+              },
             ),
+          );
+        },
+      ),
+    ],
+  ),
+)
           ],
         ),
       ),
-
-      // // ✅ Fixed Footer Navigation
-      // bottomNavigationBar: FooterNav(
-      //   selectedIndex: _selectedIndex,
-      //   onItemTapped: _onItemTapped,
-      // ),
     );
   }
 }
 
+// ===== Navbar =====
 class Navbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -210,21 +294,35 @@ class Navbar extends StatelessWidget {
       ),
       centerTitle: true,
       title: Container(
-        width: 40,
-        height: 40,
-        decoration: const BoxDecoration(
-          color: Color(0xFFD4B499),
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.white,
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: const Center(
-          child: Icon(Icons.coffee_outlined, color: Color(0xFF6F4E37), size: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: Image.asset(
+            'assets/images/img_1.png',
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.coffee, color: Color(0xFF1B4D3E)),
+          ),
         ),
       ),
       actions: [
         Stack(
           children: [
             IconButton(
-              icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black),
+              icon:
+                  const Icon(Icons.shopping_bag_outlined, color: Colors.black),
               onPressed: () {},
             ),
             Positioned(
@@ -236,14 +334,20 @@ class Navbar extends StatelessWidget {
                   color: const Color(0xFF4A6B5C),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                constraints: const BoxConstraints(
+                  minWidth: 14,
+                  minHeight: 14,
+                ),
                 child: const Text(
                   '0',
-                  style: TextStyle(color: Colors.white, fontSize: 8),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
-            )
+            ),
           ],
         ),
         const SizedBox(width: 8),
@@ -251,95 +355,3 @@ class Navbar extends StatelessWidget {
     );
   }
 }
-
-
-
-// class FooterNav extends StatefulWidget {
-//   @override
-//   _FooterNavState createState() => _FooterNavState();
-// }
-//
-// class _FooterNavState extends State<FooterNav> {
-//   int _selectedIndex = 0;
-//
-//   void _onItemTapped(int index) {
-//     setState(() {
-//       _selectedIndex = index;
-//     });
-//     // Add navigation logic here based on index
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return BottomNavigationBar(
-//       items: const <BottomNavigationBarItem>[
-//         BottomNavigationBarItem(
-//           icon: Icon(Icons.home),
-//           label: 'Home',
-//         ),
-//         BottomNavigationBarItem(
-//           icon: Icon(Icons.qr_code_scanner),
-//           label: 'Scan / Pay',
-//         ),
-//         BottomNavigationBarItem(
-//           icon: Icon(Icons.local_cafe),
-//           label: 'Order',
-//         ),
-//         BottomNavigationBarItem(
-//           icon: Icon(Icons.person),
-//           label: 'Account',
-//         ),
-//         BottomNavigationBarItem(
-//           icon: Icon(Icons.star_border),
-//           label: 'Rewards',
-//         ),
-//       ],
-//       currentIndex: _selectedIndex,
-//       selectedItemColor: Color(0xFF4A6B5C), // Green for selected item
-//       unselectedItemColor: Colors.grey,
-//       showUnselectedLabels: true,
-//       onTap: _onItemTapped,
-//       backgroundColor: Colors.white,
-//       type: BottomNavigationBarType.fixed, // Ensure all labels are visible
-//       selectedLabelStyle: TextStyle(fontSize: 12),
-//       unselectedLabelStyle: TextStyle(fontSize: 12),
-//     );
-//   }
-// }
-
-// To run this code, you'll need to add placeholder images to your assets folder:
-// Create an 'assets' folder in your project root.
-// Add the following images (or similar placeholder images) to the 'assets' folder:
-// - hot_coffees.png
-// - hot_teas.png
-// - hot_drinks.png
-//
-// Then, update your pubspec.yaml file:
-//
-// flutter:
-//   uses-material-design: true
-//   assets:
-//     - assets/
-//
-// Example of main.dart to use this:
-//
-// import 'package:flutter/material.dart';
-// import 'package:your_app_name/guest_screen.dart'; // Adjust import path
-
-// void main() {
-//   runApp(MyApp());
-// }
-
-// class MyApp extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'Coffee App',
-//       theme: ThemeData(
-//         primarySwatch: Colors.green,
-//         scaffoldBackgroundColor: Color(0xFFF5F5ED), // Light beige background
-//       ),
-//       home: GuestScreen(),
-//     );
-//   }
-// }
