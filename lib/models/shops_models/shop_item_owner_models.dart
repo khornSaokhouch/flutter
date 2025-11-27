@@ -7,12 +7,12 @@ class ItemOwner {
   final int itemId;
   final int shopId;
   final int categoryId;
-  int inactive; // <-- make this mutable
+  int inactive;
   final String createdAt;
   final String updatedAt;
-  final Item item;
-  final Category category;
-  final Shop shop;
+  final Item? item;
+  final Category? category;
+  final Shop? shop;
 
   ItemOwner({
     required this.id,
@@ -22,9 +22,9 @@ class ItemOwner {
     required this.inactive,
     required this.createdAt,
     required this.updatedAt,
-    required this.item,
-    required this.category,
-    required this.shop,
+    this.item,
+    this.category,
+    this.shop,
   });
 
   factory ItemOwner.fromJson(Map<String, dynamic> json) {
@@ -33,13 +33,12 @@ class ItemOwner {
       itemId: json['item_id'],
       shopId: json['shop_id'],
       categoryId: json['category_id'],
-      inactive: json['inactive'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
-      item: Item.fromJson(json['item']),
-      category: Category.fromJson(json['category']),
-      shop: Shop.fromJson(json['shop']),
+      inactive: json['inactive'] ?? 0,
+      createdAt: json['created_at'] ?? '',
+      updatedAt: json['updated_at'] ?? '',
+      item: json['item'] != null ? Item.fromJson(json['item']) : null,
+      category: json['category'] != null ? Category.fromJson(json['category']) : null,
+      shop: json['shop'] != null ? Shop.fromJson(json['shop']) : null,
     );
   }
 }
-

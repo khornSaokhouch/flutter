@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/api_endpoints.dart'; // contains ApiConfig
 import '../../models/item_model.dart';
+import '../../models/shops_models/item_owner_model.dart';
 import '../../models/shops_models/shop_item_owner_models.dart';
 import '../../response/shops_response/shop_item_response.dart';
 
@@ -120,4 +121,40 @@ class ItemOwnerService {
     // other failures
     throw ApiException(resp.statusCode, 'Failed to fetch items');
   }
+
+
+  static Future<List<ItemOwnerModel>?> createItemOwners(
+      List<Map<String, dynamic>> payload) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/shop/item");
+
+    final headers = await _headers();
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final body = response.body;
+      if (body == null || body.isEmpty) return <ItemOwnerModel>[];
+
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(body);
+      } catch (e) {
+        // Not JSON — cannot parse
+        return <ItemOwnerModel>[];
+      }
+
+      // Use the robust parser
+      final parsed = parseItemOwners(decoded);
+      return parsed;
+    } else {
+      // throw with useful info
+      throw Exception("Error ${response.statusCode}: ${response.body}");
+    }
+  }
+
+
 }
