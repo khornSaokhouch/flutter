@@ -30,7 +30,7 @@ class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
   @override
   void initState() {
     super.initState();
-    _checkNearbyStores();
+    // _checkNearbyStores();
   }
 
   Future<void> _checkNearbyStores() async {
@@ -126,32 +126,32 @@ class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_checkingLocation) {
-      return Scaffold(
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: const Text(
-            'MENU',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.search, color: Colors.black),
-              onPressed: () {},
-            ),
-          ],
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    // if (_checkingLocation) {
+    //   return Scaffold(
+    //     backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+    //     appBar: AppBar(
+    //       backgroundColor: Colors.white,
+    //       elevation: 0,
+    //       title: const Text(
+    //         'MENU',
+    //         style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+    //       ),
+    //       centerTitle: true,
+    //       actions: [
+    //         IconButton(
+    //           icon: const Icon(Icons.search, color: Colors.black),
+    //           onPressed: () {},
+    //         ),
+    //       ],
+    //     ),
+    //     body: const Center(child: CircularProgressIndicator()),
+    //   );
+    // }
 
-    // While the auto-open bottom sheet is active, keep this blank
-    if (_hasNearbyStore && !_bottomSheetClosed) {
-      return const Scaffold();
-    }
+    // // While the auto-open bottom sheet is active, keep this blank
+    // if (_hasNearbyStore && !_bottomSheetClosed) {
+    //   return const Scaffold();
+    // }
 
     // "No Store Nearby" UI (or user closed the sheet)
     return Scaffold(

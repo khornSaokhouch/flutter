@@ -3,10 +3,12 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/shops/screens/shop_product_detai.dart';
 
-import '../../../models/item_model.dart';
 import '../../../models/shops_models/shop_item_owner_models.dart';
 import '../../../server/shops_server/item_owner_service.dart';
+import '../widgets/add_product_sheet.dart';
+import '../widgets/product_row.dart';
 
 class CategoryProductsPage extends StatefulWidget {
   final int shopId;
@@ -130,7 +132,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     try {
       final results = await ItemOwnerService.fetchItemsByCategory(widget.categoryId);
 
-      // results may be List<Map<String,dynamic>> or List<Item> or List<dynamic>
+      // Normalize results into List<Map<String,dynamic>>
       final List<Map<String, dynamic>> normalized = [];
 
       if (results is List<Map<String, dynamic>>) {
@@ -142,12 +144,10 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           } else if (r is Map) {
             normalized.add(Map<String, dynamic>.from(r as Map));
           } else {
-            // If it's an object (e.g. Item), try to call toJson() if available
             try {
               final jsonMap = (r as dynamic).toJson();
               if (jsonMap is Map<String, dynamic>) normalized.add(jsonMap);
             } catch (_) {
-              // fallback: store a single-field representation
               normalized.add({'value': r.toString()});
             }
           }
@@ -160,24 +160,18 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       // Filter out items that already exist in _products
       final List<Map<String, dynamic>> filtered = [];
       for (final map in normalized) {
-        // Try to get id from map['id'] or nested map['item']['id']
         int? id;
         if (map['id'] is int) id = map['id'] as int;
-        else if (map['id'] is String) id = int.tryParse(map['id']);
+        else if (map['id'] is String) id = int.tryParse(map['id'] as String);
         else if (map['item'] is Map) {
           final im = map['item'] as Map;
           if (im['id'] is int) id = im['id'] as int;
-          else if (im['id'] is String) id = int.tryParse(im['id']);
+          else if (im['id'] is String) id = int.tryParse(im['id'] as String);
         }
 
-        // If id exists and is present in existingIds -> skip
         if (id != null && existingIds.contains(id)) {
           continue;
         }
-
-        // Optional: skip by name if id missing to avoid duplicates by name
-        // final name = (map['name'] ?? map['title'] ?? '').toString().trim().toLowerCase();
-        // if (name.isNotEmpty && _products.any((p) => (p.item?.name ?? '').toLowerCase() == name)) continue;
 
         filtered.add(map);
       }
@@ -196,7 +190,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
         });
       }
     }
-    // no loading flag to toggle here (we use _isLoading for main list)
   }
 
   /// refresh handler for pull-to-refresh
@@ -210,14 +203,52 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
     final q = query.toLowerCase();
     return _products.where((p) {
-      // Defensive: item or category or shop might be null depending on your model
-      final itemName = (p.item.name).toString().toLowerCase();
-      final categoryName = (p.category.name).toString().toLowerCase();
-      final shopName = (p.shop.name).toString().toLowerCase();
-      return itemName.contains(q) ||
-          categoryName.contains(q) ||
-          shopName.contains(q);
+      final itemName = (p.item?.name ?? '').toString().toLowerCase();
+      final categoryName = (p.category?.name ?? '').toString().toLowerCase();
+      final shopName = (p.shop?.name ?? '').toString().toLowerCase();
+      return itemName.contains(q) || categoryName.contains(q) || shopName.contains(q);
     }).toList();
+  }
+
+  /// Show AddProductSheet bottom sheet
+  void _showAddProductSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => AddProductSheet(
+        initialItems: _itemsRaw,
+        shopId: widget.shopId,
+        categoryId: widget.categoryId,
+        categoryName: widget.categoryName,
+        onRefreshRequested: () async {
+          // delegate reloading back to your service and normalize to List<Map<String,dynamic>>
+          final results = await ItemOwnerService.fetchItemsByCategory(widget.categoryId);
+          final normalized = <Map<String, dynamic>>[];
+          for (final r in results) {
+            if (r is Map<String, dynamic>) normalized.add(r as Map<String, dynamic>);
+            else if (r is Map) normalized.add(Map<String, dynamic>.from(r as Map));
+            else {
+              try {
+                final jsonMap = (r as dynamic).toJson();
+                if (jsonMap is Map<String, dynamic>) normalized.add(jsonMap);
+              } catch (_) {
+                normalized.add({'value': r.toString()});
+              }
+            }
+          }
+          return normalized;
+        },
+        onCreated: (created) {
+          // refresh your page lists after successful create
+          _loadProductsFromApi();
+          _loadProducts();
+        },
+      ),
+    ).whenComplete(() {
+      // ensure lists refresh after sheet closes
+      _loadProductsFromApi();
+      _loadProducts();
+    });
   }
 
   @override
@@ -303,7 +334,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            // show sheet and then refresh raw data in background
                             _showAddProductSheet(context);
                           },
                           icon: const Icon(Icons.add),
@@ -338,7 +368,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Breadcrumb
                 const Text(
                   'Home  /  Products  /  Product List',
                   style: TextStyle(
@@ -347,8 +376,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Search
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
@@ -372,8 +399,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // Filter + Add New Product buttons
                 Row(
                   children: [
                     Expanded(
@@ -400,7 +425,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          _showAddProductSheet(context); // refresh raw items in background
+                          _showAddProductSheet(context); // show sheet
                         },
                         icon: const Icon(Icons.add),
                         label: const Text(
@@ -426,8 +451,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                 ),
                 const SizedBox(height: 16),
                 const Divider(height: 32),
-
-                // Header
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4),
                   child: Row(
@@ -458,8 +481,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                 ),
                 const SizedBox(height: 8),
                 const Divider(height: 1),
-
-                // Product list
                 ListView.separated(
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
@@ -468,10 +489,60 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                   itemBuilder: (context, index) {
                     final globalIndex = startIndex + index;
                     final itemOwner = productsPage[index];
-                    return _buildProductRow(globalIndex, itemOwner);
+
+                    return ProductRow(
+                      index: globalIndex,
+                      itemOwner: itemOwner,
+                      accentColor: _accentColor,
+
+                      // Optional: override tap to open detail page (original behavior)
+                      onTap: (owner) {
+                        if (owner.item != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => ShopProductDetail(item: owner.item)),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item details unavailable')));
+                        }
+                      },
+
+                      // Toggle callback: performs API update + optimistic UI update in parent
+                      onToggleStatus: (owner, newStatus) async {
+                        final int? id = owner.id;
+                        if (id == null) throw Exception('Invalid item owner id');
+
+                        // local optimistic change (parent page also had _updatingIds set)
+                        final oldValue = owner.inactive ?? 0;
+                        final newInactive = newStatus ? 1 : 0;
+
+                        // mark updating in parent page state to keep any parent indicators in sync
+                        setState(() {
+                          owner.inactive = newInactive;
+                          _updatingIds.add(id);
+                        });
+
+                        try {
+                          await ItemOwnerService.updateStatus(id: id, inactive: owner.inactive);
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status updated')));
+                        } catch (e) {
+                          // rollback
+                          if (mounted) {
+                            setState(() {
+                              owner.inactive = oldValue;
+                            });
+                            throw e; // ProductRow will show snackbar from caught exception
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _updatingIds.remove(id);
+                            });
+                          }
+                        }
+                      },
+                    );
                   },
                 ),
-
                 const SizedBox(height: 24),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
@@ -484,425 +555,265 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     );
   }
 
-  /// Shows an Add Product sheet. Sheet reads `_itemsRaw` which was set by `_loadProducts()`.
-  void _showAddProductSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) {
-        // compute a sheet title (first item's name or fallback)
-        String title = 'No Name';
-        if (_itemsRaw.isNotEmpty) {
-          final first = _itemsRaw[0];
-          if (first is Map && first['name'] != null) {
-            title = first['name'].toString();
-          } else if (first is Map && first['title'] != null) {
-            title = first['title'].toString();
-          } else {
-            title = first.toString();
-          }
-        }
-
-        return SafeArea(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            // If you want the sheet to expand to full height, use MediaQuery
-            height: min(MediaQuery.of(context).size.height * 0.75, 520),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header row
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Items in ${widget.categoryName.isNotEmpty ? widget.categoryName : title}',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: () async {
-                        // refresh raw items while sheet is open
-                        await _loadProducts();
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                // Show a short description count
-                Text(
-                  '${_itemsRaw.length} item${_itemsRaw.length == 1 ? '' : 's'}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
-
-                // Items list (scrollable)
-                Expanded(
-                  child: _itemsRaw.isEmpty
-                      ? const Center(child: Text('No items available.'))
-                      : ListView.separated(
-                    itemCount: _itemsRaw.length,
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemBuilder: (ctx, i) {
-                      final item = _itemsRaw[i];
-                      // defensively extract fields
-                      String name = 'Unnamed';
-                      String? imageUrl;
-                      String priceStr = '—';
-
-                      if (item is Map<String, dynamic>) {
-                        if (item['name'] != null) name = item['name'].toString();
-                        else if (item['title'] != null) name = item['title'].toString();
-
-                        if (item['image_url'] != null) imageUrl = item['image_url'].toString();
-
-                        final rawPrice = item['price_cents'];
-                        if (rawPrice != null) {
-                          if (rawPrice is int) {
-                            priceStr = (rawPrice / 100).toStringAsFixed(2);
-                          } else if (rawPrice is double) {
-                            // handle "2.43" coming as double meaning dollars
-                            if (rawPrice >= 100) priceStr = (rawPrice / 100).toStringAsFixed(2);
-                            else priceStr = rawPrice.toStringAsFixed(2);
-                          } else if (rawPrice is String) {
-                            final s = rawPrice;
-                            if (s.contains('.')) {
-                              final d = double.tryParse(s) ?? 0.0;
-                              // if API returned dollars string "2.43" -> show 2.43
-                              priceStr = d.toStringAsFixed(2);
-                            } else {
-                              final iVal = int.tryParse(s);
-                              if (iVal != null) priceStr = (iVal / 100).toStringAsFixed(2);
-                            }
-                          }
-                        }
-                      } else {
-                        // fallback when item isn't a map
-                        name = item.toString();
-                      }
-
-                      return ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: SizedBox(
-                            width: 56,
-                            height: 56,
-                            child: (imageUrl != null && imageUrl.startsWith('http'))
-                                ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.broken_image),
-                              ),
-                            )
-                                : Container(
-                              color: Colors.grey.shade200,
-                              child: const Icon(Icons.local_cafe),
-                            ),
-                          ),
-                        ),
-                        title: Text(name),
-                        subtitle: Text('\$${priceStr}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.add_shopping_cart),
-                          onPressed: () {
-                            // Example action — you can call add-to-cart logic here
-                            Navigator.of(context).pop(); // close sheet after action
-                            // optionally refresh lists
-                            _loadProductsFromApi();
-                            _loadProducts();
-                          },
-                        ),
-                        onTap: () {
-                          // Optionally show details or pre-fill add-product form
-                        },
-                      );
-                    },
-                  ),
-                ),
-
-                // bottom actions
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Close'),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        // open add product flow...
-                        Navigator.of(context).pop();
-                        // refresh after closing
-                        _loadProductsFromApi();
-                        _loadProducts();
-                      },
-                      child: const Text('Add New'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    ).whenComplete(() {
-      // refresh main list after sheet closes
-      _loadProductsFromApi();
-      _loadProducts();
-    });
-  }
-
-  Widget _buildProductRow(int index, ItemOwner itemOwner) {
-    final item = itemOwner.item;
-    final category = itemOwner.category;
-
-    // defensive fetching of image field (try multiple possible names)
-    String? imageUrl;
-    try {
-      final dynamic possible = item?.imageUrl;
-      if (possible is String && possible.isNotEmpty) imageUrl = possible;
-    } catch (_) {
-      imageUrl = null;
-    }
-
-    // Price: try multiple fields and handle string/int
-    double price = 0.0;
-    try {
-      final dynamic priceField = item?.priceCents;
-      if (priceField != null) {
-        if (priceField is num) {
-          // if backend returns cents (e.g. 243) or dollars (2.43)
-          price = (priceField >= 100) ? (priceField / 100.0) : priceField.toDouble();
-        } else if (priceField is String) {
-          final parsed = double.tryParse(priceField) ?? 0.0;
-          price = (parsed >= 100) ? (parsed / 100.0) : parsed;
-        }
-      }
-    } catch (_) {
-      price = 0.0;
-    }
-
-    // NOTE: your backend mapping: inactive == 1 => ACTIVE, inactive == 0 => INACTIVE
-    final int inactiveVal = itemOwner.inactive ?? 0;
-    final bool isActive = (inactiveVal == 1); // switch ON when 1
-
-    // content indent (to align with the leading number + image + gaps)
-    final double contentIndent = 24 + 12 + 48 + 12;
-
-    // SAFE: treat id as nullable
-    final int? id = itemOwner.id;
-    final bool isUpdating = id != null && _updatingIds.contains(id);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // top row...
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 24,
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: imageUrl != null && imageUrl.startsWith('http')
-                        ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Icon(
-                          Icons.broken_image,
-                          size: 22,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    )
-                        : Container(
-                      color: Colors.grey.shade300,
-                      child: const Icon(
-                        Icons.image_not_supported_outlined,
-                        size: 22,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Name + category
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item?.name?.toString() ?? 'Unnamed Item',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        category?.name?.toString() ?? '',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // menu
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  onSelected: (value) {
-                    // TODO: edit/delete actions
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          Divider(height: 1, color: Colors.grey.shade300),
-          const SizedBox(height: 8),
-
-          // Price
-          Padding(
-            padding: EdgeInsets.only(left: contentIndent, right: 16),
-            child: Row(
-              children: [
-                const Text('Price', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                const Spacer(),
-                Text('\$${price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Stock
-          Padding(
-            padding: EdgeInsets.only(left: contentIndent, right: 16),
-            child: Row(
-              children: [
-                const Text('Stock', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                const Spacer(),
-                Text('0', style: const TextStyle(fontSize: 13)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Status row: show per-row loader if updating, else switch (disabled if id is null)
-          Padding(
-            padding: EdgeInsets.only(left: contentIndent, right: 16, bottom: 10),
-            child: Row(
-              children: [
-                const Text('Status', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                const Spacer(),
-                if (isUpdating)
-                  const SizedBox(
-                    width: 36,
-                    height: 24,
-                    child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
-                  )
-                else
-                  Switch(
-                    value: isActive,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: _accentColor,
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: Colors.grey.shade400,
-                    onChanged: (id == null)
-                        ? null // disable if no id available
-                        : (newStatus) => _toggleStatus(itemOwner, newStatus),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildProductRow(int index, ItemOwner itemOwner) {
+  //   final item = itemOwner.item;
+  //   final category = itemOwner.category;
+  //
+  //   // defensive fetching of image field (try multiple possible names)
+  //   String? imageUrl;
+  //   try {
+  //     final dynamic possible = item?.imageUrl;
+  //     if (possible is String && possible.isNotEmpty) imageUrl = possible;
+  //   } catch (_) {
+  //     imageUrl = null;
+  //   }
+  //
+  //   // Price: try multiple fields and handle string/int
+  //   double price = 0.0;
+  //   try {
+  //     final dynamic priceField = item?.priceCents;
+  //     if (priceField != null) {
+  //       if (priceField is num) {
+  //         price = (priceField >= 100) ? (priceField / 100.0) : priceField.toDouble();
+  //       } else if (priceField is String) {
+  //         final parsed = double.tryParse(priceField) ?? 0.0;
+  //         price = (parsed >= 100) ? (parsed / 100.0) : parsed;
+  //       }
+  //     }
+  //   } catch (_) {
+  //     price = 0.0;
+  //   }
+  //
+  //   // NOTE: your backend mapping: inactive == 1 => ACTIVE, inactive == 0 => INACTIVE
+  //   final int inactiveVal = itemOwner.inactive ?? 0;
+  //   final bool isActive = (inactiveVal == 1); // switch ON when 1
+  //
+  //   // content indent (to align with the leading number + image + gaps)
+  //   final double contentIndent = 24 + 12 + 48 + 12;
+  //
+  //   // SAFE: treat id as nullable
+  //   final int? id = itemOwner.id;
+  //   final bool isUpdating = id != null && _updatingIds.contains(id);
+  //
+  //   return// Inside your build method where you have access to `context`, `item`, `index`, etc.
+  //     Material(
+  //       color: Colors.transparent,
+  //       borderRadius: BorderRadius.circular(8),
+  //       child: InkWell(
+  //         borderRadius: BorderRadius.circular(8),
+  //         onTap: () {
+  //           if (item != null) {
+  //             Navigator.of(context).push(
+  //               MaterialPageRoute(
+  //                 builder: (_) => ShopProductDetail(item: item),
+  //               ),
+  //             );
+  //           } else {
+  //             // Optional: show a message if no item available
+  //             ScaffoldMessenger.of(context).showSnackBar(
+  //               const SnackBar(content: Text('Item details unavailable')),
+  //             );
+  //           }
+  //         },
+  //         child: Container(
+  //           margin: const EdgeInsets.symmetric(vertical: 4),
+  //           decoration: BoxDecoration(
+  //             borderRadius: BorderRadius.circular(8),
+  //           ),
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               // ... your existing children (top row, price, stock, switch etc.)
+  //               Padding(
+  //                 padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+  //                 child: Row(
+  //                   crossAxisAlignment: CrossAxisAlignment.center,
+  //                   children: [
+  //                     SizedBox(
+  //                       width: 24,
+  //                       child: Text(
+  //                         '${index + 1}',
+  //                         style: const TextStyle(
+  //                           fontSize: 14,
+  //                           fontWeight: FontWeight.w500,
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     const SizedBox(width: 12),
+  //                     // Image
+  //                     ClipRRect(
+  //                       borderRadius: BorderRadius.circular(10),
+  //                       child: SizedBox(
+  //                         width: 48,
+  //                         height: 48,
+  //                         child: imageUrl != null && imageUrl.startsWith('http')
+  //                             ? Image.network(
+  //                           imageUrl,
+  //                           fit: BoxFit.cover,
+  //                           errorBuilder: (_, __, ___) => Container(
+  //                             color: Colors.grey.shade300,
+  //                             child: const Icon(
+  //                               Icons.broken_image,
+  //                               size: 22,
+  //                               color: Colors.grey,
+  //                             ),
+  //                           ),
+  //                         )
+  //                             : Container(
+  //                           color: Colors.grey.shade300,
+  //                           child: const Icon(
+  //                             Icons.image_not_supported_outlined,
+  //                             size: 22,
+  //                             color: Colors.grey,
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     const SizedBox(width: 12),
+  //                     Expanded(
+  //                       child: Column(
+  //                         crossAxisAlignment: CrossAxisAlignment.start,
+  //                         children: [
+  //                           Text(
+  //                             item?.name.toString() ?? 'Unnamed Item',
+  //                             maxLines: 1,
+  //                             overflow: TextOverflow.ellipsis,
+  //                             style: const TextStyle(
+  //                               fontSize: 15,
+  //                               fontWeight: FontWeight.w600,
+  //                             ),
+  //                           ),
+  //                           const SizedBox(height: 2),
+  //                           Text(
+  //                             category?.name.toString() ?? '',
+  //                             style: const TextStyle(
+  //                               fontSize: 12,
+  //                               color: Colors.grey,
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                     PopupMenuButton<String>(
+  //                       icon: const Icon(Icons.more_vert, size: 20),
+  //                       onSelected: (value) {
+  //                         // TODO: edit/delete actions
+  //                       },
+  //                       itemBuilder: (context) => const [
+  //                         PopupMenuItem(value: 'edit', child: Text('Edit')),
+  //                         PopupMenuItem(value: 'delete', child: Text('Delete')),
+  //                       ],
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //               Divider(height: 1, color: Colors.grey.shade300),
+  //               const SizedBox(height: 8),
+  //               // Price
+  //               Padding(
+  //                 padding: EdgeInsets.only(left: contentIndent, right: 16),
+  //                 child: Row(
+  //                   children: [
+  //                     const Text('Price', style: TextStyle(color: Colors.grey, fontSize: 12)),
+  //                     const Spacer(),
+  //                     Text('\$${price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+  //                   ],
+  //                 ),
+  //               ),
+  //               const SizedBox(height: 8),
+  //               // Stock
+  //               Padding(
+  //                 padding: EdgeInsets.only(left: contentIndent, right: 16),
+  //                 child: Row(
+  //                   children: [
+  //                     const Text('Stock', style: TextStyle(color: Colors.grey, fontSize: 12)),
+  //                     const Spacer(),
+  //                     Text('0', style: const TextStyle(fontSize: 13)),
+  //                   ],
+  //                 ),
+  //               ),
+  //               const SizedBox(height: 8),
+  //               // Status row
+  //               Padding(
+  //                 padding: EdgeInsets.only(left: contentIndent, right: 16, bottom: 10),
+  //                 child: Row(
+  //                   children: [
+  //                     const Text('Status', style: TextStyle(color: Colors.grey, fontSize: 12)),
+  //                     const Spacer(),
+  //                     if (isUpdating)
+  //                       const SizedBox(
+  //                         width: 36,
+  //                         height: 24,
+  //                         child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+  //                       )
+  //                     else
+  //                       Switch(
+  //                         value: isActive,
+  //                         activeThumbColor: Colors.white,
+  //                         activeTrackColor: _accentColor,
+  //                         inactiveThumbColor: Colors.white,
+  //                         inactiveTrackColor: Colors.grey.shade400,
+  //                         onChanged: (id == null)
+  //                             ? null
+  //                             : (newStatus) => _toggleStatus(itemOwner, newStatus),
+  //                       ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     );
+  //
+  // }
 
   /// Toggle status with optimistic update and per-row loader
-  Future<void> _toggleStatus(ItemOwner itemOwner, bool newStatus) async {
-    final int? id = itemOwner.id;
-    if (id == null) {
-      // Defensive: item has no id, cannot update backend
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot update: invalid item ID')));
-      }
-      return;
-    }
-
-    final oldValue = itemOwner.inactive ?? 0;
-
-    // optimistic update and mark updating
-    // newStatus == true -> ACTIVE -> inactive = 1
-    // newStatus == false -> INACTIVE -> inactive = 0
-    final newInactive = newStatus ? 1 : 0;
-
-    setState(() {
-      itemOwner.inactive = newInactive;
-      _updatingIds.add(id);
-    });
-
-    try {
-      await ItemOwnerService.updateStatus(
-        id: id,
-        inactive: itemOwner.inactive,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status updated')));
-      }
-    } catch (e) {
-      // rollback
-      if (mounted) {
-        setState(() {
-          itemOwner.inactive = oldValue;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _updatingIds.remove(id);
-        });
-      }
-    }
-  }
+  // Future<void> _toggleStatus(ItemOwner itemOwner, bool newStatus) async {
+  //   final int id = itemOwner.id;
+  //   if (id == null) {
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot update: invalid item ID')));
+  //     }
+  //     return;
+  //   }
+  //
+  //   final oldValue = itemOwner.inactive ?? 0;
+  //
+  //   // newStatus == true -> ACTIVE -> inactive = 1
+  //   // newStatus == false -> INACTIVE -> inactive = 0
+  //   final newInactive = newStatus ? 1 : 0;
+  //
+  //   setState(() {
+  //     itemOwner.inactive = newInactive;
+  //     _updatingIds.add(id);
+  //   });
+  //
+  //   try {
+  //     await ItemOwnerService.updateStatus(
+  //       id: id,
+  //       inactive: itemOwner.inactive,
+  //     );
+  //
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status updated')));
+  //     }
+  //   } catch (e) {
+  //     // rollback on error
+  //     if (mounted) {
+  //       setState(() {
+  //         itemOwner.inactive = oldValue;
+  //       });
+  //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
+  //     }
+  //   } finally {
+  //     if (mounted) {
+  //       setState(() {
+  //         _updatingIds.remove(id);
+  //       });
+  //     }
+  //   }
+  // }
 
   Widget _buildPagination(int totalItems, int totalPages) {
     final start = ((_currentPage - 1) * _rowsPerPage) + 1;

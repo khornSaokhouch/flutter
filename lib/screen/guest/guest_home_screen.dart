@@ -4,7 +4,7 @@ import '../../models/category.dart';
 import './category_Items_screen.dart';
 
 class GuestScreen extends StatefulWidget {
-  const GuestScreen({Key? key}) : super(key: key);
+  const GuestScreen({super.key});
 
   @override
   State<GuestScreen> createState() => _GuestScreenState();
@@ -186,16 +186,7 @@ class _GuestScreenState extends State<GuestScreen> {
                 final category = categories[index];
                 
                 // --- IMAGE URL FIX (Keeping your logic) ---
-                String imageUrl = category.imageCategoryUrl ?? '';
-                if (imageUrl.contains('127.0.0.1') || imageUrl.contains('localhost')) {
-                  imageUrl = imageUrl.replaceAll(RegExp(r'127\.0\.0\.1|localhost'), '10.1.86.72');
-                }
-                if (imageUrl.contains(':8000')) {
-                   imageUrl = imageUrl.replaceAll(':8000', '');
-                }
-                if (!imageUrl.contains('/Year4/server/public') && imageUrl.contains('/storage/')) {
-                  imageUrl = imageUrl.replaceAll('/storage/', '/Year4/server/public/storage/');
-                }
+
                 // ------------------------------------------
 
                 return GestureDetector(
@@ -229,9 +220,8 @@ class _GuestScreenState extends State<GuestScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(18),
-                          child: imageUrl.isNotEmpty
-                              ? Image.network(
-                                  imageUrl,
+                          child: Image.network(
+                            category.imageCategoryUrl,
                                   fit: BoxFit.cover,
                                   headers: const {"Connection": "Keep-Alive"},
                                   errorBuilder: (_, __, ___) => Container(
@@ -239,10 +229,6 @@ class _GuestScreenState extends State<GuestScreen> {
                                     child: const Icon(Icons.local_cafe, color: Color(0xFF1B4D3E)),
                                   ),
                                 )
-                              : Container(
-                                  color: const Color(0xFF1B4D3E).withOpacity(0.1),
-                                  child: const Icon(Icons.category, color: Color(0xFF1B4D3E)),
-                                ),
                         ),
                       ),
                       

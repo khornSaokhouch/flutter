@@ -8,10 +8,10 @@ class CategoryItemsScreen extends StatefulWidget {
   final String categoryName;
 
   const CategoryItemsScreen({
-    Key? key,
+    super.key,
     required this.categoryId,
     required this.categoryName,
-  }) : super(key: key);
+  });
 
   @override
   State<CategoryItemsScreen> createState() => _CategoryItemsScreenState();
@@ -25,6 +25,28 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
     super.initState();
     _itemsFuture = CategoryService.fetchItemsByCategory(widget.categoryId);
   }
+
+  String formatPrice(String? priceCents) {
+    if (priceCents == null) return '';
+    final s = priceCents.trim();
+    if (s.isEmpty) return '';
+
+    // cents like "243"
+    final cents = int.tryParse(s);
+    if (cents != null) {
+      return (cents / 100).toStringAsFixed(2);
+    }
+
+    // decimals like "2.43"
+    final dbl = double.tryParse(s.replaceAll(',', '.'));
+    if (dbl != null) {
+      return dbl.toStringAsFixed(2);
+    }
+
+    return s;
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -60,12 +82,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
             itemBuilder: (context, index) {
               final item = items[index];
 
-              String imageUrl = item.imageUrl ?? '';
-              if (imageUrl.contains('127.0.0.1') ||
-                  imageUrl.contains('localhost')) {
-                imageUrl = imageUrl.replaceAll(
-                    RegExp(r'127\.0\.0\.1|localhost'), '10.1.86.72');
-              }
+
 
               return Container(
                 decoration: BoxDecoration(
@@ -87,9 +104,8 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
                     height: 60,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: imageUrl.isNotEmpty
-                          ? Image.network(
-                              imageUrl,
+                      child: Image.network(
+                          item.imageUrl ?? '',
                               fit: BoxFit.cover,
                               headers: const {"Connection": "Keep-Alive"},
                               loadingBuilder: (context, child, progress) {
@@ -103,8 +119,6 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
                                     size: 40, color: Colors.grey);
                               },
                             )
-                          : const Icon(Icons.local_cafe,
-                              size: 40, color: Colors.grey),
                     ),
                   ),
                   title: Text(
@@ -118,25 +132,24 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: Text(
-                    '\$${item.priceCents}',
-                    style: const TextStyle(
+                  trailing: Text(formatPrice(item.priceCents),
+                  style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1B4D3E),
                     ),
                   ),
 
-onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => GuesttDetailItem(
-        itemId: item.id, // make sure your Item model has an id field
-        shopId: item.id, // or pass a shopId you have
-      ),
-    ),
-  );
-},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GuesttDetailItem(
+                      itemId: item.id, // make sure your Item model has an id field
+                      shopId: item.id, // or pass a shopId you have
+                    ),
+                  ),
+                );
+              },
 
                 ),
               );

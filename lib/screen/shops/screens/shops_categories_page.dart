@@ -1,10 +1,12 @@
-// file: shops_categories_page.dart
+// lib/screen/shops/pages/shops_categories_page.dart
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/shops/screens/category_products_page.dart';
+
 
 import '../../../models/shops_models/shop_categories_models.dart';
 import '../../../server/shops_server/shop_category_server.dart';
 import '../widgets/add_category_button.dart';
+import '../widgets/category_row.dart';
 
 class ShopsCategoriesPage extends StatefulWidget {
   final int shopId;
@@ -24,7 +26,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
   String? _error;
 
   bool _didShowAddSheetWhenEmpty = false;
-
 
   // modal sheet state
   int? _selectedCategoryToAdd;
@@ -52,7 +53,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
       await _loadCategories();
       await _loadAvailableCategories();
     } catch (e) {
-      // _loadCategories/_loadAvailableCategories already set state on error;
       debugPrint('Init error: $e');
     } finally {
       if (mounted) {
@@ -81,7 +81,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
       });
     } catch (e) {
       debugPrint('Error loading available categories: $e');
-      // don't override main error state here - show toast or ignore
     }
   }
 
@@ -108,7 +107,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
   }
 
   // Convenience: show modal bottom sheet to add category
-// Replace your existing _showAddCategorySheet with this version:
   Future<void> _showAddCategorySheet() async {
     // ensure we have latest available categories
     await _loadAvailableCategories();
@@ -212,13 +210,9 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                               child: ListTile(
                                 selected: selected,
                                 onTap: () {
-                                  // Use modalSetState so the sheet updates immediately,
-                                  // also update parent state so Add button works.
                                   modalSetState(() {
                                     _selectedCategoryToAdd = cat.id;
                                   });
-                                  // also call parent setState if you need to update outer UI
-                                  // setState(() {});
                                 },
                                 leading: SizedBox(
                                   width: 48,
@@ -273,7 +267,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                             onPressed: (_selectedCategoryToAdd == null || _isAddingCategory)
                                 ? null
                                 : () async {
-                              // inside sheet we still want to show loading on sheet UI
                               modalSetState(() {
                                 _isAddingCategory = true;
                               });
@@ -326,156 +319,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
 
     // After sheet closes ensure available categories refreshed
     await _loadAvailableCategories();
-  }
-
-  Widget _buildCategoryRowFromModel(int index, CategoryModel item) {
-    final isOn = item.status == 1 && ((item.pivot?.status ?? 1) == 1);
-
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CategoryProductsPage(
-              categoryId: item.id,
-              categoryName: item.name,
-              shopId: widget.shopId,
-            ),
-          ),
-        );
-      },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 40,
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: item.imageCategoryUrl.isNotEmpty
-                        ? Image.network(
-                      item.imageCategoryUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Icon(
-                          Icons.image_not_supported_outlined,
-                          size: 20,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    )
-                        : Container(
-                      color: Colors.grey.shade300,
-                      child: const Icon(
-                        Icons.image_not_supported_outlined,
-                        size: 20,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 60,
-                  child: Switch(
-                    value: isOn,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: _accentColor,
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: Colors.grey.shade400,
-                    onChanged: (val) async {
-                      final newStatus = val;
-                      try {
-                        await _categoryShopController.updateCategoryStatusForShop(
-                          shopId: widget.shopId,
-                          categoryId: item.id,
-                          status: newStatus,
-                        );
-
-                        if (!mounted) return;
-                        setState(() {
-                          final updatedPivot = (item.pivot ??
-                              PivotModel(
-                                shopId: widget.shopId,
-                                categoryId: item.id,
-                                status: newStatus ? 1 : 0,
-                                createdAt: item.createdAt,
-                                updatedAt: item.updatedAt,
-                              ))
-                              .copyWith(status: newStatus ? 1 : 0);
-
-                          _categories[index] = item.copyWith(pivot: updatedPivot);
-                        });
-                      } catch (e) {
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to update status: $e'),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.only(left: 52 + 48 + 12, right: 16),
-            child: Row(
-              children: [
-                const Text(
-                  'Variant Price',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  'Additional Price',
-                  style: TextStyle(
-                    color: _accentColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildPagination(int total) {
@@ -674,7 +517,7 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
             const SizedBox(height: 8),
             const Divider(height: 1),
 
-            // List from local _categories
+            // List from local _categories (uses CategoryRow)
             ListView.separated(
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
@@ -682,7 +525,53 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
               separatorBuilder: (_, __) => const Divider(height: 32),
               itemBuilder: (context, index) {
                 final item = _categories[index];
-                return _buildCategoryRowFromModel(index, item);
+
+                return CategoryRow(
+                  index: index,
+                  item: item,
+                  accentColor: _accentColor,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CategoryProductsPage(
+                          categoryId: item.id,
+                          categoryName: item.name,
+                          shopId: widget.shopId,
+                        ),
+                      ),
+                    );
+                  },
+                  onStatusChanged: (categoryId, newStatus) async {
+                    await _categoryShopController.updateCategoryStatusForShop(
+                      shopId: widget.shopId,
+                      categoryId: categoryId,
+                      status: newStatus,
+                    );
+
+                    if (!mounted) return;
+                    setState(() {
+                      final updatedPivot = (item.pivot ??
+                          PivotModel(
+                            shopId: widget.shopId,
+                            categoryId: item.id,
+                            status: newStatus ? 1 : 0,
+                            createdAt: item.createdAt,
+                            updatedAt: item.updatedAt,
+                          ))
+                          .copyWith(status: newStatus ? 1 : 0);
+
+                      _categories[index] = item.copyWith(pivot: updatedPivot);
+                    });
+                  },
+                  onMenuSelected: (action) {
+                    if (action == 'edit') {
+                      // TODO: implement edit
+                    } else if (action == 'delete') {
+                      // TODO: implement delete
+                    }
+                  },
+                );
               },
             ),
 
