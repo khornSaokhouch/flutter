@@ -85,7 +85,7 @@ flutter:
     - assets/images/img_1.png
     - assets/images/unnamed.webp
     - assets/images/banner.jpg
-
+    - assets/images/pickup.jpg
 
 
   # To add assets to your application, add an assets section, like this:
