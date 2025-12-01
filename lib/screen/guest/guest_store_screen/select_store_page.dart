@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/utils/utils.dart';
 import '../../../models/shop.dart';
@@ -18,6 +19,10 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
   List<Shop> shops = [];
   Position? userPosition;
 
+  // --- Theme Colors ---
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+  final Color _bgGrey = const Color(0xFFF9FAFB);
+
   @override
   void initState() {
     super.initState();
@@ -31,22 +36,23 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
       // 1️⃣ Get user location
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Location services are disabled.');
+        // Just load shops without distance if location disabled, or handle error
+        // For now proceeding to allow logic to flow
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw Exception('Location permissions are denied');
-        }
-      }
-      if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied');
       }
 
-      userPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+      // Try get position
+      try {
+        userPosition = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
+      } catch (e) {
+        // Handle timeout or error gracefully
+        userPosition = null;
+      }
 
       // 2️⃣ Fetch shops from API
       final response = await ShopService.fetchShops();
@@ -59,10 +65,10 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
               shop.longitude != null &&
               userPosition != null) {
             shop.distanceInKm = Geolocator.distanceBetween(
-                userPosition!.latitude,
-                userPosition!.longitude,
-                shop.latitude!,
-                shop.longitude!) /
+                    userPosition!.latitude,
+                    userPosition!.longitude,
+                    shop.latitude!,
+                    shop.longitude!) /
                 1000;
           } else {
             shop.distanceInKm = 0.0;
@@ -71,7 +77,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
 
         // Sort by nearest
         fetchedShops.sort(
-              (a, b) => (a.distanceInKm ?? 0).compareTo(b.distanceInKm ?? 0),
+          (a, b) => (a.distanceInKm ?? 0).compareTo(b.distanceInKm ?? 0),
         );
 
         setState(() {
@@ -90,175 +96,255 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _bgGrey,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 8.0),
-          child: TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(50, 30),
-            ),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
+        centerTitle: true,
+        // Custom Back Button text
+        leadingWidth: 80,
+        leading: TextButton.icon(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 14, color: Colors.grey),
+          label: const Text(
+            'Back',
+            style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
+          style: TextButton.styleFrom(padding: const EdgeInsets.only(left: 10)),
         ),
         title: const Text(
-          "SELECT STORE",
+          "Select Store",
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
-        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(color: Colors.grey.shade200, height: 1.0),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.grey),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.location_on_outlined, color: Colors.grey),
+            icon: Icon(Icons.refresh, color: _freshMintGreen),
             onPressed: () => loadShops(),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-        itemCount: shops.length,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemBuilder: (context, index) {
-          final shop = shops[index];
-          final imageUrl = shop.imageUrl;
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: _freshMintGreen),
+                  const SizedBox(height: 16),
+                  const Text("Locating nearby stores...", style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            )
+          : shops.isEmpty
+              ? _buildEmptyState()
+              : ListView.separated(
+                  itemCount: shops.length,
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final shop = shops[index];
+                    return _buildShopTile(shop);
+                  },
+                ),
+    );
+  }
 
-          return Card(
-            margin:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            elevation: 3,
-            shadowColor: Colors.grey.withOpacity(0.2),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        GuestMenuScreen(shopId: shop.id),
+  Widget _buildShopTile(Shop shop) {
+    final imageUrl = shop.imageUrl;
+    final bool isOpen = shop.status == 1; // Assuming 1 is Open
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => GuestMenuScreen(shopId: shop.id),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Image
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade100),
+                    color: Colors.grey[50],
                   ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: imageUrl != null && imageUrl.startsWith('http')
-                          ? Image.network(
-                        imageUrl,
-                        width: 90,
-                        height: 90,
-                        fit: BoxFit.cover,
-                        errorBuilder:
-                            (context, error, stackTrace) {
-                          return Container(
-                            width: 90,
-                            height: 90,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.broken_image,
-                                color: Colors.grey),
-                          );
-                        },
-                      )
-                          : Image.asset(
-                        'assets/images/img_1.png',
-                        width: 90,
-                        height: 90,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: (imageUrl != null && imageUrl.startsWith('http'))
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.store, color: Colors.grey),
+                          )
+                        : const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Icon(Icons.store_rounded, color: Colors.grey, size: 30),
+                          ),
+                  ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // 2. Info Column
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name & Distance Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  shop.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.black87,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                          Expanded(
+                            child: Text(
+                              shop.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.black87,
                               ),
-                              Text(
-                                shop.distanceInKm != null
-                                    ? '${shop.distanceInKm!.toStringAsFixed(1)} km'
-                                    : '0.0 km',
-                                style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 13),
-                              ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.location_on,
-                                  size: 16, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  shop.location ?? '',
-                                  style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 13),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                          // Distance Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _freshMintGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              shop.distanceInKm != null
+                                  ? '${shop.distanceInKm!.toStringAsFixed(1)} km'
+                                  : '-- km',
+                              style: TextStyle(
+                                color: _freshMintGreen,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(Icons.access_time,
-                                  size: 16, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Open: ${formatTime(shop.openTime)} - ${formatTime(shop.closeTime)}',
-                                style: const TextStyle(
-                                    color: Colors.grey, fontSize: 13),
-                              ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    const Icon(Icons.arrow_forward_ios,
-                        size: 14, color: Colors.grey),
-                  ],
+                      
+                      const SizedBox(height: 6),
+                      
+                      // Location Text
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              shop.location ?? 'No address',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Time & Status
+                      Row(
+                        children: [
+                          // Status Dot
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isOpen ? _freshMintGreen : Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isOpen ? "Open" : "Closed",
+                            style: TextStyle(
+                              color: isOpen ? _freshMintGreen : Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "•", 
+                            style: TextStyle(color: Colors.grey[400]),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${formatTime(shop.openTime)} - ${formatTime(shop.closeTime)}',
+                              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          );
-        },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.store_mall_directory_outlined, size: 60, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          const Text(
+            "No stores found nearby",
+            style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => loadShops(),
+            icon: Icon(Icons.refresh, color: _freshMintGreen),
+            label: Text("Try Again", style: TextStyle(color: _freshMintGreen)),
+          )
+        ],
       ),
     );
   }

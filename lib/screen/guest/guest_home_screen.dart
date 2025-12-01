@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../server/shop_serviec.dart'; 
+import '../../server/shop_serviec.dart';
 import '../../models/shop.dart';
-import '../../core/widgets/card/shop_card.dart'; 
+import '../../core/widgets/card/shop_card.dart';
+import './shop_details_screen.dart';
 
 class GuestScreen extends StatefulWidget {
   const GuestScreen({super.key});
@@ -16,7 +17,8 @@ class _GuestScreenState extends State<GuestScreen> {
   @override
   void initState() {
     super.initState();
-    _shopsFuture = ShopService.fetchShops().then((response) => response?.data ?? []);
+    _shopsFuture =
+        ShopService.fetchShops().then((response) => response?.data ?? []);
   }
 
   @override
@@ -29,9 +31,9 @@ class _GuestScreenState extends State<GuestScreen> {
       ),
       // ✅ UPDATED: Using CustomScrollView for smooth scrolling performance
       body: CustomScrollView(
-        physics: const BouncingScrollPhysics(), // Native iOS-style smooth bounce
+        physics:
+            const BouncingScrollPhysics(), // Native iOS-style smooth bounce
         slivers: [
-          
           // ====================================================
           // 1. BANNER SECTION (SliverToBoxAdapter)
           // ====================================================
@@ -75,7 +77,9 @@ class _GuestScreenState extends State<GuestScreen> {
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
                           height: 1.4,
-                          shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+                          shadows: [
+                            Shadow(color: Colors.black45, blurRadius: 4)
+                          ],
                         ),
                       ),
                       const Spacer(),
@@ -92,7 +96,9 @@ class _GuestScreenState extends State<GuestScreen> {
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                               ),
-                              child: const Text('JOIN NOW', style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: const Text('JOIN NOW',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -101,12 +107,15 @@ class _GuestScreenState extends State<GuestScreen> {
                               onPressed: () {},
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
-                                side: const BorderSide(color: Colors.white, width: 1.5),
+                                side: const BorderSide(
+                                    color: Colors.white, width: 1.5),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                               ),
-                              child: const Text('GUEST', style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: const Text('GUEST',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],
@@ -136,7 +145,7 @@ class _GuestScreenState extends State<GuestScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // The Cards
                   Row(
                     children: [
@@ -144,7 +153,7 @@ class _GuestScreenState extends State<GuestScreen> {
                       Expanded(
                         child: _buildBigCard(
                           title: "Pickup",
-                          imagePath: 'assets/images/pickup.jpg', 
+                          imagePath: 'assets/images/pickup.jpg',
                           isActive: true,
                           onTap: () {},
                         ),
@@ -201,49 +210,65 @@ class _GuestScreenState extends State<GuestScreen> {
           // ====================================================
           // 4. SHOPS LIST (Using SliverList for performance)
           // ====================================================
-          FutureBuilder<List<Shop>>(
-            future: _shopsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: Center(child: CircularProgressIndicator(color: Color(0xFF1B4D3E))),
-                  ),
-                );
-              } else if (snapshot.hasError) {
-                return SliverToBoxAdapter(
-                  child: Center(child: Text('Error: ${snapshot.error}')),
-                );
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: Center(child: Text('No stores found nearby.')),
-                  ),
-                );
-              }
-
-              final shops = snapshot.data!;
-              return SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-                      child: ShopCard(
-                        shop: shops[index],
-                        onTap: () {
-                          // Navigate
-                        },
-                      ),
-                    );
-                  },
-                  childCount: shops.length,
-                ),
-              );
-            },
+FutureBuilder<List<Shop>>(
+  future: _shopsFuture,
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(40.0),
+          child: Center(
+            child: CircularProgressIndicator(color: Color(0xFF1B4D3E)),
           ),
-          
+        ),
+      );
+    } else if (snapshot.hasError) {
+      return SliverToBoxAdapter(
+        child: Center(
+          child: Text('Error: ${snapshot.error}'),
+        ),
+      );
+    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(40.0),
+          child: Center(
+            child: Text('No stores found nearby.'),
+          ),
+        ),
+      );
+    }
+
+    final shops = snapshot.data!;
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final shop = shops[index];
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+            child: ShopCard(
+              shop: shop,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ShopDetailsScreen(
+                      shopId: shop.id,  // ← FIXED: correct navigation
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+        childCount: shops.length,
+      ),
+    );
+  },
+),
+
           // Bottom padding for scrollability
           const SliverToBoxAdapter(child: SizedBox(height: 30)),
         ],
@@ -259,7 +284,7 @@ class _GuestScreenState extends State<GuestScreen> {
     required VoidCallback onTap,
   }) {
     return Container(
-      height: 180,
+      height: 140,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
@@ -308,7 +333,7 @@ class _GuestScreenState extends State<GuestScreen> {
               Positioned.fill(
                 child: Container(color: Colors.black.withOpacity(0.3)),
               ),
-            
+
             // Text & Ripple
             Material(
               color: Colors.transparent,
@@ -330,7 +355,8 @@ class _GuestScreenState extends State<GuestScreen> {
                         ),
                         if (!isActive) ...[
                           const Spacer(),
-                          const Icon(Icons.lock_outline, color: Colors.white70, size: 20),
+                          const Icon(Icons.lock_outline,
+                              color: Colors.white70, size: 20),
                         ]
                       ],
                     ),
@@ -361,7 +387,8 @@ class _GuestScreenState extends State<GuestScreen> {
                   color: Color(0xFFE8F5E9),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.rocket_launch_rounded, size: 32, color: Color(0xFF1B4D3E)),
+                child: const Icon(Icons.rocket_launch_rounded,
+                    size: 32, color: Color(0xFF1B4D3E)),
               ),
               const SizedBox(height: 20),
               const Text(
@@ -382,7 +409,8 @@ class _GuestScreenState extends State<GuestScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B4D3E),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text("Got it"),
