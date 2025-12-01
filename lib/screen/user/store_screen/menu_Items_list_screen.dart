@@ -40,7 +40,6 @@ class _MenuScreenState extends State<MenuScreen> {
   // 🔹 For store selector
   List<Shop> _stores = [];
   Position? _currentPosition;
-  bool _bottomSheetClosed = false;
 
   @override
   void initState() {
@@ -166,7 +165,6 @@ class _MenuScreenState extends State<MenuScreen> {
     ).whenComplete(() {
       // user closed the sheet (Cancel or swipe down)
       setState(() {
-        _bottomSheetClosed = true;
       });
     });
   }

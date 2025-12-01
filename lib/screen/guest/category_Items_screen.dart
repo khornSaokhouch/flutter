@@ -143,7 +143,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GuesttDetailItem(
+                    builder: (context) => GuestDetailItem(
                       itemId: item.id, // make sure your Item model has an id field
                       shopId: item.id, // or pass a shopId you have
                     ),

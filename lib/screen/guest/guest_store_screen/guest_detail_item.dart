@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../models/Item_OptionGroup.dart';
 import '../../../server/item_service.dart';
 
-class GuesttDetailItem extends StatefulWidget {
+class GuestDetailItem extends StatefulWidget {
   final int itemId;
    final int shopId;
-  const GuesttDetailItem({super.key, required this.itemId,required this.shopId});
+  const GuestDetailItem({super.key, required this.itemId,required this.shopId});
 
   @override
-  State<GuesttDetailItem> createState() => _DetailItemState();
+  State<GuestDetailItem> createState() => _DetailItemState();
 }
 
-class _DetailItemState extends State<GuesttDetailItem> {
+class _DetailItemState extends State<GuestDetailItem> {
   bool loading = true;
   late Item item;
   List<OptionGroup> groups = [];
@@ -288,15 +288,15 @@ class _DetailItemState extends State<GuesttDetailItem> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Scaffold(
-          body: Center(child: CircularProgressIndicator()));
-    }
+    // if (loading) {
+    //   return const Scaffold(
+    //       body: Center(child: CircularProgressIndicator()));
+    // }
 
-    if (groups.isEmpty) {
-      return const Scaffold(
-          body: Center(child: Text('Failed to load item or options')));
-    }
+    // if (groups.isEmpty) {
+    //   return const Scaffold(
+    //       body: Center(child: Text('Failed to load item or options')));
+    // }
 
     return Scaffold(
       backgroundColor: Colors.white,

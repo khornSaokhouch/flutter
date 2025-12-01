@@ -12,6 +12,8 @@ class ProductRow extends StatefulWidget {
   final ItemOwner itemOwner;
   final Color accentColor;
 
+  final int shopId;
+
   /// Optional callback when the whole row is tapped.
   final void Function(ItemOwner itemOwner)? onTap;
 
@@ -20,13 +22,13 @@ class ProductRow extends StatefulWidget {
   final Future<void> Function(ItemOwner itemOwner, bool newStatus)? onToggleStatus;
 
   const ProductRow({
-    Key? key,
+    super.key,
     required this.index,
     required this.itemOwner,
     required this.accentColor,
     this.onTap,
-    this.onToggleStatus,
-  }) : super(key: key);
+    this.onToggleStatus, required this.shopId,
+  });
 
   @override
   State<ProductRow> createState() => _ProductRowState();
@@ -100,7 +102,8 @@ class _ProductRowState extends State<ProductRow> {
           if (item != null) {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => ShopProductDetail(item: item),
+                builder: (_) => ShopProductDetailPage(itemId:item.id, shopId:widget.shopId),
+                //   builder: (_) => ShopProductDetailPage(),
               ),
             );
           } else {

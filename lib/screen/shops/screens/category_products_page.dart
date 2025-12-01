@@ -46,7 +46,11 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   /// Track IDs that are currently being updated (status toggle)
   final Set<int> _updatingIds = {};
 
-  Color get _accentColor => const Color(0xFFB2865B); // coffee brown
+  Color get _accentColor => const Color(0xFFB2865B);
+
+
+
+// coffee brown
 
   @override
   void initState() {
@@ -93,7 +97,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
       if (mounted) {
         setState(() {
-          _products = itemOwners ?? <ItemOwner>[];
+          _products = itemOwners;
           _isLoading = false;
           _currentPage = 1;
         });
@@ -494,12 +498,13 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                       index: globalIndex,
                       itemOwner: itemOwner,
                       accentColor: _accentColor,
+                      shopId: widget.shopId,
 
                       // Optional: override tap to open detail page (original behavior)
                       onTap: (owner) {
                         if (owner.item != null) {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => ShopProductDetail(item: owner.item)),
+                            MaterialPageRoute(builder: (_) => ShopProductDetailPage(itemId: itemOwner.item!.id, shopId:widget.shopId )),
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item details unavailable')));
@@ -512,7 +517,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                         if (id == null) throw Exception('Invalid item owner id');
 
                         // local optimistic change (parent page also had _updatingIds set)
-                        final oldValue = owner.inactive ?? 0;
+                        final oldValue = owner.inactive;
                         final newInactive = newStatus ? 1 : 0;
 
                         // mark updating in parent page state to keep any parent indicators in sync
@@ -530,7 +535,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                             setState(() {
                               owner.inactive = oldValue;
                             });
-                            throw e; // ProductRow will show snackbar from caught exception
+                            rethrow; // ProductRow will show snackbar from caught exception
                           }
                         } finally {
                           if (mounted) {
@@ -554,266 +559,6 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       ),
     );
   }
-
-  // Widget _buildProductRow(int index, ItemOwner itemOwner) {
-  //   final item = itemOwner.item;
-  //   final category = itemOwner.category;
-  //
-  //   // defensive fetching of image field (try multiple possible names)
-  //   String? imageUrl;
-  //   try {
-  //     final dynamic possible = item?.imageUrl;
-  //     if (possible is String && possible.isNotEmpty) imageUrl = possible;
-  //   } catch (_) {
-  //     imageUrl = null;
-  //   }
-  //
-  //   // Price: try multiple fields and handle string/int
-  //   double price = 0.0;
-  //   try {
-  //     final dynamic priceField = item?.priceCents;
-  //     if (priceField != null) {
-  //       if (priceField is num) {
-  //         price = (priceField >= 100) ? (priceField / 100.0) : priceField.toDouble();
-  //       } else if (priceField is String) {
-  //         final parsed = double.tryParse(priceField) ?? 0.0;
-  //         price = (parsed >= 100) ? (parsed / 100.0) : parsed;
-  //       }
-  //     }
-  //   } catch (_) {
-  //     price = 0.0;
-  //   }
-  //
-  //   // NOTE: your backend mapping: inactive == 1 => ACTIVE, inactive == 0 => INACTIVE
-  //   final int inactiveVal = itemOwner.inactive ?? 0;
-  //   final bool isActive = (inactiveVal == 1); // switch ON when 1
-  //
-  //   // content indent (to align with the leading number + image + gaps)
-  //   final double contentIndent = 24 + 12 + 48 + 12;
-  //
-  //   // SAFE: treat id as nullable
-  //   final int? id = itemOwner.id;
-  //   final bool isUpdating = id != null && _updatingIds.contains(id);
-  //
-  //   return// Inside your build method where you have access to `context`, `item`, `index`, etc.
-  //     Material(
-  //       color: Colors.transparent,
-  //       borderRadius: BorderRadius.circular(8),
-  //       child: InkWell(
-  //         borderRadius: BorderRadius.circular(8),
-  //         onTap: () {
-  //           if (item != null) {
-  //             Navigator.of(context).push(
-  //               MaterialPageRoute(
-  //                 builder: (_) => ShopProductDetail(item: item),
-  //               ),
-  //             );
-  //           } else {
-  //             // Optional: show a message if no item available
-  //             ScaffoldMessenger.of(context).showSnackBar(
-  //               const SnackBar(content: Text('Item details unavailable')),
-  //             );
-  //           }
-  //         },
-  //         child: Container(
-  //           margin: const EdgeInsets.symmetric(vertical: 4),
-  //           decoration: BoxDecoration(
-  //             borderRadius: BorderRadius.circular(8),
-  //           ),
-  //           child: Column(
-  //             crossAxisAlignment: CrossAxisAlignment.start,
-  //             children: [
-  //               // ... your existing children (top row, price, stock, switch etc.)
-  //               Padding(
-  //                 padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-  //                 child: Row(
-  //                   crossAxisAlignment: CrossAxisAlignment.center,
-  //                   children: [
-  //                     SizedBox(
-  //                       width: 24,
-  //                       child: Text(
-  //                         '${index + 1}',
-  //                         style: const TextStyle(
-  //                           fontSize: 14,
-  //                           fontWeight: FontWeight.w500,
-  //                         ),
-  //                       ),
-  //                     ),
-  //                     const SizedBox(width: 12),
-  //                     // Image
-  //                     ClipRRect(
-  //                       borderRadius: BorderRadius.circular(10),
-  //                       child: SizedBox(
-  //                         width: 48,
-  //                         height: 48,
-  //                         child: imageUrl != null && imageUrl.startsWith('http')
-  //                             ? Image.network(
-  //                           imageUrl,
-  //                           fit: BoxFit.cover,
-  //                           errorBuilder: (_, __, ___) => Container(
-  //                             color: Colors.grey.shade300,
-  //                             child: const Icon(
-  //                               Icons.broken_image,
-  //                               size: 22,
-  //                               color: Colors.grey,
-  //                             ),
-  //                           ),
-  //                         )
-  //                             : Container(
-  //                           color: Colors.grey.shade300,
-  //                           child: const Icon(
-  //                             Icons.image_not_supported_outlined,
-  //                             size: 22,
-  //                             color: Colors.grey,
-  //                           ),
-  //                         ),
-  //                       ),
-  //                     ),
-  //                     const SizedBox(width: 12),
-  //                     Expanded(
-  //                       child: Column(
-  //                         crossAxisAlignment: CrossAxisAlignment.start,
-  //                         children: [
-  //                           Text(
-  //                             item?.name.toString() ?? 'Unnamed Item',
-  //                             maxLines: 1,
-  //                             overflow: TextOverflow.ellipsis,
-  //                             style: const TextStyle(
-  //                               fontSize: 15,
-  //                               fontWeight: FontWeight.w600,
-  //                             ),
-  //                           ),
-  //                           const SizedBox(height: 2),
-  //                           Text(
-  //                             category?.name.toString() ?? '',
-  //                             style: const TextStyle(
-  //                               fontSize: 12,
-  //                               color: Colors.grey,
-  //                             ),
-  //                           ),
-  //                         ],
-  //                       ),
-  //                     ),
-  //                     PopupMenuButton<String>(
-  //                       icon: const Icon(Icons.more_vert, size: 20),
-  //                       onSelected: (value) {
-  //                         // TODO: edit/delete actions
-  //                       },
-  //                       itemBuilder: (context) => const [
-  //                         PopupMenuItem(value: 'edit', child: Text('Edit')),
-  //                         PopupMenuItem(value: 'delete', child: Text('Delete')),
-  //                       ],
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //               Divider(height: 1, color: Colors.grey.shade300),
-  //               const SizedBox(height: 8),
-  //               // Price
-  //               Padding(
-  //                 padding: EdgeInsets.only(left: contentIndent, right: 16),
-  //                 child: Row(
-  //                   children: [
-  //                     const Text('Price', style: TextStyle(color: Colors.grey, fontSize: 12)),
-  //                     const Spacer(),
-  //                     Text('\$${price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-  //                   ],
-  //                 ),
-  //               ),
-  //               const SizedBox(height: 8),
-  //               // Stock
-  //               Padding(
-  //                 padding: EdgeInsets.only(left: contentIndent, right: 16),
-  //                 child: Row(
-  //                   children: [
-  //                     const Text('Stock', style: TextStyle(color: Colors.grey, fontSize: 12)),
-  //                     const Spacer(),
-  //                     Text('0', style: const TextStyle(fontSize: 13)),
-  //                   ],
-  //                 ),
-  //               ),
-  //               const SizedBox(height: 8),
-  //               // Status row
-  //               Padding(
-  //                 padding: EdgeInsets.only(left: contentIndent, right: 16, bottom: 10),
-  //                 child: Row(
-  //                   children: [
-  //                     const Text('Status', style: TextStyle(color: Colors.grey, fontSize: 12)),
-  //                     const Spacer(),
-  //                     if (isUpdating)
-  //                       const SizedBox(
-  //                         width: 36,
-  //                         height: 24,
-  //                         child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
-  //                       )
-  //                     else
-  //                       Switch(
-  //                         value: isActive,
-  //                         activeThumbColor: Colors.white,
-  //                         activeTrackColor: _accentColor,
-  //                         inactiveThumbColor: Colors.white,
-  //                         inactiveTrackColor: Colors.grey.shade400,
-  //                         onChanged: (id == null)
-  //                             ? null
-  //                             : (newStatus) => _toggleStatus(itemOwner, newStatus),
-  //                       ),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //       ),
-  //     );
-  //
-  // }
-
-  /// Toggle status with optimistic update and per-row loader
-  // Future<void> _toggleStatus(ItemOwner itemOwner, bool newStatus) async {
-  //   final int id = itemOwner.id;
-  //   if (id == null) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot update: invalid item ID')));
-  //     }
-  //     return;
-  //   }
-  //
-  //   final oldValue = itemOwner.inactive ?? 0;
-  //
-  //   // newStatus == true -> ACTIVE -> inactive = 1
-  //   // newStatus == false -> INACTIVE -> inactive = 0
-  //   final newInactive = newStatus ? 1 : 0;
-  //
-  //   setState(() {
-  //     itemOwner.inactive = newInactive;
-  //     _updatingIds.add(id);
-  //   });
-  //
-  //   try {
-  //     await ItemOwnerService.updateStatus(
-  //       id: id,
-  //       inactive: itemOwner.inactive,
-  //     );
-  //
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status updated')));
-  //     }
-  //   } catch (e) {
-  //     // rollback on error
-  //     if (mounted) {
-  //       setState(() {
-  //         itemOwner.inactive = oldValue;
-  //       });
-  //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
-  //     }
-  //   } finally {
-  //     if (mounted) {
-  //       setState(() {
-  //         _updatingIds.remove(id);
-  //       });
-  //     }
-  //   }
-  // }
 
   Widget _buildPagination(int totalItems, int totalPages) {
     final start = ((_currentPage - 1) * _rowsPerPage) + 1;

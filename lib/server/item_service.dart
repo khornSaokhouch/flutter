@@ -21,11 +21,10 @@ class ItemService {
         final data = jsonDecode(response.body);
         return ItemsResponse.fromJson(data);
       } else {
-        print('❌ Failed (${response.statusCode}): ${response.body}');
+
         return null;
       }
     } catch (e) {
-      print('⚠️ Error fetching items: $e');
       return null;
     }
   }
@@ -59,43 +58,29 @@ class ItemService {
 
   }
 
-  /// Fetch a single item with assigned option groups and options
-  // static Future<ItemOptionGroup?> fetchItemWithOptions(int itemId) async {
-  //   try {
-  //     final prefs = await SharedPreferences.getInstance();
-  //     final token = prefs.getString('token');
-  //
-  //     if (token == null) {
-  //       return null;
-  //     }
-  //
-  //     final url = Uri.parse('$baseUrl/users/item-option-groups/$itemId');
-  //     final headers = await ApiConfig.authHeaders(token);
-  //
-  //     final response = await http.get(url, headers: headers);
-  //
-  //     if (response.statusCode == 200) {
-  //       print('✅ Success: ${response.body}');
-  //       final decoded = jsonDecode(response.body);
-  //
-  //       // Sometimes your API wraps the result in { "message": "...", "data": {...} }
-  //       final data = decoded['data'] ?? decoded;
-  //
-  //       if (data == null || data.isEmpty) {
-  //
-  //         return null;
-  //       }
-  //
-  //       final item = ItemOptionGroup.fromJson(data);
-  //       return item;
-  //     } else {
-  //       return null;
-  //     }
-  //   } catch (e) {
-  //     return null;
-  //   }
-  // }
   /// Fetch Shop Item Option Status by itemId and shopId
+  // For guests (no auth)
+  static Future<List<ShopItemOptionStatusModel>?> fetchItemOptionStatusGuest(
+      int itemId, int shopId) async {
+    try {
+      final url = Uri.parse('$baseUrl/shops/shop-item/$itemId/shopId/$shopId');
+      final response = await http.get(url, headers: ApiConfig.headers);
+
+      if (response.statusCode != 200) {
+        print('❌ Guest fetch failed (${response.statusCode}): ${response.body}');
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+
+      return _parseStatusesFromDecoded(decoded, response.body);
+    } catch (e, st) {
+      print('⚠️ Error fetching option status (guest): $e\n$st');
+      return null;
+    }
+  }
+
+// For authenticated users
   static Future<List<ShopItemOptionStatusModel>?> fetchItemOptionStatus(
       int itemId, int shopId) async {
     try {
@@ -106,52 +91,80 @@ class ItemService {
         print('❌ No token found. User may not be logged in.');
         return null;
       }
-      // URL with query parameter
-      final url = Uri.parse('$baseUrl/users/shop-item/$itemId/shopId/$shopId');
 
+      final url = Uri.parse('$baseUrl/users/shop-item/$itemId/shopId/$shopId');
       final headers = await ApiConfig.authHeaders(token);
       final response = await http.get(url, headers: headers);
 
-      if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body);
-
-        return data
-            .map((json) => ShopItemOptionStatusModel.fromJson(json))
-            .toList();
-      } else {
-        print('❌ Failed (${response.statusCode}): ${response.body}');
+      if (response.statusCode != 200) {
+        print('❌ Auth fetch failed (${response.statusCode}): ${response.body}');
         return null;
       }
-    } catch (e) {
-      print('⚠️ Error fetching option status: $e');
+
+      final decoded = jsonDecode(response.body);
+
+      return _parseStatusesFromDecoded(decoded, response.body);
+    } catch (e, st) {
+      print('⚠️ Error fetching option status (auth): $e\n$st');
       return null;
     }
   }
 
-  static Future<List<ShopItemOptionStatusModel>?> fetchItemOptionStatusGuest(
-      int itemId, int shopId) async {
+// Shared parser helper
+  static List<ShopItemOptionStatusModel>? _parseStatusesFromDecoded(dynamic decoded, String rawBody) {
     try {
-        // Make sure this matches your Laravel route
-        final url = Uri.parse('$baseUrl/shops/shop-item/$itemId/shopId/$shopId');
-        print(url);
-        final response = await http.get(url, headers: ApiConfig.headers);
-        print('✅ Response: ${response.body}');
+      // Case A: top-level list
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .map((json) => ShopItemOptionStatusModel.fromJson(json))
+            .toList();
+      }
 
-        if (response.statusCode == 200) {
-          final List data = jsonDecode(response.body);
-
+      // Case B: Laravel wrapper { "data": [...] } or { "data": {...} }
+      if (decoded is Map<String, dynamic> && decoded.containsKey('data')) {
+        final data = decoded['data'];
+        if (data is List) {
           return data
+              .whereType<Map<String, dynamic>>()
               .map((json) => ShopItemOptionStatusModel.fromJson(json))
               .toList();
-        } else {
-          print('❌ Failed (${response.statusCode}): ${response.body}');
-          return null;
+        } else if (data is Map<String, dynamic>) {
+          return [ShopItemOptionStatusModel.fromJson(data)];
         }
-      } catch (e) {
-      print('⚠️ Error fetching option status: $e');
+      }
+
+      // Case C: top-level map keyed by id ({"1": {...}, "2": {...}})
+      if (decoded is Map<String, dynamic>) {
+        // If every value is a Map => treat as map-of-objects
+        final values = decoded.values.toList();
+        final allValsAreMap = values.isNotEmpty && values.every((v) => v is Map<String, dynamic>);
+        if (allValsAreMap) {
+          final List<ShopItemOptionStatusModel> out = [];
+          for (final v in values) {
+            try {
+              out.add(ShopItemOptionStatusModel.fromJson(v as Map<String, dynamic>));
+            } catch (e, st) {
+              // Skip unparsable entries but log for debugging
+              print('⚠️ Skipping unparsable status entry: $e\n$st\nEntry: $v');
+            }
+          }
+          return out;
+        }
+
+        // Case D: top-level single object (not wrapped)
+        return [ShopItemOptionStatusModel.fromJson(decoded)];
+      }
+
+      // Unexpected shape
+      print('⚠️ Unexpected JSON shape when parsing statuses: $rawBody');
+      return <ShopItemOptionStatusModel>[];
+    } catch (e, st) {
+      print('⚠️ Error parsing statuses: $e\n$st\nRaw: $rawBody');
       return null;
     }
   }
+
 
 
 }
