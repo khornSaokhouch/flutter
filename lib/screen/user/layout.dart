@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screen/user/store_screen/menu_Items_list_screen.dart';
+
 import 'package:frontend/screen/user/store_screen/no_store_nearby_screen.dart';
 import '../account/account_page.dart';
 import 'coffeeAppHome.dart';
-import 'store_screen/select_store_page.dart';
 import 'scan_pay_screen.dart';
 import '../../routes/footer_nav_routes.dart';
+import '../history/history_screen.dart';
 
 class Layout extends StatefulWidget {
   final int userId;
@@ -34,7 +34,7 @@ class _LayoutState extends State<Layout> {
     HomeScreen(userId: widget.userId),
     ScanPayScreen(userId: widget.userId),
     NoStoreNearbyScreen(userId: widget.userId), // <-- use MenuScreen here
-    const PlaceholderWidget(text: 'Rewards Screen'),
+    HistoryScreen(userId: widget.userId),
     AccountPage(userId: widget.userId),
   ];
 

@@ -6,7 +6,7 @@ import '../guest/shop_details_screen.dart';
 
 import '../../core/utils/auth_utils.dart';
 import '../../models/user.dart';
-import '../../core/utils/utils.dart';
+import '../order/order_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final int userId;
@@ -42,9 +42,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const PreferredSize(
+      appBar: PreferredSize(
         preferredSize: Size.fromHeight(60.0),
-        child: Navbar(),
+        child: Navbar(userId: widget.userId),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -427,7 +427,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 // ===== Navbar =====
 class Navbar extends StatelessWidget {
-  const Navbar({Key? key}) : super(key: key);
+  final int userId;
+const Navbar({required this.userId, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -465,7 +466,14 @@ class Navbar extends StatelessWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AllOrdersScreen(userId: userId),
+              ),
+            );
+          },
         ),
         const SizedBox(width: 8),
       ],
