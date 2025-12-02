@@ -7,7 +7,7 @@ import '../../routes/footer_nav_routes.dart';
 class GuestLayout extends StatefulWidget {
   final int selectedIndex;
 
-  const GuestLayout({Key? key, this.selectedIndex = 0}) : super(key: key);
+  const GuestLayout({super.key, this.selectedIndex = 0});
 
   @override
   State<GuestLayout> createState() => _GuestLayoutState();

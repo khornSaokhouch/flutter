@@ -20,17 +20,20 @@ class NoStoreNearbyScreen extends StatefulWidget {
 }
 
 class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
+  // Logic
   bool _checkingLocation = true;
   bool _hasNearbyStore = false;
 
   Position? _currentPosition;
   List<Shop> _nearbyStores = [];
-  List<Shop> _allStores = []; // keep all shops
+  List<Shop> _allStores = [];
 
   bool _bottomSheetClosed = false;
-  bool _isPickupSelected = true; // 👈 needed for PickupDeliveryToggle
+  bool _isPickupSelected = true;
 
   static const double _nearbyRadiusMeters = 5000.0; // 5 km
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+  final Color _espressoBrown = const Color(0xFF4B2C20);
 
   @override
   void initState() {
@@ -39,8 +42,10 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
   }
 
   Future<void> _checkNearbyStores() async {
+    setState(() => _checkingLocation = true);
+
     try {
-      // 1. Request location permission
+      // 1) Permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -52,16 +57,16 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
         return;
       }
 
-      // 2. Get current position
+      // 2) Position
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // 3. Fetch shops from server
+      // 3) Fetch shops
       final response = await ShopService.fetchShops();
       final allStores = response?.data ?? <Shop>[];
 
-      // 4. Filter by distance (nearby shops)
+      // 4) Filter by distance (nearby)
       final nearby = allStores.where((shop) {
         if (shop.latitude == null || shop.longitude == null) return false;
 
@@ -72,15 +77,14 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
           shop.longitude!,
         );
 
-        shop.distanceInKm = distanceMeters / 1000.0; // store for UI
-
+        shop.distanceInKm = distanceMeters / 1000.0;
         return distanceMeters <= _nearbyRadiusMeters;
       }).toList();
 
-      // sort nearby shops by distance
+      // sort by distance
       nearby.sort((a, b) {
-        final da = a.distanceInKm ?? 999999;
-        final db = b.distanceInKm ?? 999999;
+        final da = a.distanceInKm ?? double.infinity;
+        final db = b.distanceInKm ?? double.infinity;
         return da.compareTo(db);
       });
 
@@ -96,14 +100,14 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
         _checkingLocation = false;
       });
 
-      // 5. If there are nearby stores, open the select store bottom sheet
+      // 5) If nearby shops found — auto-open sheet
       if (hasNearby) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _openSelectStoreSheet(context, _nearbyStores);
         });
       }
-    } catch (e) {
-      debugPrint("Error checking location: $e");
+    } catch (e, st) {
+      debugPrint("Error checking location: $e\n$st");
       if (!mounted) return;
       setState(() => _checkingLocation = false);
     }
@@ -139,75 +143,105 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
         },
       ),
     ).whenComplete(() {
-      // user closed the sheet (Cancel or swipe down)
+      if (!mounted) return;
       setState(() {
         _bottomSheetClosed = true;
       });
     });
   }
 
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      leading: null, // 👈 removes the back button
+      automaticallyImplyLeading: false, // 👈 prevents Flutter from auto-adding one
+      title: const Text(
+        'MENU',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.0,
+        ),
+      ),
+      centerTitle: true,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.search, color: Colors.black),
+          onPressed: () {},
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Loading UI (matches Guest look)
     if (_checkingLocation) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _buildAppBar(),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: _freshMintGreen),
+              const SizedBox(height: 16),
+              Text(
+                "Locating nearby stores...",
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    // If we already pushed the bottom sheet, just keep an empty scaffold
+    // If the bottom sheet is auto-opened and not closed yet: keep scaffold blank (sheet is on top)
     if (_hasNearbyStore && !_bottomSheetClosed) {
-      // auto-open bottom sheet → keep blank because bottom sheet is on top
       return const Scaffold();
     }
 
-    // No nearby store: show your "No Store Nearby" UI
+    // No nearby store UI (match Guest)
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'MENU',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
+      appBar: _buildAppBar(),
       body: Column(
         children: [
-          // Top row: "Select Store" + Pickup/Delivery toggle
-          Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          // Top Control Bar (Select Store + Toggle)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                GestureDetector(
-                  onTap: () {
-                    _openSelectStoreSheet(
-                      context,
-                      _allStores.isNotEmpty ? _allStores : _nearbyStores,
-                    );
-                  },
-                  child: const Row(
-                    children: [
-                      Text(
-                        'Select Store',
-                        style: TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
+                InkWell(
+                  onTap: () => _openSelectStoreSheet(
+                    context,
+                    _allStores.isNotEmpty ? _allStores : _nearbyStores,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.storefront_rounded, color: _freshMintGreen, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Select Store',
+                          style: TextStyle(
+                            color: _espressoBrown,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                      Icon(Icons.keyboard_arrow_down, color: Colors.orange),
-                    ],
+                        const SizedBox(width: 4),
+                        Icon(Icons.keyboard_arrow_down_rounded, color: _espressoBrown),
+                      ],
+                    ),
                   ),
                 ),
                 PickupDeliveryToggle(
@@ -217,58 +251,77 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
               ],
             ),
           ),
+
+          // Center Empty State
           Expanded(
-            child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(Icons.circle, size: 120, color: Colors.grey.shade300),
-                      const Icon(
-                        Icons.location_on_rounded,
-                        size: 40,
-                        color: Colors.grey,
+                  // Illustration Circle (mint tint)
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      color: _freshMintGreen.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.location_off_rounded,
+                        size: 60,
+                        color: _freshMintGreen.withOpacity(0.8),
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
+
                   const Text(
                     'No Store Nearby',
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                    child: Text(
-                      'There is no available store nearby. Please select one manually.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade600,
-                      ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'There are no available stores detected nearby. Please select one manually.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade500,
+                      height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  TextButton(
-                    onPressed: () {
-                      // if no nearby, open ALL shops so user can still choose
-                      _openSelectStoreSheet(
+
+                  const SizedBox(height: 40),
+
+                  // Main CTA (mint)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: () => _openSelectStoreSheet(
                         context,
                         _allStores.isNotEmpty ? _allStores : _nearbyStores,
-                      );
-                    },
-                    child: const Text(
-                      'Select Store',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _freshMintGreen,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: const Text(
+                        'Select Store Manually',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ),
