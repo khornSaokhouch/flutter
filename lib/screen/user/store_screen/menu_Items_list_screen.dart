@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../core/utils/auth_utils.dart';
-import '../../../core/widgets/store/category_list.dart';
 import '../../../core/widgets/store/menu_item_card.dart';
 import '../../../core/widgets/store/pickup_delivery_toggle.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../models/item_model.dart';
 import '../../../models/menu_item.dart';
 import '../../../models/shop.dart';

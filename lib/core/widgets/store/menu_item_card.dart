@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../models/menu_item.dart';
 import '../../../models/item_model.dart';
 import '../../../screen/user/store_screen/detail_item.dart';
-import '../../../server/item_service.dart';
 
 class MenuItemCard extends StatelessWidget {
   final ShopItem shopItem;

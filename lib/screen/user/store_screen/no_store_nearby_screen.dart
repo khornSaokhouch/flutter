@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/store/pickup_delivery_toggle.dart';
 import '../../../models/shop.dart';
 import '../../../server/shop_serviec.dart';

@@ -21,8 +21,8 @@ class ShopProductDetailPage extends StatefulWidget {
 
 class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
   bool _isToggling = false;
+  bool _isLoading = true;
 
-  // Use typed models as source of truth (no dynamic `item` map)
   List<ShopItemOptionStatusModel> statuses = [];
 
   // UI state
@@ -30,13 +30,21 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
   final Map<int, Set<int>> _selectedOptionSets = {};
   final Map<int, bool> _groupExpanded = {};
 
-  // ----------------------------
-  // Helpers (unchanged)
-  // ----------------------------
+  // Theme Colors
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+  final Color _espressoBrown = const Color(0xFF4B2C20);
+  final Color _bgGrey = const Color(0xFFF9FAFB);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  // --- Helpers (Unchanged) ---
   int _toCents(dynamic priceStr) {
     if (priceStr == null) return 0;
     final s = priceStr.toString();
-
     if (s.contains('.')) {
       final d = double.tryParse(s) ?? 0.0;
       return (d * 100).round();
@@ -51,12 +59,9 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
     if (v == null) return true;
     if (v is bool) return v;
     if (v is int) return v == 1;
-
     final s = v.toString().toLowerCase();
-
     if (["1", "true", "yes", "on"].contains(s)) return true;
     if (["0", "false", "no", "off"].contains(s)) return false;
-
     return true;
   }
 
@@ -81,8 +86,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
     setState(() {
       if (type == 'select') {
         final already = _selectedOptionForGroup[gid] == oid;
-        final required =
-            (group['is_required'] ?? 0).toString() == '1' || _toBool(group['is_required']);
+        final required = (group['is_required'] ?? 0).toString() == '1' || _toBool(group['is_required']);
         if (already && !required) {
           _selectedOptionForGroup.remove(gid);
         } else {
@@ -100,7 +104,6 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
     });
   }
 
-  // Build groups from statuses (source of truth)
   List<Map<String, dynamic>> _buildGroupsFromStatuses() {
     int _normalizeStatus(dynamic s) {
       if (s == null) return 0;
@@ -163,36 +166,27 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
     setState(() => _isToggling = true);
     try {
       final oid = (option['id'] as num).toInt();
-
       for (final s in statuses) {
         if (s.option.id == oid) {
           s.option.isActive = newStatus;
           s.status = newStatus;
         }
       }
-
-      // Persist to backend if you have an endpoint:
-      // await ShopItemOptionStatusService.updateOptionStatus(widget.itemId, widget.shopId, oid, newStatus);
-
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Error toggling option active: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update option: $e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
     } finally {
       if (mounted) setState(() => _isToggling = false);
     }
   }
 
-  // Show add option sheet & reload after success
   void _showAddOptionSheet() async {
-    // Collect existing option IDs (already added)
     final existingOptionIds = statuses.map((s) => s.option.id).toSet();
-
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (_) => AddOptionSheet(
         onSelect: _toggleOption,
         itemId: widget.itemId,
@@ -200,105 +194,149 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
         existingOptionIds: existingOptionIds,
       ),
     );
-
-    // If sheet returned true, it means we successfully added an option → reload
-    if (ok == true) {
-      await _loadData();
-    }
+    if (ok == true) await _loadData();
   }
 
-  // Load statuses from service
   Future<void> _loadData() async {
+    setState(() => _isLoading = true);
     try {
-      final loaded = await ShopItemOptionStatusService.getStatuses(
-        widget.itemId,
-        widget.shopId,
-      );
-
+      final loaded = await ShopItemOptionStatusService.getStatuses(widget.itemId, widget.shopId);
       statuses = List<ShopItemOptionStatusModel>.from(loaded);
-
-      if (mounted) setState(() {});
-    } catch (e, st) {
-      debugPrint('Failed to load option statuses: $e\n$st');
+      if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint('Failed to load options: $e');
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load options: $e')));
       }
     }
   }
 
   @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final groups = _buildGroupsFromStatuses();
-    final title = statuses.isNotEmpty ? statuses.first.item.name : 'Product';
+    
+    final hasData = statuses.isNotEmpty;
+    final itemName = hasData ? statuses.first.item.name : 'Loading...';
+    final itemDesc = hasData ? statuses.first.item.description : '';
+    final imageUrl = hasData ? statuses.first.item.imageUrl : '';
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: _bgGrey,
+        appBar: AppBar(backgroundColor: _bgGrey, elevation: 0),
+        body: Center(child: CircularProgressIndicator(color: _freshMintGreen)),
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      floatingActionButton: FloatingActionButton(
+      backgroundColor: _bgGrey,
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddOptionSheet,
-        child: const Icon(Icons.add),
+        backgroundColor: _espressoBrown,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text("Add Option", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadData, // optional: pull-to-refresh
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (statuses.isNotEmpty) ...[
-              if ((statuses.first.item.imageUrl).isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    statuses.first.item.imageUrl,
-                    height: 220,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    errorBuilder: (c, e, s) => Container(
-                      height: 220,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+      body: CustomScrollView(
+        slivers: [
+          // 1. Immersive Header
+          SliverAppBar(
+            expandedHeight: 280.0,
+            pinned: true,
+            backgroundColor: _bgGrey,
+            elevation: 0,
+            leading: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), shape: BoxShape.circle),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  (imageUrl.isNotEmpty)
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(color: Colors.grey[300], child: const Icon(Icons.image_not_supported)),
+                        )
+                      : Container(color: Colors.grey[300], child: const Icon(Icons.image)),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black26, Colors.transparent, Colors.black87],
+                        stops: const [0.0, 0.5, 1.0],
                       ),
                     ),
                   ),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                statuses.first.item.name,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  Positioned(
+                    bottom: 20,
+                    left: 20,
+                    right: 20,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          itemName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+                          ),
+                        ),
+                        if (itemDesc.isNotEmpty)
+                          Text(
+                            itemDesc,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white70, fontSize: 14),
+                          ),
+                      ],
+                    ),
+                  )
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                statuses.first.item.description,
-                style: TextStyle(color: Colors.grey[700]),
-              ),
-              const SizedBox(height: 20),
-            ],
+            ),
+          ),
 
-            for (final g in groups) ...[
-              InlineOptionGroup(
-                group: Map<String, dynamic>.from(g),
-                itemActive: statuses.isNotEmpty ? statuses.first.item.isAvailable : true,
-                selectedOptionForGroup: _selectedOptionForGroup,
-                selectedOptionSets: _selectedOptionSets,
-                groupExpanded: _groupExpanded,
-                isToggling: _isToggling,
-                onToggleGroupExpand: _toggleGroupExpand,
-                onToggleOption: _toggleOption,
-                onToggleOptionActive: _handleToggleOptionActive,
-                toCents: _toCents,
-                fmt: _fmt,
-                isOptionActive: _isOptionActive,
-                toBool: _toBool,
+          // 2. Groups List
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 80),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final g = groups[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: InlineOptionGroup(
+                      group: Map<String, dynamic>.from(g),
+                      itemActive: statuses.isNotEmpty ? statuses.first.item.isAvailable : true,
+                      selectedOptionForGroup: _selectedOptionForGroup,
+                      selectedOptionSets: _selectedOptionSets,
+                      groupExpanded: _groupExpanded,
+                      isToggling: _isToggling,
+                      onToggleGroupExpand: _toggleGroupExpand,
+                      onToggleOption: _toggleOption,
+                      onToggleOptionActive: _handleToggleOptionActive,
+                      toCents: _toCents,
+                      fmt: _fmt,
+                      isOptionActive: _isOptionActive,
+                      toBool: _toBool,
+                    ),
+                  );
+                },
+                childCount: groups.length,
               ),
-              const SizedBox(height: 12),
-            ],
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

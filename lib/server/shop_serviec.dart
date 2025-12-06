@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:frontend/response/shops_response/shop_response.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_endpoints.dart';
 import '../models/shop.dart';

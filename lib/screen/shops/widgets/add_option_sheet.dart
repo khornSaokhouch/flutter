@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../models/shops_models/shop_options_model.dart';
 import '../../../server/shops_server/shop_option_service.dart';
 
-typedef OptionSelectCallback = void Function(
-    Map<String, dynamic> group, Map<String, dynamic> option);
+typedef OptionSelectCallback = void Function(Map<String, dynamic> group, Map<String, dynamic> option);
 
 class AddOptionSheet extends StatefulWidget {
   final OptionSelectCallback onSelect;
   final VoidCallback? onDone;
   final int itemId;
   final int shopId;
-
-  // NEW: pass existing option ids so sheet can hide already-added options
   final Set<int> existingOptionIds;
 
   const AddOptionSheet({
@@ -30,6 +27,10 @@ class AddOptionSheet extends StatefulWidget {
 class _AddOptionSheetState extends State<AddOptionSheet> {
   late Future<ShopOptions> futureItem;
   bool _isSubmitting = false;
+
+  // Theme
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+  final Color _espressoBrown = const Color(0xFF4B2C20);
 
   @override
   void initState() {
@@ -54,7 +55,6 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
     return "\$${(cents / 100).toStringAsFixed(2)}";
   }
 
-  /// Create status on server and return true on success.
   Future<bool> _onOptionSelected(OptionGroup g, OptionItem o) async {
     try {
       setState(() => _isSubmitting = true);
@@ -69,11 +69,14 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Option status updated')),
+          SnackBar(
+            content: const Text('Option successfully added'),
+            backgroundColor: _freshMintGreen,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
 
-      // notify parent about selection
       widget.onSelect(g.toJson(), o.toJson());
       widget.onDone?.call();
 
@@ -81,14 +84,8 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
     } catch (e) {
       debugPrint('Error creating status: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update option status: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
-      // still notify parent about attempted selection (optional)
-      try {
-        widget.onSelect(g.toJson(), o.toJson());
-      } catch (_) {}
       return false;
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -97,120 +94,129 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       child: FutureBuilder<ShopOptions>(
         future: futureItem,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting ||
-              snapshot.connectionState == ConnectionState.active) {
-            return const Padding(
-              padding: EdgeInsets.all(20),
-              child: Center(child: CircularProgressIndicator()),
-            );
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator(color: _freshMintGreen));
           }
 
           if (snapshot.hasError) {
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text("Error: ${snapshot.error}"),
-            );
+            return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.red)));
           }
 
           final item = snapshot.data!;
           final groups = item.optionGroups ?? [];
 
-          return Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
+          return Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+              
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+                child: Row(
                   children: [
-                    const Expanded(
-                      child: Text(
-                        'Add Option',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Add Options", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _espressoBrown)),
+                        const Text("Select options to enable", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      icon: const Icon(Icons.close),
-                    ),
+                    const Spacer(),
+                    IconButton(onPressed: () => Navigator.pop(context, false), icon: const Icon(Icons.close)),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
+              ),
+              const Divider(height: 1),
+
+              // Content
+              Flexible(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  itemCount: groups.length,
+                  itemBuilder: (context, index) {
+                    final g = groups[index];
+                    final options = g.options ?? [];
+                    final visibleOptions = options.where((o) {
+                      final id = o.id ?? 0;
+                      final hasName = o.name != null && o.name!.trim().isNotEmpty;
+                      return !widget.existingOptionIds.contains(id) && hasName;
+                    }).toList();
+
+                    if (visibleOptions.isEmpty) return const SizedBox.shrink();
+
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: groups.map((g) {
-                        final options = g.options ?? [];
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8),
+                          child: Text(
+                            g.name ?? 'Group',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _espressoBrown),
+                          ),
+                        ),
+                        ...visibleOptions.map((o) {
+                          final isActive = isOptionActive(o.isActive);
+                          final priceAdj = toCents(o.priceAdjustCents);
+                          final priceLabel = priceAdj == 0 ? '' : '+${fmt(priceAdj)}';
+                          final imageUrl = o.iconUrl;
 
-                        // Filter options:
-                        //  - hide if already added
-                        //  - hide if name is null/empty
-                        final visibleOptions = options.where((o) {
-                          final id = o.id ?? 0;
-                          final hasName = o.name != null && o.name!.trim().isNotEmpty;
-                          return !widget.existingOptionIds.contains(id) && hasName;
-                        }).toList();
-
-                        if (visibleOptions.isEmpty) {
-                          // If you prefer to hide empty groups entirely, skip rendering them:
-                          return const SizedBox.shrink();
-                        }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Text(g.name ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
                             ),
-                            ...visibleOptions.map((o) {
-                              final isActive = isOptionActive(o.isActive);
-                              final priceAdj = toCents(o.priceAdjustCents);
-                              final priceLabel = priceAdj == 0 ? '' : ' +${fmt(priceAdj)}';
-                              final imageUrl = o.iconUrl;
-
-                              return ListTile(
-                                enabled: isActive && !_isSubmitting,
-                                leading: (imageUrl != null && imageUrl.isNotEmpty)
-                                    ? Image.network(
-                                  imageUrl,
-                                  width: 36,
-                                  height: 36,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const CircleAvatar(child: Icon(Icons.broken_image)),
-                                )
-                                    : const CircleAvatar(child: Icon(Icons.add)),
-                                title: Text(o.name ?? ''),
-                                subtitle: priceLabel.isNotEmpty ? Text(priceLabel) : null,
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.add_circle_outline),
-                                  onPressed: isActive && !_isSubmitting
-                                      ? () async {
-                                    final ok = await _onOptionSelected(g, o);
-                                    if (mounted) Navigator.pop(context, ok);
-                                  }
-                                      : null,
-                                ),
-                                onTap: isActive && !_isSubmitting
+                            child: ListTile(
+                              enabled: isActive && !_isSubmitting,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              leading: Container(
+                                width: 40, 
+                                height: 40,
+                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                                child: (imageUrl != null && imageUrl.isNotEmpty)
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 20),
+                                        ),
+                                      )
+                                    : const Icon(Icons.local_offer_outlined, size: 20, color: Colors.grey),
+                              ),
+                              title: Text(o.name ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              subtitle: priceLabel.isNotEmpty 
+                                ? Text(priceLabel, style: TextStyle(color: _freshMintGreen, fontWeight: FontWeight.bold)) 
+                                : null,
+                              trailing: IconButton(
+                                icon: Icon(Icons.add_circle, color: (isActive && !_isSubmitting) ? _espressoBrown : Colors.grey),
+                                onPressed: (isActive && !_isSubmitting)
                                     ? () async {
-                                  final ok = await _onOptionSelected(g, o);
-                                  if (mounted) Navigator.pop(context, ok);
-                                }
+                                        final ok = await _onOptionSelected(g, o);
+                                        if (mounted) Navigator.pop(context, ok);
+                                      }
                                     : null,
-                              );
-                            }).toList(),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),
