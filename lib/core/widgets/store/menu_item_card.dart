@@ -1,101 +1,146 @@
 import 'package:flutter/material.dart';
 import '../../../models/menu_item.dart';
 import '../../../models/item_model.dart';
-import '../../../screen/user/store_screen/detail_item.dart';
+import '../../../screen/user/store_screen/detail_item.dart'; // Ensure this import points to GuestDetailItem file
 
 class MenuItemCard extends StatelessWidget {
   final ShopItem shopItem;
+  // We keep this parameter to match your existing calls, 
+  // though we primarily use shopItem.item for data.
+  final MenuItem item; 
 
-  const MenuItemCard({super.key, required this.shopItem, required MenuItem item});
+  const MenuItemCard({super.key, required this.shopItem, required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final item = shopItem.item;
+    final product = shopItem.item;
     final shopId = shopItem.shopId;
+
+    // Theme Colors
+    final Color _freshMintGreen = const Color(0xFF4E8D7C);
+    final Color _espressoBrown = const Color(0xFF4B2C20);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => DetailItem(itemId: item.id, shopId: shopId),
+            builder: (_) => GuestDetailItem(itemId: product.id, shopId: shopId),
           ),
         );
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(16.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Text column
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${(item.priceCents / 100).toStringAsFixed(2)}', // format cents to dollars
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+            // 1. Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12.0),
+              child: Container(
+                width: 85,
+                height: 85,
+                color: Colors.grey[50],
+                child: Image.network(
+                  product.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 85,
+                      height: 85,
+                      color: Colors.grey[100],
+                      child: Icon(Icons.image_not_supported_outlined, size: 24, color: Colors.grey[400]),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: SizedBox(
+                        width: 20, 
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: _freshMintGreen,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            // Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8.0),
-              child: Image.network(
-                item.imageUrl,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 60,
-                    height: 60,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.broken_image, size: 30, color: Colors.grey),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                            (loadingProgress.expectedTotalBytes ?? 1)
-                            : null,
-                      ),
+            
+            const SizedBox(width: 16),
+
+            // 2. Info Column
+            Expanded(
+              child: SizedBox(
+                height: 85, // Match image height for alignment
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _espressoBrown,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        const SizedBox(height: 4),
+                        // Display description if available, else standard text
+                        Text(
+                          (product.description != null && product.description!.isNotEmpty) 
+                              ? product.description! 
+                              : "Delicious choice",
+                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ],
                     ),
-                  );
-                },
+                    
+                    // Price and Add Icon
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '\$${(product.priceCents / 100).toStringAsFixed(2)}', 
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: _freshMintGreen,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: _freshMintGreen.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.add, size: 20, color: _freshMintGreen),
+                        )
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -104,4 +149,3 @@ class MenuItemCard extends StatelessWidget {
     );
   }
 }
-

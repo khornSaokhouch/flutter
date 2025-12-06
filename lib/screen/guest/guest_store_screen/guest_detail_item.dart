@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../models/Item_OptionGroup.dart';
 import '../../../server/item_service.dart';
 
 class GuestDetailItem extends StatefulWidget {
   final int itemId;
-   final int shopId;
-  const GuestDetailItem({super.key, required this.itemId,required this.shopId});
+  final int shopId;
+  const GuestDetailItem({super.key, required this.itemId, required this.shopId});
 
   @override
   State<GuestDetailItem> createState() => _DetailItemState();
@@ -19,6 +20,12 @@ class _DetailItemState extends State<GuestDetailItem> {
   int quantity = 1;
   double subtotal = 0.0;
 
+  // --- Theme Colors ---
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+  final Color _espressoBrown = const Color(0xFF4B2C20);
+  final Color _bgWhite = const Color(0xFFFFFFFF);
+  final Color _bgGrey = const Color(0xFFF9FAFB);
+
   @override
   void initState() {
     super.initState();
@@ -28,51 +35,51 @@ class _DetailItemState extends State<GuestDetailItem> {
   Future<void> _fetchItem() async {
     setState(() => loading = true);
 
-    final fetched = await ItemService.fetchItemOptionStatusGuest(widget.itemId,widget.shopId);
+    try {
+      final fetched = await ItemService.fetchItemOptionStatusGuest(widget.itemId, widget.shopId);
 
-    if (fetched != null && fetched.isNotEmpty) {
-      item = fetched.first.item;
+      if (fetched != null && fetched.isNotEmpty) {
+        item = fetched.first.item;
 
-      final Map<int, OptionGroup> groupMap = {};
-      for (var status in fetched) {
-        final g = status.optionGroup;
-        final o = status.option;
+        final Map<int, OptionGroup> groupMap = {};
+        for (var status in fetched) {
+          final g = status.optionGroup;
+          final o = status.option;
 
-        // create group if not exists
-        if (!groupMap.containsKey(g.id)) {
-          groupMap[g.id] = OptionGroup(
-            id: g.id,
-            name: g.name,
-            type: g.type,
-            isRequired: g.isRequired,
-            createdAt: g.createdAt,
-            updatedAt: g.updatedAt,
-            options: [],
-          );
+          if (!groupMap.containsKey(g.id)) {
+            groupMap[g.id] = OptionGroup(
+              id: g.id,
+              name: g.name,
+              type: g.type,
+              isRequired: g.isRequired,
+              createdAt: g.createdAt,
+              updatedAt: g.updatedAt,
+              options: [],
+            );
+          }
+
+          final existingGroup = groupMap[g.id]!;
+          if (!existingGroup.options.any((opt) => opt.id == o.id)) {
+            existingGroup.options.add(o);
+          }
         }
 
-        // add option if not already in group
-        final existingGroup = groupMap[g.id]!;
-        if (!existingGroup.options.any((opt) => opt.id == o.id)) {
-          existingGroup.options.add(o);
+        groups = groupMap.values.toList();
+
+        // Preselect required
+        for (var group in groups) {
+          if (group.isRequired && group.options.isNotEmpty) {
+            selectedOptions[group.id] = group.options.first;
+          }
         }
+        _calculateSubtotal();
       }
-
-      groups = groupMap.values.toList();
-
-      // Preselect required options
-      for (var group in groups) {
-        if (group.isRequired && group.options.isNotEmpty) {
-          selectedOptions[group.id] = group.options.first;
-        }
-      }
-
-      _calculateSubtotal();
+    } catch (e) {
+      debugPrint("Error fetching item: $e");
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-
-    setState(() => loading = false);
   }
-
 
   void _calculateSubtotal() {
     double basePrice = item.priceCents / 100;
@@ -80,7 +87,7 @@ class _DetailItemState extends State<GuestDetailItem> {
 
     selectedOptions.forEach((key, option) {
       if (option != null) {
-        optionsPrice += option.priceAdjust; // use getter
+        optionsPrice += option.priceAdjust;
       }
     });
 
@@ -89,267 +96,366 @@ class _DetailItemState extends State<GuestDetailItem> {
     });
   }
 
-
-  Widget _buildOptionGroup(OptionGroup group) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(group.name,
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
-            if (group.isRequired)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.amber[100],
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '1 Required',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.amber[800],
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: group.options.map((option) {
-            final isSelected = selectedOptions[group.id]?.id == option.id;
-            final priceAdjust = option.priceAdjust;
-            final priceText = priceAdjust > 0 ? " +\$${priceAdjust.toStringAsFixed(2)}" : "";
-
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedOptions[group.id] = option;
-                  _calculateSubtotal();
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFFC107) : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected ? const Color(0xFFFFC107) : Colors.grey.shade300,
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    if (isSelected)
-                      BoxShadow(
-                        color: Colors.amber.withOpacity(0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    if (!isSelected)
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (option.icon_url.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: Image.network(option.icon_url, width: 20, height: 20),
-                      ),
-                    Text(
-                      "${option.name}$priceText",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : Colors.grey[800],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 28),
-      ],
-    );
-  }
-
-  Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.grey.withOpacity(0.25),
-              blurRadius: 12,
-              offset: const Offset(0, -3)),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Subtotal',
-                    style:
-                    TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                Text("\$${subtotal.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                          icon: const Icon(Icons.remove),
-                          onPressed: () {
-                            if (quantity > 1) {
-                              setState(() {
-                                quantity--;
-                                _calculateSubtotal();
-                              });
-                            }
-                          }),
-                      Text(quantity.toString(),
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      IconButton(
-                          icon: const Icon(Icons.add),
-                          onPressed: () {
-                            setState(() {
-                              quantity++;
-                              _calculateSubtotal();
-                            });
-                          }),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final selected = groups.map((g) {
-                        return {
-                          'group_id': g.id,
-                          'group_name': g.name,
-                          'selected_option': selectedOptions[g.id]?.name ?? null,
-                          'option_id': selectedOptions[g.id]?.id
-                        };
-                      }).toList();
-
-                      print('🛒 Add to cart: ${item.name}');
-                      print('Quantity: $quantity');
-                      print('Selected: $selected');
-                      print('Subtotal: \$${subtotal.toStringAsFixed(2)}');
-                    },
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber[600],
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24)),
-                        elevation: 2),
-                    child: const Text('ADD TO CART',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
-                  ),
-                )
-              ],
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // if (loading) {
-    //   return const Scaffold(
-    //       body: Center(child: CircularProgressIndicator()));
-    // }
-
-    // if (groups.isEmpty) {
-    //   return const Scaffold(
-    //       body: Center(child: Text('Failed to load item or options')));
-    // }
+    if (loading) {
+      return Scaffold(
+        backgroundColor: _bgWhite,
+        body: Center(child: CircularProgressIndicator(color: _freshMintGreen)),
+      );
+    }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _bgGrey,
       body: CustomScrollView(
         slivers: [
+          // 1. Immersive Header
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 280,
             pinned: true,
-            backgroundColor: Colors.white,
+            backgroundColor: _bgWhite,
             elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.amber),
-              onPressed: () => Navigator.pop(context),
+            leading: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircleAvatar(
+                backgroundColor: Colors.white.withOpacity(0.9),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
             ),
-            actions: const [
+            actions: [
               Padding(
-                  padding: EdgeInsets.only(right: 16),
-                  child: Icon(Icons.favorite_border, color: Colors.amber)),
+                padding: const EdgeInsets.all(8.0),
+                child: CircleAvatar(
+                  backgroundColor: Colors.white.withOpacity(0.9),
+                  child: IconButton(
+                    icon: Icon(Icons.favorite_border, size: 20, color: _freshMintGreen),
+                    onPressed: () {},
+                  ),
+                ),
+              ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              centerTitle: true,
-              background: Container(
-                  alignment: Alignment.center,
-                  child: Image.network(item.imageUrl,
-                      fit: BoxFit.contain,
-                      width: double.infinity,
-                      height: double.infinity)),
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    item.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_,__,___) => Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported)),
+                  ),
+                  // Gradient for text readability if title overlays image, 
+                  // or just to smooth the transition to body
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black12, Colors.transparent, Colors.black.withOpacity(0.1)],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+
+          // 2. Content Body
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _bgGrey,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.name,
-                      style: const TextStyle(
-                          fontSize: 26, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  if (item.description.isNotEmpty)
-                    Text(item.description,
-                        style: TextStyle(
-                            fontSize: 16, color: Colors.grey[700], height: 1.4)),
-                  const SizedBox(height: 30),
-                  ...groups.map(_buildOptionGroup).toList(),
-                  const SizedBox(height: 80),
+                  // Title & Description Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                  color: _espressoBrown,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              "\$${(item.priceCents / 100).toStringAsFixed(2)}",
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: _freshMintGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (item.description.isNotEmpty)
+                          Text(
+                            item.description,
+                            style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.5),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Option Groups
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: groups.map((g) => _buildOptionGroup(g)).toList(),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 100), // Space for bottom bar
                 ],
               ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomBar(),
+      bottomSheet: _buildBottomBar(),
+    );
+  }
+
+  Widget _buildOptionGroup(OptionGroup group) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Group Header
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  group.name,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _espressoBrown),
+                ),
+                if (group.isRequired)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _espressoBrown.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Required',
+                      style: TextStyle(fontSize: 11, color: _espressoBrown, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          
+          // Options List
+          ...group.options.map((option) {
+            final isSelected = selectedOptions[group.id]?.id == option.id;
+            final priceAdjust = option.priceAdjust;
+            final priceText = priceAdjust > 0 ? "+ \$${priceAdjust.toStringAsFixed(2)}" : "";
+
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  selectedOptions[group.id] = option;
+                  _calculateSubtotal();
+                });
+                HapticFeedback.lightImpact();
+              },
+              child: Container(
+                color: isSelected ? _freshMintGreen.withOpacity(0.05) : Colors.transparent,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    // Custom Radio Button Look
+                    Container(
+                      width: 22, height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected ? _freshMintGreen : Colors.grey.shade300,
+                          width: isSelected ? 6 : 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Icon
+                    if (option.icon_url.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.network(option.icon_url, width: 24, height: 24, fit: BoxFit.cover),
+                        ),
+                      ),
+                    // Name
+                    Expanded(
+                      child: Text(
+                        option.name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: isSelected ? _espressoBrown : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    // Price
+                    if(priceText.isNotEmpty)
+                      Text(
+                        priceText,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? _freshMintGreen : Colors.grey[500],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -5)),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              // Quantity Selector
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    _buildQtyBtn(Icons.remove, () {
+                      if (quantity > 1) {
+                        setState(() {
+                          quantity--;
+                          _calculateSubtotal();
+                        });
+                      }
+                    }),
+                    SizedBox(
+                      width: 30,
+                      child: Text(
+                        '$quantity',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _espressoBrown),
+                      ),
+                    ),
+                    _buildQtyBtn(Icons.add, () {
+                      setState(() {
+                        quantity++;
+                        _calculateSubtotal();
+                      });
+                    }),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 16),
+
+              // Add to Cart Button
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Logic remains the same
+                    final selected = groups.map((g) {
+                      return {
+                        'group_id': g.id,
+                        'group_name': g.name,
+                        'selected_option': selectedOptions[g.id]?.name ?? null,
+                        'option_id': selectedOptions[g.id]?.id
+                      };
+                    }).toList();
+                    print('Cart Item: ${item.name} x$quantity | Total: $subtotal');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _freshMintGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Add to Order", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 4, height: 4,
+                        decoration: const BoxDecoration(color: Colors.white60, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 8),
+                      Text("\$${subtotal.toStringAsFixed(2)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQtyBtn(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Icon(icon, size: 18, color: _espressoBrown),
+      ),
     );
   }
 }

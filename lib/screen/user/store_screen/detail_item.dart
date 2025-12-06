@@ -1,28 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../models/Item_OptionGroup.dart';
 import '../../../server/item_service.dart';
+import './order_screen.dart';
 
-class DetailItem extends StatefulWidget {
+class GuestDetailItem extends StatefulWidget {
   final int itemId;
   final int shopId;
 
-  const DetailItem({
+  const GuestDetailItem({
     super.key,
     required this.itemId,
     required this.shopId,
   });
 
   @override
-  State<DetailItem> createState() => _DetailItemState();
+  State<GuestDetailItem> createState() => _DetailItemState();
 }
 
-class _DetailItemState extends State<DetailItem> {
+class _DetailItemState extends State<GuestDetailItem> {
   bool loading = true;
   late Item item;
   List<OptionGroup> groups = [];
   Map<int, Option?> selectedOptions = {};
   int quantity = 1;
   double subtotal = 0.0;
+
+  // --- Theme Colors ---
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+  final Color _espressoBrown = const Color(0xFF4B2C20);
+  final Color _bgGrey = const Color(0xFFF9FAFB);
 
   @override
   void initState() {
@@ -33,50 +40,51 @@ class _DetailItemState extends State<DetailItem> {
   Future<void> _fetchItem() async {
     setState(() => loading = true);
 
-    final fetched =
-    await ItemService.fetchItemOptionStatus(widget.itemId, widget.shopId);
+    try {
+      final fetched = await ItemService.fetchItemOptionStatusGuest(
+          widget.itemId, widget.shopId);
 
-    if (fetched != null && fetched.isNotEmpty) {
-      item = fetched.first.item;
+      if (fetched != null && fetched.isNotEmpty) {
+        item = fetched.first.item;
 
-      final Map<int, OptionGroup> groupMap = {};
-      for (var status in fetched) {
-        final g = status.optionGroup;
-        final o = status.option;
+        final Map<int, OptionGroup> groupMap = {};
+        for (var status in fetched) {
+          final g = status.optionGroup;
+          final o = status.option;
 
-        // create group if not exists
-        if (!groupMap.containsKey(g.id)) {
-          groupMap[g.id] = OptionGroup(
-            id: g.id,
-            name: g.name,
-            type: g.type,
-            isRequired: g.isRequired,
-            createdAt: g.createdAt,
-            updatedAt: g.updatedAt,
-            options: [],
-          );
+          if (!groupMap.containsKey(g.id)) {
+            groupMap[g.id] = OptionGroup(
+              id: g.id,
+              name: g.name,
+              type: g.type,
+              isRequired: g.isRequired,
+              createdAt: g.createdAt,
+              updatedAt: g.updatedAt,
+              options: [],
+            );
+          }
+
+          final existingGroup = groupMap[g.id]!;
+          if (!existingGroup.options.any((opt) => opt.id == o.id)) {
+            existingGroup.options.add(o);
+          }
         }
 
-        // add option if not already in group
-        final existingGroup = groupMap[g.id]!;
-        if (!existingGroup.options.any((opt) => opt.id == o.id)) {
-          existingGroup.options.add(o);
+        groups = groupMap.values.toList();
+
+        // Preselect required options
+        for (var group in groups) {
+          if (group.isRequired && group.options.isNotEmpty) {
+            selectedOptions[group.id] = group.options.first;
+          }
         }
+        _calculateSubtotal();
       }
-
-      groups = groupMap.values.toList();
-
-      // Preselect required options
-      for (var group in groups) {
-        if (group.isRequired && group.options.isNotEmpty) {
-          selectedOptions[group.id] = group.options.first;
-        }
-      }
-
-      _calculateSubtotal();
+    } catch (e) {
+      debugPrint("Error fetching item: $e");
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-
-    setState(() => loading = false);
   }
 
   void _calculateSubtotal() {
@@ -94,357 +102,431 @@ class _DetailItemState extends State<DetailItem> {
     });
   }
 
-  // ---------- UI HELPERS ----------
-
-
-  // Header for groups (“Size” + “1 Required” pill)
-  Widget _buildGroupHeader(OptionGroup group) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          group.name,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        if (group.isRequired)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF4CC),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: const Text(
-              '1 Required',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFFE2A700),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  // Cards for options – soft yellow when selected, like screenshot
-  Widget _buildOptionGroup(OptionGroup group) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildGroupHeader(group),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: group.options.map((option) {
-            final isSelected = selectedOptions[group.id]?.id == option.id;
-            final priceAdjust = option.priceAdjust;
-            final priceText = priceAdjust > 0
-                ? " +\$${priceAdjust.toStringAsFixed(2)}"
-                : "";
-
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedOptions[group.id] = option;
-                  _calculateSubtotal();
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                width: 110, // more “tile-ish”
-                padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? const Color(0xFFFFF4CC)
-                      : const Color(0xFFF8F8F8),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFFFFC107)
-                        : Colors.grey.shade300,
-                    width: 1,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                    BoxShadow(
-                      color: Colors.amber.withOpacity(0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    )
-                  ]
-                      : [],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (option.icon_url.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Image.network(
-                          option.icon_url,
-                          width: 28,
-                          height: 28,
-                        ),
-                      ),
-                    Text(
-                      option.name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: Colors.grey[900],
-                      ),
-                    ),
-                    if (priceText.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        priceText,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ]
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 28),
-      ],
-    );
-  }
-
-  Widget _buildBottomBar() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.transparent,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 16,
-                offset: const Offset(0, -4),
-              )
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Subtotal row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Subtotal',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    "\$${subtotal.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  // Quantity pill
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F3F3),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove),
-                          onPressed: () {
-                            if (quantity > 1) {
-                              setState(() {
-                                quantity--;
-                                _calculateSubtotal();
-                              });
-                            }
-                          },
-                        ),
-                        Text(
-                          quantity.toString(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          onPressed: () {
-                            setState(() {
-                              quantity++;
-                              _calculateSubtotal();
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Add to cart button
-                  Expanded(
-                    child: SizedBox(
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final selected = groups.map((g) {
-                            return {
-                              'group_id': g.id,
-                              'group_name': g.name,
-                              'selected_option':
-                              selectedOptions[g.id]?.name ?? null,
-                              'option_id': selectedOptions[g.id]?.id,
-                            };
-                          }).toList();
-
-                          // TODO: hook into your cart
-                          debugPrint('🛒 Add to cart: ${item.name}');
-                          debugPrint('Quantity: $quantity');
-                          debugPrint('Selected: $selected');
-                          debugPrint('Selected: $selected');
-                          debugPrint(
-                              'Subtotal: \$${subtotal.toStringAsFixed(2)}');
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFC107),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                        ),
-                        child: const Text(
-                          'ADD TO CART',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator(color: _freshMintGreen)),
       );
     }
 
     if (groups.isEmpty) {
       return const Scaffold(
-        body: Center(child: Text('Failed to load item or options')),
+        body: Center(child: Text('Failed to load item info')),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _bgGrey,
       body: CustomScrollView(
         slivers: [
-          // Top image area similar to screenshot
+          // 1. Immersive Header
           SliverAppBar(
-            expandedHeight: 340,
+            expandedHeight: 300,
             pinned: true,
-            backgroundColor: Colors.white,
+            backgroundColor: _bgGrey,
             elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.amber),
-              onPressed: () => Navigator.pop(context),
-            ),
-            actions: const [
-              Padding(
-                padding: EdgeInsets.only(right: 16),
-                child: Icon(Icons.favorite_border, color: Colors.amber),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              centerTitle: true,
-              background: Container(
-                color: Colors.white,
-                alignment: Alignment.bottomCenter,
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Image.network(
-                  item.imageUrl,
-                  fit: BoxFit.contain,
-                  width: 260,
-                  height: 260,
+            leading: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircleAvatar(
+                backgroundColor: Colors.white.withOpacity(0.9),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new,
+                      size: 18, color: Colors.black),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: CircleAvatar(
+                  backgroundColor: Colors.white.withOpacity(0.9),
+                  child: IconButton(
+                    icon: Icon(Icons.favorite_border,
+                        size: 20, color: _freshMintGreen),
+                    onPressed: () {},
+                  ),
+                ),
+              ),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    item.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.image_not_supported,
+                            size: 50, color: Colors.grey)),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black12,
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.05)
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
+
+          // 2. Content Body
           SliverToBoxAdapter(
-            child: Padding(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _bgGrey,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
-                  Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
+                  // Title & Price Card
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(24)),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4))
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                  color: _espressoBrown,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              "\$${(item.priceCents / 100).toStringAsFixed(2)}",
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: _freshMintGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (item.description.isNotEmpty)
+                          Text(
+                            item.description,
+                            style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey[600],
+                                height: 1.5),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  if (item.description.isNotEmpty)
-                    Text(
-                      item.description,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey[700],
-                        height: 1.4,
-                      ),
+
+                  const SizedBox(height: 20),
+
+                  // Option Groups
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children:
+                          groups.map((g) => _buildOptionGroup(g)).toList(),
                     ),
-                  const SizedBox(height: 24),
-                  // Option groups (Size, Sugar Level, Ice Level, etc.)
-                  ...groups.map(_buildOptionGroup).toList(),
-                  const SizedBox(height: 80),
+                  ),
+
+                  const SizedBox(height: 100), // Space for bottom bar
                 ],
               ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomBar(),
+      bottomSheet: _buildBottomBar(),
+    );
+  }
+
+  // --- UI Widgets ---
+
+  Widget _buildOptionGroup(OptionGroup group) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  group.name,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: _espressoBrown,
+                  ),
+                ),
+                if (group.isRequired)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _espressoBrown.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Required',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: _espressoBrown,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Options Grid
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: group.options.map((option) {
+              final isSelected = selectedOptions[group.id]?.id == option.id;
+              final priceAdjust = option.priceAdjust;
+              final priceText = priceAdjust > 0
+                  ? "+ \$${priceAdjust.toStringAsFixed(2)}"
+                  : "";
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    selectedOptions[group.id] = option;
+                    _calculateSubtotal();
+                  });
+                  HapticFeedback.lightImpact();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? _freshMintGreen.withOpacity(0.1)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color:
+                          isSelected ? _freshMintGreen : Colors.grey.shade300,
+                      width: 1.5,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                                color: _freshMintGreen.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2))
+                          ]
+                        : [
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2))
+                          ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Optional Icon
+                      if (option.icon_url.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.network(option.icon_url,
+                                width: 20, height: 20, fit: BoxFit.cover),
+                          ),
+                        ),
+                      Text(
+                        "$priceText ${option.name}",
+                        style: TextStyle(
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? _espressoBrown : Colors.black87,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -5)),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Subtotal Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Subtotal',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600])),
+              Text("\$${subtotal.toStringAsFixed(2)}",
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: _espressoBrown)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              // Quantity Control
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildQtyBtn(Icons.remove, () {
+                      if (quantity > 1) {
+                        setState(() {
+                          quantity--;
+                          _calculateSubtotal();
+                        });
+                      }
+                    }),
+                    SizedBox(
+                      width: 30,
+                      child: Text(
+                        quantity.toString(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: _espressoBrown),
+                      ),
+                    ),
+                    _buildQtyBtn(Icons.add, () {
+                      setState(() {
+                        quantity++;
+                        _calculateSubtotal();
+                      });
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Add to Cart Button
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    final selected = groups.map((g) {
+                      return {
+                        'group_id': g.id,
+                        'group_name': g.name,
+                        'selected_option': selectedOptions[g.id]?.name ?? null,
+                        'option_id': selectedOptions[g.id]?.id
+                      };
+                    }).toList();
+
+                    print(
+                        '🛒 Add to cart: ${item.name} | Qty: $quantity | Total: $subtotal');
+                    print('Selected: $selected');
+
+                    /// 👉 Navigate to OrderScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CartScreen(
+                          item: item,
+                          quantity: quantity,
+                          subtotal: subtotal,
+                          selectedModifiers: selected,
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _freshMintGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 2,
+                  ),
+                  child: const Text(
+                    'ADD TO CART',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              )
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQtyBtn(IconData icon, VoidCallback onTap) {
+    return IconButton(
+      icon: Icon(icon, color: _espressoBrown, size: 20),
+      onPressed: onTap,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
     );
   }
 }
