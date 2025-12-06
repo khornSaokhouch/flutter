@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/shops/screens/shops_categories_page.dart';
-
 import '../../../response/shops_response/shop_response.dart';
 import '../../../server/shops_server/shop_service.dart';
-import '../widgets/shop_card_widgets.dart';
+import '../widgets/shop_card_widgets.dart'; // Ensure this points to your existing OwnerShopsCard
 
 class ShopsHomePage extends StatefulWidget {
   final String userId;
@@ -17,65 +16,147 @@ class ShopsHomePage extends StatefulWidget {
 class _ShopsHomePageState extends State<ShopsHomePage> {
   late Future<ShopResponse> _futureShops;
 
+  // Theme Colors
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+  final Color _espressoBrown = const Color(0xFF4B2C20);
+  final Color _bgGrey = const Color(0xFFF9FAFB);
+
   @override
   void initState() {
     super.initState();
-    // ✅ Make sure the service name matches your actual class
-    _futureShops = ShopsService.getShopsByOwner();
+    _loadShops();
+  }
+
+  Future<void> _loadShops() async {
+    setState(() {
+      _futureShops = ShopsService.getShopsByOwner();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Owner Home')),
-      body: FutureBuilder<ShopResponse>(
-        future: _futureShops,
-        builder: (context, snapshot) {
-          // 🔄 Loading state
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          // ❌ Error state
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-
-          // ⚠️ No data or empty list
-          if (!snapshot.hasData || snapshot.data!.data.isEmpty) {
-            return const Center(child: Text("No shops found"));
-          }
-
-          final shops = snapshot.data!.data;
-
-          // ✅ Success
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 👇 Pass the shops list into the card widget
-              Expanded(
-                child:OwnerShopsCard(
-                  shops: shops,
-                  onTap: (shopId) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ShopsCategoriesPage(shopId: shopId),
+      backgroundColor: _bgGrey,
+      body: RefreshIndicator(
+        onRefresh: _loadShops,
+        color: _freshMintGreen,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // 1. Dashboard Header (Collapsing)
+            SliverAppBar(
+              backgroundColor: _bgGrey,
+              expandedHeight: 120.0,
+              floating: true,
+              pinned: false,
+              elevation: 0,
+              automaticallyImplyLeading: false, // ✅ REMOVES THE BACK BUTTON
+              flexibleSpace: FlexibleSpaceBar(
+                background: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Welcome Owner,",
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    );
-                  },
-                )
-
+                      const SizedBox(height: 4),
+                      Text(
+                        "My Shops",
+                        style: TextStyle(
+                          color: _espressoBrown,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          );
+            ),
+
+            // 2. Main Content (Using your Old Card)
+            FutureBuilder<ShopResponse>(
+              future: _futureShops,
+              builder: (context, snapshot) {
+                // 🔄 Loading state
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverFillRemaining(
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                // ❌ Error state
+                if (snapshot.hasError) {
+                  return SliverFillRemaining(
+                    child: Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  );
+                }
+
+                // ⚠️ No data
+                if (!snapshot.hasData || snapshot.data!.data.isEmpty) {
+                  return SliverFillRemaining(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.store_mall_directory_outlined, size: 60, color: Colors.grey[300]),
+                          const SizedBox(height: 16),
+                          const Text("You haven't added any shops yet."),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final shops = snapshot.data!.data;
+
+                // ✅ Success - YOUR OLD CARD WIDGET
+                // Using SliverFillRemaining allows your Card widget (which likely contains a ListView or Column)
+                // to take up the rest of the scrollable space.
+                return SliverFillRemaining(
+                  hasScrollBody: true, 
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10.0),
+                    child: OwnerShopsCard(
+                      shops: shops,
+                      onTap: (shopId) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ShopsCategoriesPage(shopId: shopId),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      
+      // Optional: Add FAB
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Add Shop Logic
         },
+        backgroundColor: _espressoBrown,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

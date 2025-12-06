@@ -1,6 +1,4 @@
-// file: shops_dashboard.dart
 import 'package:flutter/material.dart';
-//import 'package:frontend/screen/shops/screens/shops_categories_page.dart';
 import 'package:frontend/screen/shops/screens/shops_home_page.dart';
 import 'package:frontend/screen/shops/screens/shops_orders_page.dart';
 import 'package:frontend/screen/shops/screens/shops_products_page.dart';
@@ -18,13 +16,21 @@ class ShopsDashboard extends StatefulWidget {
 class _ShopsDashboardState extends State<ShopsDashboard> {
   int _selectedIndex = 0;
 
-  late final List<Widget> _pages = [
-    ShopsHomePage(userId: widget.userId),  // 0: Home
-    const ShopsOrdersPage(),               // 1: Orders
-     // ShopsCategoriesPage(),           // 2: Categories
-    const ShopsProductsPage(),             // 3: Products
-    const ShopsProfilePage(),              // 4: Profile
-  ];
+  // Theme Colors
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      ShopsHomePage(userId: widget.userId),  // 0: Home
+      const ShopsOrdersPage(),               // 1: Orders
+      const ShopsProductsPage(),             // 2: Products
+      const ShopsProfilePage(),              // 3: Profile
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -34,45 +40,69 @@ class _ShopsDashboardState extends State<ShopsDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    print(widget.userId);
-
     return Scaffold(
-      // hide top app bar when Categories is selected -> full screen page
-      appBar: AppBar(
-        title: const Text('Owner Dashboard'),
-        centerTitle: true,
-        backgroundColor: Colors.teal,
-        automaticallyImplyLeading: false,
-      ),
+      backgroundColor: const Color(0xFFF9FAFB), 
+      // AppBar removed here so ShopsHomePage controls its own header (removing back button there)
+      
       body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.teal,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Home',
+      
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag),
-            label: 'Orders',
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.category),
-          //   label: 'Categories',
-          // ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.store),
-            label: 'Products',
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            
+            // Theme Colors
+            selectedItemColor: _freshMintGreen,
+            unselectedItemColor: Colors.grey.shade400,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+            
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.dashboard_rounded),
+                activeIcon: Icon(Icons.dashboard),
+                label: 'Dashboard',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.shopping_bag_outlined),
+                activeIcon: Icon(Icons.shopping_bag),
+                label: 'Orders',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.storefront_outlined),
+                activeIcon: Icon(Icons.store),
+                label: 'Products',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline),
+                activeIcon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+        ),
       ),
     );
   }
