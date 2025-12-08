@@ -4,11 +4,15 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/shops/screens/shop_product_detai.dart';
+import 'package:frontend/screen/shops/screens/shops_orders_page.dart';
+import 'package:frontend/screen/shops/screens/shops_products_page.dart';
+import 'package:frontend/screen/shops/screens/shops_profile_page.dart';
 
 import '../../../models/shops_models/shop_item_owner_models.dart';
 import '../../../server/shops_server/item_owner_service.dart';
 import '../widgets/add_product_sheet.dart';
 import '../widgets/product_row.dart';
+import '../widgets/shops_bottom_navigation.dart';
 
 class CategoryProductsPage extends StatefulWidget {
   final int shopId;
@@ -190,8 +194,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMainView() {
     final query = _searchController.text.trim();
     final filtered = _applySearchFilter(query);
 
@@ -231,138 +234,160 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
         child: _isLoading
             ? Center(child: CircularProgressIndicator(color: _freshMintGreen))
             : _error != null
-                ? Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red)))
-                : RefreshIndicator(
-                    onRefresh: _refresh,
-                    color: _freshMintGreen,
-                    child: CustomScrollView(
-                      slivers: [
-                        // 1. Search & Actions Header
-                        SliverToBoxAdapter(
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            color: _bgGrey,
-                            child: Column(
-                              children: [
-                                TextField(
-                                  controller: _searchController,
-                                  decoration: InputDecoration(
-                                    hintText: 'Search products...',
-                                    hintStyle: TextStyle(color: Colors.grey[400]),
-                                    prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        onPressed: () => _showAddProductSheet(context),
-                                        icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 18),
-                                        label: const Text('Add Product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: _freshMintGreen,
-                                          padding: const EdgeInsets.symmetric(vertical: 14),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                          elevation: 0,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+            ? Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red)))
+            : RefreshIndicator(
+          onRefresh: _refresh,
+          color: _freshMintGreen,
+          child: CustomScrollView(
+            slivers: [
+              // 1. Search & Actions Header
+              SliverToBoxAdapter(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  color: _bgGrey,
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search products...',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-
-                        // 2. Product List
-                        if (productsPage.isEmpty)
-                          SliverFillRemaining(
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.inventory_2_outlined, size: 60, color: Colors.grey[300]),
-                                  const SizedBox(height: 16),
-                                  const Text("No Products Found", style: TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          SliverPadding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            sliver: SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  final itemOwner = productsPage[index];
-                                  final globalIndex = startIndex + index;
-
-                                  // Using the Redesigned ProductRow
-                                  return ProductRow(
-                                    index: globalIndex,
-                                    itemOwner: itemOwner,
-                                    accentColor: _freshMintGreen,
-                                    shopId: widget.shopId,
-                                    onTap: (owner) {
-                                      if (owner.item != null) {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => ShopProductDetailPage(
-                                              itemId: itemOwner.item!.id,
-                                              shopId: widget.shopId,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    onToggleStatus: (owner, newStatus) async {
-                                      final int? id = owner.id;
-                                      if (id == null) return;
-
-                                      final oldValue = owner.inactive;
-                                      final newInactive = newStatus ? 1 : 0;
-
-                                      setState(() {
-                                        owner.inactive = newInactive;
-                                        _updatingIds.add(id);
-                                      });
-
-                                      try {
-                                        await ItemOwnerService.updateStatus(id: id, inactive: owner.inactive);
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text(newStatus ? 'Product Activated' : 'Product Deactivated'), backgroundColor: _freshMintGreen),
-                                          );
-                                        }
-                                      } catch (e) {
-                                        if (mounted) setState(() => owner.inactive = oldValue);
-                                      } finally {
-                                        if (mounted) setState(() => _updatingIds.remove(id));
-                                      }
-                                    },
-                                  );
-                                },
-                                childCount: productsPage.length,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _showAddProductSheet(context),
+                              icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 18),
+                              label: const Text('Add Product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _freshMintGreen,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                elevation: 0,
                               ),
                             ),
                           ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
-                        // 3. Footer Spacer & Pagination
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: _buildPagination(total, totalPages),
-                          ),
-                        ),
+              // 2. Product List
+              if (productsPage.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 60, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        const Text("No Products Found", style: TextStyle(color: Colors.grey)),
                       ],
                     ),
                   ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                        final itemOwner = productsPage[index];
+                        final globalIndex = startIndex + index;
+
+                        // Using the Redesigned ProductRow
+                        return ProductRow(
+                          index: globalIndex,
+                          itemOwner: itemOwner,
+                          accentColor: _freshMintGreen,
+                          shopId: widget.shopId,
+                          onTap: (owner) {
+                            if (owner.item != null) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ShopProductDetailPage(
+                                    itemId: itemOwner.item!.id,
+                                    shopId: widget.shopId,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          onToggleStatus: (owner, newStatus) async {
+                            final int? id = owner.id;
+                            if (id == null) return;
+
+                            final oldValue = owner.inactive;
+                            final newInactive = newStatus ? 1 : 0;
+
+                            setState(() {
+                              owner.inactive = newInactive;
+                              _updatingIds.add(id);
+                            });
+
+                            try {
+                              await ItemOwnerService.updateStatus(id: id, inactive: owner.inactive);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(newStatus ? 'Product Activated' : 'Product Deactivated'), backgroundColor: _freshMintGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) setState(() => owner.inactive = oldValue);
+                            } finally {
+                              if (mounted) setState(() => _updatingIds.remove(id));
+                            }
+                          },
+                        );
+                      },
+                      childCount: productsPage.length,
+                    ),
+                  ),
+                ),
+
+              // 3. Footer Spacer & Pagination
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _buildPagination(total, totalPages),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Return ShopsBottomNavigation with the main category products view as the first tab
+    return ShopsBottomNavigation(
+      initialIndex: 0,
+      pages: [
+        _buildMainView(),
+
+
+        // Orders page (uses your existing ShopsOrdersPage widget)
+        ShopsOrdersPage(),
+
+        // Products page (uses your existing ShopsProductsPage widget)
+        ShopsProductsPage(),
+
+        // Profile page (uses your existing ShopsProfilePage widget)
+        ShopsProfilePage(),
+      ],
+      accentColor: _freshMintGreen,
     );
   }
 
