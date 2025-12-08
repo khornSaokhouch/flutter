@@ -488,7 +488,9 @@ class _DetailItemState extends State<GuestDetailItem> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => CartScreen(
-                          item: item,
+
+                          name: item.name,
+                          imageUrl: item.imageUrl,
                           quantity: quantity,
                           subtotal: subtotal,
                           selectedModifiers: selected,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/screen/shops/screens/shops_categories_page.dart';
 import '../../../response/shops_response/shop_response.dart';
 import '../../../server/shops_server/shop_service.dart';
-import '../widgets/shop_card_widgets.dart'; // Ensure this points to your existing OwnerShopsCard
+import '../widgets/shop_card_widgets.dart'; // OwnerShopsCard
 
 class ShopsHomePage extends StatefulWidget {
   final String userId;
@@ -43,14 +43,14 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // 1. Dashboard Header (Collapsing)
+            // 1. Header
             SliverAppBar(
               backgroundColor: _bgGrey,
               expandedHeight: 120.0,
               floating: true,
               pinned: false,
               elevation: 0,
-              automaticallyImplyLeading: false, // ✅ REMOVES THE BACK BUTTON
+              automaticallyImplyLeading: false,   // Removes back button
               flexibleSpace: FlexibleSpaceBar(
                 background: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -83,18 +83,18 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
               ),
             ),
 
-            // 2. Main Content (Using your Old Card)
+            // 2. Shops List
             FutureBuilder<ShopResponse>(
               future: _futureShops,
               builder: (context, snapshot) {
-                // 🔄 Loading state
+                // Loading
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SliverFillRemaining(
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
 
-                // ❌ Error state
+                // Error
                 if (snapshot.hasError) {
                   return SliverFillRemaining(
                     child: Center(
@@ -106,7 +106,7 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
                   );
                 }
 
-                // ⚠️ No data
+                // No shops
                 if (!snapshot.hasData || snapshot.data!.data.isEmpty) {
                   return SliverFillRemaining(
                     child: Center(
@@ -124,15 +124,15 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
 
                 final shops = snapshot.data!.data;
 
-                // ✅ Success - YOUR OLD CARD WIDGET
-                // Using SliverFillRemaining allows your Card widget (which likely contains a ListView or Column)
-                // to take up the rest of the scrollable space.
+                // Success → Show Shops Card
                 return SliverFillRemaining(
-                  hasScrollBody: true, 
+                  hasScrollBody: true,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 10.0),
                     child: OwnerShopsCard(
                       shops: shops,
+
+                      // ⭐⭐ UPDATED: Tap on shop opens ShopsCategoriesPage ⭐⭐
                       onTap: (shopId) {
                         Navigator.push(
                           context,
@@ -149,11 +149,11 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
           ],
         ),
       ),
-      
-      // Optional: Add FAB
+
+      // Add Shop button
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Add Shop Logic
+          // Add Shop Logic Here
         },
         backgroundColor: _espressoBrown,
         child: const Icon(Icons.add, color: Colors.white),

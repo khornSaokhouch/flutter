@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/user.dart';
-import '../../screen/shops/screens/shops_dashboard.dart';
+import '../../screen/shops/screens/shops_home_page.dart';
 import '../../screen/user/layout.dart';
 import '../../server/user_service.dart';
 import '../../screen/auth/login_screen.dart';
@@ -54,7 +54,7 @@ class AuthUtils {
         context,
           // Navigate by role
         MaterialPageRoute(
-          builder: (_) => ShopsDashboard(userId: userIdString),
+          builder: (_) => ShopsHomePage(userId: userIdString),
         ),
       );
     } else {

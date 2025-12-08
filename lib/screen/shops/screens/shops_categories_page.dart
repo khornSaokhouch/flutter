@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/shops/screens/category_products_page.dart';
+import 'package:frontend/screen/shops/screens/shops_home_page.dart';
+import 'package:frontend/screen/shops/screens/shops_orders_page.dart';
+import 'package:frontend/screen/shops/screens/shops_products_page.dart';
+import 'package:frontend/screen/shops/screens/shops_profile_page.dart';
+import 'package:frontend/screen/shops/widgets/shops_bottom_navigation.dart';
 
 import '../../../models/shops_models/shop_categories_models.dart';
 import '../../../server/shops_server/shop_category_server.dart';
-import '../widgets/add_category_button.dart'; // Using your new button
-import '../widgets/category_row.dart';        // Using your new card
+import '../widgets/add_category_button.dart';
+import '../widgets/category_row.dart';
 
 class ShopsCategoriesPage extends StatefulWidget {
   final int shopId;
@@ -25,7 +30,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
 
   bool _didShowAddSheetWhenEmpty = false;
 
-  // Add Sheet State
   int? _selectedCategoryToAdd;
   List<CategoryModel> _availableCategoriesToAdd = [];
   List<CategoryModel> _filteredCategories = [];
@@ -33,7 +37,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
 
   int _rowsPerPage = 10;
 
-  // --- Theme Colors ---
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
   final Color _espressoBrown = const Color(0xFF4B2C20);
   final Color _bgGrey = const Color(0xFFF9FAFB);
@@ -96,9 +99,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
     super.dispose();
   }
 
-  // ====================================================
-  // 1. ADD CATEGORY BOTTOM SHEET
-  // ====================================================
   Future<void> _showAddCategorySheet() async {
     await _loadAvailableCategories();
 
@@ -130,18 +130,8 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                   ),
                   child: Column(
                     children: [
-                      // Handle
                       const SizedBox(height: 12),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      
-                      // Header
+                      Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
                         child: Row(
@@ -149,37 +139,20 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  "Add Category",
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: _espressoBrown,
-                                  ),
-                                ),
+                                Text("Add Category", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _espressoBrown)),
                                 const SizedBox(height: 4),
-                                Text(
-                                  "Select categories to link to your shop",
-                                  style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                                ),
+                                Text("Select categories to link to your shop", style: TextStyle(color: Colors.grey[500], fontSize: 13)),
                               ],
                             ),
                             const Spacer(),
                             IconButton(
                               onPressed: () => Navigator.pop(context),
-                              icon: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
-                                child: const Icon(Icons.close, size: 18, color: Colors.black54),
-                              ),
+                              icon: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle), child: const Icon(Icons.close, size: 18, color: Colors.black54)),
                             )
                           ],
                         ),
                       ),
-                      
                       const Divider(height: 1),
-
-                      // Search
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: TextField(
@@ -195,86 +168,60 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                           onChanged: (q) {
                             modalSetState(() {
                               final query = q.trim().toLowerCase();
-                              _filteredCategories = query.isEmpty
-                                  ? List.from(_availableCategoriesToAdd)
-                                  : _availableCategoriesToAdd.where((c) => c.name.toLowerCase().contains(query)).toList();
+                              _filteredCategories = query.isEmpty ? List.from(_availableCategoriesToAdd) : _availableCategoriesToAdd.where((c) => c.name.toLowerCase().contains(query)).toList();
                             });
                           },
                         ),
                       ),
-
-                      // List
                       Expanded(
                         child: _filteredCategories.isEmpty
                             ? Center(child: Text('No categories found.', style: TextStyle(color: Colors.grey[500])))
                             : ListView.separated(
-                                controller: scrollController,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                itemCount: _filteredCategories.length,
-                                separatorBuilder: (_,__) => const SizedBox(height: 8),
-                                itemBuilder: (ctx, i) {
-                                  final cat = _filteredCategories[i];
-                                  final selected = _selectedCategoryToAdd == cat.id;
-
-                                  return InkWell(
-                                    onTap: () {
-                                      modalSetState(() => _selectedCategoryToAdd = cat.id);
-                                    },
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: selected ? _freshMintGreen.withOpacity(0.08) : Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: selected ? _freshMintGreen : Colors.grey.shade200,
-                                          width: selected ? 1.5 : 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 48,
-                                            height: 48,
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey[50],
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: cat.imageCategoryUrl.isNotEmpty
-                                                  ? Image.network(cat.imageCategoryUrl, fit: BoxFit.cover)
-                                                  : Icon(Icons.category, color: Colors.grey[400]),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Text(
-                                            cat.name,
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-                                              color: selected ? _freshMintGreen : Colors.black87,
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          if(selected)
-                                            Icon(Icons.check_circle, color: _freshMintGreen),
-                                        ],
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filteredCategories.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (ctx, i) {
+                            final cat = _filteredCategories[i];
+                            final selected = _selectedCategoryToAdd == cat.id;
+                            return InkWell(
+                              onTap: () {
+                                modalSetState(() => _selectedCategoryToAdd = cat.id);
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: selected ? _freshMintGreen.withOpacity(0.08) : Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: selected ? _freshMintGreen : Colors.grey.shade200, width: selected ? 1.5 : 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: cat.imageCategoryUrl.isNotEmpty ? Image.network(cat.imageCategoryUrl, fit: BoxFit.cover) : Icon(Icons.category, color: Colors.grey[400]),
                                       ),
                                     ),
-                                  );
-                                },
+                                    const SizedBox(width: 16),
+                                    Text(cat.name, style: TextStyle(fontSize: 15, fontWeight: selected ? FontWeight.bold : FontWeight.w500, color: selected ? _freshMintGreen : Colors.black87)),
+                                    const Spacer(),
+                                    if (selected) Icon(Icons.check_circle, color: _freshMintGreen),
+                                  ],
+                                ),
                               ),
+                            );
+                          },
+                        ),
                       ),
-
-                      // Footer Button
                       Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border(top: BorderSide(color: Colors.grey.shade100)),
-                        ),
+                        decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey.shade100))),
                         child: SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -282,38 +229,22 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                             onPressed: (_selectedCategoryToAdd == null || _isAddingCategory)
                                 ? null
                                 : () async {
-                                    modalSetState(() => _isAddingCategory = true);
-                                    try {
-                                      await _categoryShopController.attachCategoryToShop(
-                                        shopId: widget.shopId,
-                                        categoryId: _selectedCategoryToAdd!,
-                                      );
-                                      await _loadCategories();
-                                      await _loadAvailableCategories();
-                                      if (!mounted) return;
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: const Text('Category added!'),
-                                          backgroundColor: _freshMintGreen,
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    } catch (e) {
-                                      // Error handling
-                                    } finally {
-                                      if (mounted) modalSetState(() => _isAddingCategory = false);
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _espressoBrown,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
-                            ),
-                            child: _isAddingCategory
-                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text("Confirm Selection", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              modalSetState(() => _isAddingCategory = true);
+                              try {
+                                await _categoryShopController.attachCategoryToShop(shopId: widget.shopId, categoryId: _selectedCategoryToAdd!);
+                                await _loadCategories();
+                                await _loadAvailableCategories();
+                                if (!mounted) return;
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Category added!'), backgroundColor: _freshMintGreen, behavior: SnackBarBehavior.floating));
+                              } catch (e) {
+                                // error handling
+                              } finally {
+                                if (mounted) modalSetState(() => _isAddingCategory = false);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: _espressoBrown, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
+                            child: _isAddingCategory ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text("Confirm Selection", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           ),
                         ),
                       )
@@ -328,28 +259,15 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
     );
   }
 
-  // ====================================================
-  // 2. MAIN PAGE BUILD
-  // ====================================================
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildCategoriesView() {
     if (_isLoading) {
-      return Scaffold(
-        backgroundColor: _bgGrey,
-        appBar: _buildAppBar(),
-        body: Center(child: CircularProgressIndicator(color: _freshMintGreen)),
-      );
+      return Scaffold(backgroundColor: _bgGrey, appBar: _buildAppBar(), body: Center(child: CircularProgressIndicator(color: _freshMintGreen)));
     }
 
     if (_error != null) {
-      return Scaffold(
-        backgroundColor: _bgGrey,
-        appBar: _buildAppBar(),
-        body: Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red))),
-      );
+      return Scaffold(backgroundColor: _bgGrey, appBar: _buildAppBar(), body: Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red))));
     }
 
-    // Auto-show add sheet if empty
     if (_categories.isEmpty) {
       if (!_didShowAddSheetWhenEmpty) {
         _didShowAddSheetWhenEmpty = true;
@@ -366,7 +284,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // 1. Search & Filter Header
             Container(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               color: _bgGrey,
@@ -384,55 +301,29 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    onChanged: (val) {
-                      // Filter logic for main list if needed
-                    },
+                    onChanged: (val) {},
                   ),
                   const SizedBox(height: 12),
-                  
-                  // New Add Button Widget
-                  AddCategoryButton(
-                    isOpen: false, // In list view, it acts as "Add"
-                    onToggle: _showAddCategorySheet,
-                    accentColor: _freshMintGreen,
-                  ),
+                  AddCategoryButton(isOpen: false, onToggle: _showAddCategorySheet, accentColor: _freshMintGreen),
                 ],
               ),
             ),
-
-            // 2. The List of Categories
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: _categories.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 0), // Card has margin
+                separatorBuilder: (_, __) => const SizedBox(height: 0),
                 itemBuilder: (context, index) {
                   final item = _categories[index];
-
-                  // Using your new CategoryRow Card Widget
                   return CategoryRow(
                     index: index,
                     item: item,
                     accentColor: _freshMintGreen,
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CategoryProductsPage(
-                            categoryId: item.id,
-                            categoryName: item.name,
-                            shopId: widget.shopId,
-                          ),
-                        ),
-                      );
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => CategoryProductsPage(categoryId: item.id, categoryName: item.name, shopId: widget.shopId)));
                     },
                     onStatusChanged: (categoryId, newStatus) async {
-                      await _categoryShopController.updateCategoryStatusForShop(
-                        shopId: widget.shopId,
-                        categoryId: categoryId,
-                        status: newStatus,
-                      );
-
+                      await _categoryShopController.updateCategoryStatusForShop(shopId: widget.shopId, categoryId: categoryId, status: newStatus);
                       if (!mounted) return;
                       setState(() {
                         final updatedPivot = (item.pivot ??
@@ -448,25 +339,44 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                         _categories[index] = item.copyWith(pivot: updatedPivot);
                       });
                     },
-                    onMenuSelected: (action) {
-                      // Handle delete/edit
-                    },
+                    onMenuSelected: (action) {},
                   );
                 },
               ),
             ),
-            
-            // 3. Footer Pagination
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              color: Colors.white,
-              child: _buildPagination(_categories.length),
-            ),
+            Container(padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16), color: Colors.white, child: _buildPagination(_categories.length)),
           ],
         ),
       ),
     );
   }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return ShopsBottomNavigation(
+      initialIndex: 0,
+      pages: [
+        // ShopsHomePage(userId: widget.shopId.toString()),
+        // 0: Categories view (your existing categories UI)
+        _buildCategoriesView(),
+
+        // 1: Dashboard / ShopsHomePage (pass a real userId here)
+
+
+        // 2: Orders page
+        ShopsOrdersPage(),
+
+        // 3: Products page
+        ShopsProductsPage(),
+
+        // 4: Profile page
+        ShopsProfilePage(),
+      ],
+      accentColor: _freshMintGreen,
+    );
+  }
+
 
   // --- Helpers ---
 
@@ -475,23 +385,9 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
       backgroundColor: Colors.white,
       elevation: 0,
       centerTitle: true,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
-        onPressed: () => Navigator.pop(context),
-      ),
-      title: Text(
-        'SHOP CATEGORIES',
-        style: TextStyle(
-          color: _espressoBrown,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.0,
-          fontSize: 16,
-        ),
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(color: Colors.grey[200], height: 1),
-      ),
+      leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black), onPressed: () => Navigator.pop(context)),
+      title: Text('SHOP CATEGORIES', style: TextStyle(color: _espressoBrown, fontWeight: FontWeight.w800, letterSpacing: 1.0, fontSize: 16)),
+      bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(color: Colors.grey[200], height: 1)),
     );
   }
 
@@ -503,34 +399,13 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
-              ),
-              child: Icon(Icons.category_outlined, size: 60, color: Colors.grey[300]),
-            ),
+            Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)]), child: Icon(Icons.category_outlined, size: 60, color: Colors.grey[300])),
             const SizedBox(height: 24),
-            Text(
-              "No Categories Found",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _espressoBrown),
-            ),
+            Text("No Categories Found", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _espressoBrown)),
             const SizedBox(height: 8),
-            Text(
-              "Start by adding a category to this shop.",
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+            Text("Start by adding a category to this shop.", style: TextStyle(color: Colors.grey[600])),
             const SizedBox(height: 32),
-            SizedBox(
-              width: 200,
-              child: AddCategoryButton(
-                isOpen: false,
-                onToggle: _showAddCategorySheet,
-                accentColor: _freshMintGreen,
-              ),
-            ),
+            SizedBox(width: 200, child: AddCategoryButton(isOpen: false, onToggle: _showAddCategorySheet, accentColor: _freshMintGreen)),
           ],
         ),
       ),
@@ -545,11 +420,7 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
           value: _rowsPerPage,
           underline: const SizedBox(),
           style: TextStyle(color: _espressoBrown, fontWeight: FontWeight.bold, fontSize: 12),
-          items: const [
-            DropdownMenuItem(value: 5, child: Text('5')),
-            DropdownMenuItem(value: 10, child: Text('10')),
-            DropdownMenuItem(value: 20, child: Text('20')),
-          ],
+          items: const [DropdownMenuItem(value: 5, child: Text('5')), DropdownMenuItem(value: 10, child: Text('10')), DropdownMenuItem(value: 20, child: Text('20'))],
           onChanged: (val) => setState(() => _rowsPerPage = val ?? 10),
         ),
         const Spacer(),
