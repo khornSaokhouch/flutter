@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../models/Item_OptionGroup.dart';
 import '../../../server/item_service.dart';
+import '../../home_screen.dart';
 import './order_screen.dart';
+
 
 class GuestDetailItem extends StatefulWidget {
   final int itemId;
   final int shopId;
 
+  final int? userId;
   const GuestDetailItem({
     super.key,
     required this.itemId,
-    required this.shopId,
+    required this.shopId, this.userId,
   });
 
   @override
@@ -26,6 +29,9 @@ class _DetailItemState extends State<GuestDetailItem> {
   int quantity = 1;
   double subtotal = 0.0;
 
+  // Local mutable copy of userId
+  int? _currentUserId;
+
   // --- Theme Colors ---
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
   final Color _espressoBrown = const Color(0xFF4B2C20);
@@ -34,6 +40,7 @@ class _DetailItemState extends State<GuestDetailItem> {
   @override
   void initState() {
     super.initState();
+    _currentUserId = widget.userId;
     _fetchItem();
   }
 
@@ -116,7 +123,6 @@ class _DetailItemState extends State<GuestDetailItem> {
         body: Center(child: Text('Failed to load item info')),
       );
     }
-
     return Scaffold(
       backgroundColor: _bgGrey,
       body: CustomScrollView(
@@ -187,7 +193,7 @@ class _DetailItemState extends State<GuestDetailItem> {
               decoration: BoxDecoration(
                 color: _bgGrey,
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
+                const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,7 +261,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       children:
-                          groups.map((g) => _buildOptionGroup(g)).toList(),
+                      groups.map((g) => _buildOptionGroup(g)).toList(),
                     ),
                   ),
 
@@ -295,7 +301,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                 if (group.isRequired)
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: _espressoBrown.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -334,7 +340,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? _freshMintGreen.withOpacity(0.1)
@@ -342,22 +348,22 @@ class _DetailItemState extends State<GuestDetailItem> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color:
-                          isSelected ? _freshMintGreen : Colors.grey.shade300,
+                      isSelected ? _freshMintGreen : Colors.grey.shade300,
                       width: 1.5,
                     ),
                     boxShadow: isSelected
                         ? [
-                            BoxShadow(
-                                color: _freshMintGreen.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2))
-                          ]
+                      BoxShadow(
+                          color: _freshMintGreen.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2))
+                    ]
                         : [
-                            BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2))
-                          ],
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2))
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -376,7 +382,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                         "$priceText ${option.name}",
                         style: TextStyle(
                           fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
                           color: isSelected ? _espressoBrown : Colors.black87,
                           fontSize: 14,
                         ),
@@ -469,7 +475,33 @@ class _DetailItemState extends State<GuestDetailItem> {
               // Add to Cart Button
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    // If not logged in -> show login bottom sheet and wait for user id
+                    if (_currentUserId == null) {
+                      final result = await showModalBottomSheet<int?>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const LoginBottomSheet(),
+                      );
+
+                      if (result == null) {
+                        // user cancelled or login failed
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Login required to add to cart')),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Save logged-in user id locally for subsequent checks
+                      setState(() {
+                        _currentUserId = result;
+                      });
+                    }
+
+                    // Now _currentUserId is non-null -> proceed to cart
                     final selected = groups.map((g) {
                       return {
                         'group_id': g.id,
@@ -479,21 +511,18 @@ class _DetailItemState extends State<GuestDetailItem> {
                       };
                     }).toList();
 
-                    print(
-                        '🛒 Add to cart: ${item.name} | Qty: $quantity | Total: $subtotal');
-                    print('Selected: $selected');
-
-                    /// 👉 Navigate to OrderScreen
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => CartScreen(
-
+                          id: item.id,
                           name: item.name,
                           imageUrl: item.imageUrl,
                           quantity: quantity,
                           subtotal: subtotal,
                           selectedModifiers: selected,
+                          shopId: widget.shopId,
+                          userId: _currentUserId,
                         ),
                       ),
                     );

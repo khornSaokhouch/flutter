@@ -20,11 +20,11 @@ class ShopService {
         final jsonData = json.decode(response.body);
         return ShopsResponse.fromJson(jsonData);
       } else {
-        print('Failed to fetch shops: ${response.statusCode}');
+
         return null;
       }
     } catch (e) {
-      print('Error fetching shops: $e');
+
       return null;
     }
   }
@@ -39,11 +39,10 @@ class ShopService {
         final shopData = jsonData['data'];
         return Shop.fromJson(shopData);
       } else {
-        print('Failed to fetch shop. Status code: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Error fetching shop: $e');
+
       return null;
     }
   }
@@ -63,7 +62,6 @@ class ShopService {
       final shopsResponse = ShopsResponse.fromJson(data);
       return shopsResponse.data;
     } else {
-      print("Error ${response.statusCode}: ${response.body}");
       throw Exception("Failed to load nearby shops");
     }
   }

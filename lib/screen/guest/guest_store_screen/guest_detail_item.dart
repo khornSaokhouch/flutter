@@ -409,11 +409,11 @@ class _DetailItemState extends State<GuestDetailItem> {
                 child: ElevatedButton(
                   onPressed: () {
                     // Logic remains the same
-                    final selected = groups.map((g) {
+                    groups.map((g) {
                       return {
                         'group_id': g.id,
                         'group_name': g.name,
-                        'selected_option': selectedOptions[g.id]?.name ?? null,
+                        'selected_option': selectedOptions[g.id]?.name,
                         'option_id': selectedOptions[g.id]?.id
                       };
                     }).toList();

@@ -8,7 +8,7 @@ import 'select_store_page.dart';
 
 class GuestNoStoreNearbyScreen extends StatefulWidget {
   final int? userId;
-  const GuestNoStoreNearbyScreen({Key? key, this.userId}) : super(key: key);
+  const GuestNoStoreNearbyScreen({super.key, this.userId});
 
   @override
   State<GuestNoStoreNearbyScreen> createState() =>
@@ -18,10 +18,7 @@ class GuestNoStoreNearbyScreen extends StatefulWidget {
 class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
   // --- Logic Variables ---
   bool _checkingLocation = true;
-  bool _hasNearbyStore = false;
   bool _isPickupSelected = true;
-  Position? _currentPosition;
-  bool _bottomSheetClosed = false;
 
   // --- Constants & Theme ---
   static const double _nearbyRadiusMeters = 5000.0; // 5 km
@@ -55,7 +52,6 @@ class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      _currentPosition = position;
 
       // 3. Fetch Shops
       final response = await ShopService.fetchShops();
@@ -88,7 +84,6 @@ class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
       }
 
       setState(() {
-        _hasNearbyStore = hasNearby;
         _checkingLocation = false;
       });
     } catch (e) {
@@ -122,7 +117,6 @@ class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
       ),
     ).whenComplete(() {
       setState(() {
-        _bottomSheetClosed = true;
       });
     });
   }

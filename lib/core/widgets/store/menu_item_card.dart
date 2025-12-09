@@ -7,9 +7,11 @@ class MenuItemCard extends StatelessWidget {
   final ShopItem shopItem;
   // We keep this parameter to match your existing calls, 
   // though we primarily use shopItem.item for data.
-  final MenuItem item; 
+  final MenuItem item;
 
-  const MenuItemCard({super.key, required this.shopItem, required this.item});
+  final int ? userId;
+
+  const MenuItemCard({super.key, required this.shopItem, required this.item,this.userId});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,11 @@ class MenuItemCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => GuestDetailItem(itemId: product.id, shopId: shopId),
+            builder: (_) => GuestDetailItem(
+                itemId: product.id,
+                shopId: shopId,
+                userId: userId,
+            ),
           ),
         );
       },

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -13,7 +12,7 @@ import '../../core/utils/utils.dart';
 import '../../core/widgets/loader_widgets.dart';
 import '../../server/auth_service.dart';
 import '../user/layout.dart';
-import 'VerifyPhonePage.dart';
+//import 'VerifyPhonePage.dart';
 import 'sign_up_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -25,7 +24,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 

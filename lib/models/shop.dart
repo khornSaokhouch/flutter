@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 /// Shops API Response
 class ShopsResponse {
