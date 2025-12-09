@@ -90,8 +90,6 @@ class AuthService {
           await prefs.setString('tempToken', data['tempToken']);
         }
 
-        print(data);
-
         return UserModel.fromJson(data);
       } else {
         return null;

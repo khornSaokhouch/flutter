@@ -234,7 +234,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     // Support id as int or String
-    final userId = idRaw is int ? idRaw : int.tryParse(idRaw.toString()) ?? 0;
+    final userId = idRaw;
 
     Navigator.pushAndRemoveUntil(
       context,

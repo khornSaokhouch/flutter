@@ -110,11 +110,10 @@ class UserService {
         final data = jsonDecode(response.body);
         return data['users'];
       } else {
-        print('Get users failed: ${response.body}');
+
         return null;
       }
     } catch (e) {
-      print('Error getting users: $e');
       return null;
     }
   }
@@ -160,7 +159,6 @@ class UserService {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      print('Response body: ${response.body}');
       return jsonDecode(response.body);
     } catch (e) {
       return {'error': e.toString()};
@@ -181,7 +179,6 @@ class UserService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('Error deleting user: $e');
       return false;
     }
   }
@@ -194,11 +191,11 @@ class UserService {
         final data = jsonDecode(response.body);
         return data['phone'];
       } else {
-        print('Get phone failed: ${response.body}');
+
         return null;
       }
     } catch (e) {
-      print('Error getting phone: $e');
+
       return null;
     }
   }
@@ -218,14 +215,13 @@ class UserService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print(data);
+
         return UserModel.fromJson(data);
       } else {
-        print('Get user failed: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Error getting user: $e');
+
       return null;
     }
   }

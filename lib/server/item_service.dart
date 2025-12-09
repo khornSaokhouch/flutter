@@ -34,7 +34,6 @@ class ItemService {
       final token = prefs.getString('token');
 
       if (token == null) {
-        print('❌ No token found. User may not be logged in.');
         return null;
       }
       final url = Uri.parse('${ApiConfig.baseUrl}/users/$shopId/items');
@@ -44,14 +43,11 @@ class ItemService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('✅ Success: ${response.body}');
         return ItemsResponse.fromJson(data);
       } else {
-        print('❌ Failed (${response.statusCode}): ${response.body}');
         return null;
       }
     } catch (e) {
-      print('⚠️ Error fetching items: $e');
       return null;
     }
 
@@ -67,15 +63,13 @@ class ItemService {
       final response = await http.get(url, headers: ApiConfig.headers);
 
       if (response.statusCode != 200) {
-        print('❌ Guest fetch failed (${response.statusCode}): ${response.body}');
         return null;
       }
 
       final decoded = jsonDecode(response.body);
 
       return _parseStatusesFromDecoded(decoded, response.body);
-    } catch (e, st) {
-      print('⚠️ Error fetching option status (guest): $e\n$st');
+    } catch (e) {
       return null;
     }
   }
@@ -88,7 +82,6 @@ class ItemService {
       final token = prefs.getString('token');
 
       if (token == null) {
-        print('❌ No token found. User may not be logged in.');
         return null;
       }
 
@@ -97,15 +90,13 @@ class ItemService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode != 200) {
-        print('❌ Auth fetch failed (${response.statusCode}): ${response.body}');
         return null;
       }
 
       final decoded = jsonDecode(response.body);
 
       return _parseStatusesFromDecoded(decoded, response.body);
-    } catch (e, st) {
-      print('⚠️ Error fetching option status (auth): $e\n$st');
+    } catch (e) {
       return null;
     }
   }
@@ -144,9 +135,8 @@ class ItemService {
           for (final v in values) {
             try {
               out.add(ShopItemOptionStatusModel.fromJson(v as Map<String, dynamic>));
-            } catch (e, st) {
+            } catch (e) {
               // Skip unparsable entries but log for debugging
-              print('⚠️ Skipping unparsable status entry: $e\n$st\nEntry: $v');
             }
           }
           return out;
@@ -157,10 +147,8 @@ class ItemService {
       }
 
       // Unexpected shape
-      print('⚠️ Unexpected JSON shape when parsing statuses: $rawBody');
       return <ShopItemOptionStatusModel>[];
-    } catch (e, st) {
-      print('⚠️ Error parsing statuses: $e\n$st\nRaw: $rawBody');
+    } catch (e) {
       return null;
     }
   }

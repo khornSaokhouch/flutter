@@ -224,7 +224,7 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     final groupedItems = _groupMenuItems();
-    final theme = Theme.of(context);
+    Theme.of(context);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -381,6 +381,7 @@ class _MenuScreenState extends State<MenuScreen> {
                                         imageUrl: shopItem.item.imageUrl,
                                       ),
                                       shopItem: shopItem,
+                                      userId: widget.userId,
                                     ),
                                   ),
                                 ),

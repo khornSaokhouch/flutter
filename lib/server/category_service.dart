@@ -9,12 +9,10 @@ class CategoryService {
 static Future<List<Category>> fetchCategories() async {
 try {
 final url = '${ApiConfig.baseUrl}/shops/categories';
-print('Fetching categories from: $url');
 
   final response = await http.get(Uri.parse(url), headers: ApiConfig.headers);
 
-  print('Response status: ${response.statusCode}');
-  print('Response body: ${response.body}');
+
 
   if (response.statusCode == 200) {
     final decoded = json.decode(response.body);
@@ -27,15 +25,11 @@ print('Fetching categories from: $url');
         .map((item) => Category.fromJson(item as Map<String, dynamic>))
         .toList();
 
-    print('Categories parsed successfully');
     return categories;
   } else {
-    print('Failed to fetch categories: ${response.statusCode}');
     return [];
   }
-} catch (e, stackTrace) {
-  print('Error fetching categories: $e');
-  print(stackTrace);
+} catch (e) {
   return [];
 }
 
@@ -45,13 +39,8 @@ print('Fetching categories from: $url');
 static Future<List<Item>> fetchItemsByCategory(int categoryId) async {
 try {
 final url = '${ApiConfig.baseUrl}/shops/category/$categoryId';
-print('Fetching items from: $url');
-
 
   final response = await http.get(Uri.parse(url), headers: ApiConfig.headers);
-
-  print('Response status: ${response.statusCode}');
-  print('Response body: ${response.body}');
 
   if (response.statusCode == 200) {
     final decoded = json.decode(response.body);
@@ -60,16 +49,11 @@ print('Fetching items from: $url');
     final items = itemsData
         .map((item) => Item.fromJson(item as Map<String, dynamic>))
         .toList();
-
-    print('Items parsed successfully for category $categoryId');
     return items;
   } else {
-    print('Failed to fetch items: ${response.statusCode}');
     return [];
   }
-} catch (e, stackTrace) {
-  print('Error fetching items: $e');
-  print(stackTrace);
+} catch (e) {
   return [];
 }
 

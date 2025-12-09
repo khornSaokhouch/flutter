@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 
 import '../../config/api_endpoints.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/utils/utils.dart';
 import '../user/layout.dart';
 

@@ -35,7 +35,6 @@ class CategoryShopController {
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      print(data);
       return data.map((e) => CategoryModel.fromJson(e)).toList();
     } else {
       throw Exception(
