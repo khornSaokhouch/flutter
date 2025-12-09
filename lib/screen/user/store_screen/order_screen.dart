@@ -6,8 +6,8 @@ import '../../../models/order_model.dart';
 import '../../../models/promotion_model.dart';
 import '../../../server/order_service.dart';
 import '../../../server/promotion_service.dart';
+import './order_success_screen.dart'; // Make sure this file exists
 
-/// Small local exception so our `on PromotionNotFoundException` works
 class PromotionNotFoundException implements Exception {
   final String? message;
   PromotionNotFoundException([this.message]);
@@ -18,12 +18,11 @@ class PromotionNotFoundException implements Exception {
 class CartScreen extends StatefulWidget {
   final int id;
   final String name;
-  final int quantity; // used when a single item map is provided
-  final double subtotal; // optional initial subtotal (we recalc anyway)
+  final int quantity;
+  final double subtotal;
   final List selectedModifiers;
   final String imageUrl;
   final int shopId;
-
   final int? userId;
 
   const CartScreen({
@@ -43,7 +42,7 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  // Theme colors
+  // --- Theme Colors ---
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
   final Color _espressoBrown = const Color(0xFF4B2C20);
   final Color _bgGrey = const Color(0xFFF9FAFB);
@@ -53,28 +52,27 @@ class _CartScreenState extends State<CartScreen> {
   double _subtotalLocal = 0.0;
   bool _isPlacingOrder = false;
 
-  // Promo code state
+  // Inputs
   final TextEditingController _promoController = TextEditingController();
-  String? _promoCode; // applied promo code
-  bool _isPromoApplied = false;
-  double _discountAmount = 0.0; // in dollars
+  final TextEditingController _noteController = TextEditingController();
 
-  // Tracks whether a promo validation call is in progress
+  // Promo State
+  String? _promoCode;
+  bool _isPromoApplied = false;
+  double _discountAmount = 0.0;
   bool _isApplying = false;
 
+  // Totals
   double get _discountedSubtotal => (_subtotalLocal - _discountAmount).clamp(0.0, double.infinity);
-  double get _tax => _discountedSubtotal * 0.05; // tax applied after discount
-  double get _total => _discountedSubtotal + _tax;
-
-
+  double get _total => _discountedSubtotal;
 
   @override
   void initState() {
     super.initState();
 
-    // Add the single incoming item (if provided) to the cart
-    final incomingPrice =
-    (widget.subtotal > 0 && widget.quantity > 0) ? (widget.subtotal / widget.quantity) : 0.0;
+    final incomingPrice = (widget.subtotal > 0 && widget.quantity > 0)
+        ? (widget.subtotal / widget.quantity)
+        : 0.0;
 
     final incoming = {
       'id': widget.id,
@@ -85,13 +83,16 @@ class _CartScreenState extends State<CartScreen> {
       'image': widget.imageUrl,
     };
 
-    _addOrMergeItem(_normalizeItem(incoming));
-    _recalculateSubtotal(); // initial subtotal
+    if (widget.id != 0) {
+      _addOrMergeItem(_normalizeItem(incoming));
+    }
+    _recalculateSubtotal();
   }
 
   @override
   void dispose() {
     _promoController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -118,11 +119,6 @@ class _CartScreenState extends State<CartScreen> {
     final qty = _parseInt(raw['qty']);
     final image = raw['image']?.toString() ?? widget.imageUrl;
     final modifiers = (raw['modifiers'] is List) ? List.from(raw['modifiers']) : <dynamic>[];
-    final optionsFromModifiers = _optionsText(modifiers);
-
-    final optionsField = (raw.containsKey('options') && raw['options'] != null && raw['options'].toString().isNotEmpty)
-        ? raw['options'].toString()
-        : optionsFromModifiers;
 
     return {
       'id': id,
@@ -130,7 +126,6 @@ class _CartScreenState extends State<CartScreen> {
       'price': price,
       'qty': qty,
       'image': image,
-      'options': optionsField,
       'modifiers': modifiers,
     };
   }
@@ -158,12 +153,9 @@ class _CartScreenState extends State<CartScreen> {
     try {
       return modifiers.map((m) {
         if (m is Map) {
-          final group = (m['group_name'] ?? m['group'] ?? m['groupId'] ?? '').toString();
           final sel = (m['selected_option'] ?? m['selected'] ?? m['option'] ?? '').toString();
-          if (group.isEmpty && sel.isEmpty) return '';
-          if (group.isEmpty) return sel;
-          if (sel.isEmpty) return group;
-          return "$group: $sel";
+          if (sel.isEmpty) return '';
+          return sel;
         } else {
           return m.toString();
         }
@@ -177,7 +169,8 @@ class _CartScreenState extends State<CartScreen> {
     final incomingKey = _modifiersKey(item['modifiers']);
     for (int i = 0; i < _cartItems.length; i++) {
       final existing = _cartItems[i];
-      if (existing['id'].toString() == item['id'].toString() && _modifiersKey(existing['modifiers']) == incomingKey) {
+      if (existing['id'].toString() == item['id'].toString() &&
+          _modifiersKey(existing['modifiers']) == incomingKey) {
         final newQty = _parseInt(existing['qty']) + _parseInt(item['qty']);
         setState(() {
           _cartItems[i]['qty'] = newQty;
@@ -209,7 +202,6 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
-  // subtotal calculations (internal + setState wrapper)
   void _recalculateSubtotalInternal() {
     double sum = 0.0;
     for (final it in _cartItems) {
@@ -218,26 +210,15 @@ class _CartScreenState extends State<CartScreen> {
       sum += price * qty;
     }
     _subtotalLocal = sum;
-
-    // Keep discount amount as-is. If you want to re-validate promos
-    // on subtotal change, store the applied PromotionModel and re-run
-    // _computeDiscountForPromotion against it here.
   }
 
   void _recalculateSubtotal() => setState(_recalculateSubtotalInternal);
 
   // ---------- Promo logic ----------
-// inside _CartScreenState
 
   Future<void> _applyPromo() async {
     final code = _promoController.text.trim();
-    if (code.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Please enter a promo code.')));
-      return;
-    }
-
-    if (_isApplying) return;
+    if (code.isEmpty) return;
 
     setState(() => _isApplying = true);
 
@@ -246,178 +227,52 @@ class _CartScreenState extends State<CartScreen> {
       if (promotion == null) throw PromotionNotFoundException();
 
       final adapter = promotion.toAdapter();
+      if (adapter.shopId != widget.shopId)
+        throw PromotionNotFoundException("Invalid shop.");
 
-      // -------------------------------
-      // 👉 NEW: SHOP ID VALIDATION
-      // -------------------------------
-      // Assumes your current shop id is stored in `_currentShopId`.
-      // If adapter.shopId is null, we treat the promo as global (apply). Change logic
-      // if you want null to mean "invalid".
-      if (adapter.shopId != widget.shopId) {
-        throw PromotionNotFoundException("This promo is not valid for this shop.");
-      }
-
-      // -------------------------------
-      // 👉 NEW VALIDATION CHECKS
-      // -------------------------------
-      final now = DateTime.now().toUtc();
-      final bool isActive = adapter.isActive ?? false;
-      final DateTime? startsAt = adapter.startsAt;
-      final DateTime? endsAt = adapter.endsAt;
-
-      // 1. Check active flag
-      if (!isActive) {
-        throw PromotionNotFoundException("This promo is not active.");
-      }
-
-      // 2. Check start date (not valid yet)
-      if (startsAt != null && now.isBefore(startsAt)) {
-        throw PromotionNotFoundException("This promo is not valid yet.");
-      }
-
-      // 3. Check end date (expired)
-      if (endsAt != null && now.isAfter(endsAt)) {
-        throw PromotionNotFoundException("This promo has expired.");
-      }
-
-      // -------------------------------
-      // 👉 Calculate discount
-      // -------------------------------
       final computed = _computeDiscountForAdapter(adapter, _subtotalLocal);
 
       if (computed <= 0) {
-        setState(() {
-          _promoCode = null;
-          _isPromoApplied = false;
-          _discountAmount = 0.0;
-        });
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(adapter.message ?? 'Promo not applicable.')));
+        _clearPromoUI();
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(adapter.message ?? 'Promo not applicable.')));
       } else {
         setState(() {
           _promoCode = adapter.code;
           _isPromoApplied = true;
           _discountAmount = computed;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Promo applied: ${_formatDiscountDisplayFromAdapter(adapter, computed)}')),
-        );
+        if (mounted) Navigator.pop(context); // Close dialog
       }
-    } on PromotionNotFoundException catch (e) {
-      setState(() {
-        _promoCode = null;
-        _isPromoApplied = false;
-        _discountAmount = 0.0;
-      });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message ?? 'Promo code not valid')));
-    } catch (e, st) {
-      debugPrint('promo error: $e\n$st');
-      setState(() {
-        _promoCode = null;
-        _isPromoApplied = false;
-        _discountAmount = 0.0;
-      });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to validate promo: ${_friendlyError(e)}')));
+    } catch (e) {
+      _clearPromoUI();
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed: $e')));
     } finally {
       if (mounted) setState(() => _isApplying = false);
     }
   }
 
-  double _computeDiscountForAdapter(PromotionAdapter promo, double subtotal) {
-    final now = DateTime.now().toUtc();
-
-    // --- Validate active status (like backend) ---
-    if (promo.isActive == false) return 0.0;
-
-    // --- Not started yet ---
-    if (promo.startsAt != null && now.isBefore(promo.startsAt!)) {
-      return 0.0;
-    }
-
-    // --- Already expired ---
-    if (promo.endsAt != null && now.isAfter(promo.endsAt!)) {
-      return 0.0;
-    }
-
-    // --- Compute the discount ---
-    double discount = 0.0;
-
-    if (promo.type == PromotionType.percentage) {
-      // Percentage discount: e.g. 10% => subtotal * 0.10
-      discount = subtotal * (promo.value / 100.0);
-
-      // Optional maxDiscount enforcement (if backend adds later)
-      if (promo.maxDiscount != null && discount > promo.maxDiscount!) {
-        discount = promo.maxDiscount!;
-      }
-
-    } else if (promo.type == PromotionType.fixed) {
-      // Fixed amount promo.value is in CENTS (backend sends 100 → $1.00)
-      discount = promo.value / 100.0;
-
-      if (promo.maxDiscount != null && discount > promo.maxDiscount!) {
-        discount = promo.maxDiscount!;
-      }
-    }
-
-    // --- Check minimum subtotal requirement ---
-    if (promo.minSubtotal != null && subtotal < promo.minSubtotal!) {
-      return 0.0;
-    }
-
-    // --- Discount cannot exceed subtotal ---
-    if (discount > subtotal) discount = subtotal;
-
-    return _roundTo2(discount);
-  }
-
-
-  String _formatDiscountDisplayFromAdapter(PromotionAdapter adapter, double computed) {
-    // computed is already the dollar amount that will be applied (rounded)
-    if (adapter.type == PromotionType.percentage) {
-      // show percent + applied amount
-      return '${adapter.value}% off (applied: ${_formatCurrency(computed)})';
-    } else {
-      // For fixed promotions we display the computed dollar amount — e.g. $1.00 off
-      return '${_formatCurrency(computed)} off';
-    }
-  }
-
-
-
-  double _roundTo2(double val) {
-    return (val * 100).roundToDouble() / 100.0;
-  }
-
-
-  String _formatCurrency(double amount) {
-    // TODO: replace with NumberFormat if you have intl imported
-    return '\$${amount.toStringAsFixed(2)}';
-  }
-
-  String _friendlyError(Object e) {
-    // Customize for production: check types, show localized message
-    return e.toString();
-  }
-
-  void _clearPromo() {
+  void _clearPromoUI() {
     setState(() {
-      _promoController.clear();
       _promoCode = null;
       _isPromoApplied = false;
       _discountAmount = 0.0;
     });
   }
 
-  // ---------- Order builder & submit ----------
+  double _computeDiscountForAdapter(PromotionAdapter promo, double subtotal) {
+    return (subtotal * (promo.value / 100.0)).clamp(0.0, subtotal);
+  }
+
+  // ---------- Order Logic ----------
 
   int _toCents(double amount) => (amount * 100).round();
 
   OrderModel _buildOrderFromCart() {
-    // Replace with actual user/shop/promo values as needed
-    final int userId = widget.userId!;
+    final int userId = widget.userId ?? 0;
     final int shopId = widget.shopId;
     final int? promoId = null;
     final String status = 'placed';
@@ -428,11 +283,20 @@ class _CartScreenState extends State<CartScreen> {
       if (mods is List) {
         for (final m in mods) {
           if (m is Map) {
-            final groupId = _parseInt(m['group_id'] ?? m['groupId'], fallback: 0);
-            final optionId = _parseInt(m['option_id'] ?? m['optionId'], fallback: 0);
-            final groupName = (m['group_name'] ?? m['group'] ?? m['groupName'] ?? '').toString();
-            final selectedOption = (m['selected_option'] ?? m['selected'] ?? m['option'] ?? '').toString();
-            if (groupId != 0 || optionId != 0 || groupName.isNotEmpty || selectedOption.isNotEmpty) {
+            final groupId =
+                _parseInt(m['group_id'] ?? m['groupId'], fallback: 0);
+            final optionId =
+                _parseInt(m['option_id'] ?? m['optionId'], fallback: 0);
+            final groupName =
+                (m['group_name'] ?? m['group'] ?? m['groupName'] ?? '')
+                    .toString();
+            final selectedOption =
+                (m['selected_option'] ?? m['selected'] ?? m['option'] ?? '')
+                    .toString();
+            if (groupId != 0 ||
+                optionId != 0 ||
+                groupName.isNotEmpty ||
+                selectedOption.isNotEmpty) {
               optionGroups.add(OptionGroupModel(
                 groupId: groupId,
                 optionId: optionId,
@@ -443,7 +307,6 @@ class _CartScreenState extends State<CartScreen> {
           }
         }
       }
-
       final price = _parseDouble(it['price']);
       final qty = _parseInt(it['qty']);
 
@@ -453,28 +316,22 @@ class _CartScreenState extends State<CartScreen> {
         namesnapshot: it['name']?.toString() ?? '',
         unitpriceCents: _toCents(price),
         quantity: qty,
-        notes: it['notes']?.toString(),
+        notes: _noteController.text, // Added notes from controller
         optionGroups: optionGroups,
       );
     }).toList();
 
-    final subtotalCents = _toCents(_subtotalLocal);
-    final discountCents = _toCents(_discountAmount);
-    final totalCents = _toCents(_discountedSubtotal + _tax);
-
-    final order = OrderModel(
+    return OrderModel(
       userid: userId,
       shopid: shopId,
       promoid: promoId,
       status: status,
-      subtotalcents: subtotalCents,
-      discountcents: discountCents,
-      totalcents: totalCents,
+      subtotalcents: _toCents(_subtotalLocal),
+      discountcents: _toCents(_discountAmount),
+      totalcents: _toCents(_total),
       placedat: DateTime.now().toIso8601String(),
       orderItems: orderItems,
     );
-
-    return order;
   }
 
   Future<void> _createOrder() async {
@@ -485,33 +342,44 @@ class _CartScreenState extends State<CartScreen> {
     try {
       final order = _buildOrderFromCart();
 
-      // Pass promocode string to service if backend expects it (this example assumes createOrder accepts promocode param).
-      final created = await OrderService().createOrder(order, promocode: _promoCode);
+      // Create order via your service
+      final createdOrder = await OrderService().createOrder(order, promocode: _promoCode);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Order placed — ID: ${created?.id ?? 'unknown'}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Order placed successfully!'),
+            backgroundColor: _freshMintGreen,
+          ),
+        );
 
-      // clear cart on success (optional)
-      setState(() {
-        _cartItems.clear();
-        _discountAmount = 0.0;
-        _isPromoApplied = false;
-        _promoController.clear();
-        _promoCode = null;
-        _recalculateSubtotalInternal();
-      });
-    } catch (err, st) {
-      debugPrint('createOrder error: $err\n$st');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to place order: ${err.toString()}')),
-      );
+        // Convert OrderModel to JSON/Map for the Success Screen
+        // Ensure your OrderModel has a toJson() method.
+        Map<String, dynamic> orderData = createdOrder.toJson();
+
+        // Navigate to OrderSuccessScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OrderSuccessScreen(orderData: orderData),
+          ),
+        );
+      }
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Order failed: $err'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isPlacingOrder = false);
     }
   }
 
-  // ---------- UI ----------
+  // ---------- UI Widgets ----------
 
   @override
   Widget build(BuildContext context) {
@@ -522,126 +390,301 @@ class _CartScreenState extends State<CartScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          "MY ORDER",
+        title: const Text(
+          "Checkout",
           style: TextStyle(
-            color: _espressoBrown,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.0,
-            fontSize: 18,
+              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+      body: _cartItems.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  const Text("Cart is empty", style: TextStyle(color: Colors.grey, fontSize: 16)),
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Order Details Header
+                        _buildSectionHeader("Order Details"),
+                        const SizedBox(height: 12),
+
+                        // 2. List of Items (Card Style)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4))
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: _cartItems
+                                .map((item) => _buildDetailItem(item))
+                                .toList(),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // 3. Notes Section
+                        const Text("Notes", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: TextField(
+                            controller: _noteController,
+                            maxLines: 2,
+                            decoration: const InputDecoration(
+                              hintText: "E.g. Less sugar, allergies...",
+                              hintStyle: TextStyle(color: Colors.grey),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.all(16),
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // 4. Order Discount
+                        _buildSectionHeader("Order Discount"),
+                        const SizedBox(height: 12),
+                        _buildClickableTile(
+                          icon: Icons.confirmation_number_outlined,
+                          title: _isPromoApplied
+                              ? "Code: $_promoCode"
+                              : "Use Voucher",
+                          subtitle: _isPromoApplied
+                              ? "Discount Applied"
+                              : "Save orders with promos",
+                          trailing: _isPromoApplied
+                              ? Text("-\$${_discountAmount.toStringAsFixed(2)}",
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red))
+                              : const Icon(Icons.arrow_forward_ios,
+                                  size: 14, color: Colors.grey),
+                          onTap: () => _showPromoDialog(),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // 5. Payment Details
+                        _buildSectionHeader("Payment Details"),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildSummaryRow("Subtotal", _subtotalLocal),
+                              if (_isPromoApplied) ...[
+                                const SizedBox(height: 8),
+                                _buildSummaryRow("Discount", -_discountAmount, isRed: true),
+                              ],
+                              const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Divider(height: 1)),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Total Payment",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey[700])),
+                                  Text("\$${_total.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w900,
+                                          color: _espressoBrown)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 100), // Bottom padding
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+      // 6. Place Order Button
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            )
+          ],
+        ),
+        child: SizedBox(
+          height: 55,
+          child: ElevatedButton(
+            onPressed: (_cartItems.isEmpty || _isPlacingOrder)
+                ? null
+                : _createOrder,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _freshMintGreen,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            ),
+            child: _isPlacingOrder
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text(
+                    "Place Order",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
           ),
         ),
       ),
-      body: Column(
+    );
+  }
+
+  // =========================================================
+  // SUB-WIDGETS
+  // =========================================================
+
+  Widget _buildSectionHeader(String title) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildDetailItem(Map<String, dynamic> item) {
+    final name = item['name'];
+    final qty = item['qty'];
+    final basePrice = _parseDouble(item['price']);
+    // Filter out null/empty modifiers
+    List<dynamic> modifiers = item['modifiers'] ?? [];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Order list
-          Expanded(
-            child: _cartItems.isEmpty
-                ? Center(child: Text("Your cart is empty", style: TextStyle(color: _espressoBrown)))
-                : ListView.separated(
-              padding: const EdgeInsets.all(20),
-              itemCount: _cartItems.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, index) => _cartItemWidget(_cartItems[index], index),
+          // Image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 60,
+              height: 60,
+              color: Colors.grey[100],
+              child: Image.network(
+                item['image'] ?? '',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.coffee, color: Colors.grey),
+              ),
             ),
           ),
-
-          // Bill / Promo / Checkout area
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
+          const SizedBox(width: 16),
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Promo input row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _promoController,
-                            decoration: InputDecoration(
-                              hintText: 'Promo code',
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: _applyPromo,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _espressoBrown,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          ),
-                          child: _isApplying
-                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-                              : const Text('Apply'),
-                        ),
-                        const SizedBox(width: 8),
-                        if (_isPromoApplied)
-                          TextButton(
-                            onPressed: _clearPromo,
-                            child: const Text('Clear'),
-                          ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Summary rows
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Column(
-                        children: [
-                          _summaryRow("Subtotal", _subtotalLocal),
-                          const SizedBox(height: 8),
-                          if (_isPromoApplied) _summaryRow("Discount", -_discountAmount),
-                          if (_isPromoApplied) const SizedBox(height: 8),
-                          _summaryRow("Tax (5%)", _tax),
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text("Total", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _espressoBrown)),
-                              Text("\$${_total.toStringAsFixed(2)}", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _freshMintGreen)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Checkout button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        onPressed: (_cartItems.isEmpty || _isPlacingOrder) ? null : _createOrder,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _espressoBrown,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 2,
-                        ),
-                        child: _isPlacingOrder
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-                            : const Text("Checkout", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
+                    Text("${qty}x $name",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    // Edit icon (visual only)
+                    const Icon(Icons.edit_outlined,
+                        size: 16, color: Colors.green),
                   ],
                 ),
-              ),
+                const SizedBox(height: 8),
+
+                // Base Price Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Base Price",
+                        style: TextStyle(fontSize: 13, color: Colors.black87)),
+                    Text("\$${basePrice.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+
+                // Modifiers Rows
+                ...modifiers.map((mod) {
+                  String modName = "";
+                  if (mod is Map) {
+                    modName = mod['selected_option'] ?? mod['option'] ?? '';
+                  }
+                  if (modName.isEmpty) return const SizedBox.shrink();
+
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(modName,
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.grey)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Subtotal",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text("\$${(basePrice * qty).toStringAsFixed(2)}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -649,82 +692,120 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _cartItemWidget(Map<String, dynamic> item, int index) {
-    final id = item['id']?.toString() ?? _genId();
-    final image = item['image']?.toString() ?? widget.imageUrl;
-    final name = item['name']?.toString() ?? 'Item';
-    final optionsString = (item['options']?.toString().isNotEmpty == true) ? item['options'].toString() : _optionsText(item['modifiers'] ?? []);
-    final price = _parseDouble(item['price']);
-    final qty = _parseInt(item['qty']);
-
-    return Dismissible(
-      key: Key('$id-$optionsString'),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(16)),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete_outline, color: Colors.red),
+  Widget _buildClickableTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget trailing,
+    VoidCallback? onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
       ),
-      onDismissed: (_) => _removeItemAt(index),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))]),
-        child: Row(
-          children: [
-            // Image
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(image, fit: BoxFit.cover, errorBuilder: (c, e, s) => Icon(Icons.coffee, color: Colors.grey[400])),
-              ),
-            ),
-            const SizedBox(width: 16),
-
-            // Info
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _espressoBrown)),
-                const SizedBox(height: 4),
-                if (optionsString.isNotEmpty) Text(optionsString, style: TextStyle(fontSize: 12, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 8),
-                Text("\$${(price * qty).toStringAsFixed(2)}", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _freshMintGreen)),
-              ]),
-            ),
-
-            const SizedBox(width: 8),
-
-            // Quantity Control
-            Container(
-              decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[200]!)),
-              child: Column(children: [
-                InkWell(
-                  onTap: () => _updateQtyAt(index, qty + 1),
-                  child: Padding(padding: const EdgeInsets.all(4.0), child: Icon(Icons.add, size: 16, color: _espressoBrown)),
-                ),
-                Text("$qty", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _espressoBrown)),
-                InkWell(
-                  onTap: () {
-                    if (qty > 1) _updateQtyAt(index, qty - 1);
-                  },
-                  child: Padding(padding: const EdgeInsets.all(4.0), child: Icon(Icons.remove, size: 16, color: _espressoBrown)),
-                ),
-              ]),
-            ),
-          ],
+      child: ListTile(
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey.shade200)),
+          child: Icon(icon, size: 20, color: Colors.black87),
         ),
+        title: Text(title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        subtitle: Text(subtitle,
+            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        trailing: trailing,
       ),
     );
   }
 
-  Widget _summaryRow(String label, double amount) {
-    final text = amount < 0 ? '-\$${(-amount).toStringAsFixed(2)}' : '\$${amount.toStringAsFixed(2)}';
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Text(label, style: TextStyle(fontSize: 15, color: Colors.grey[600])),
-      Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-    ]);
+  Widget _buildSummaryRow(String label, double amount, {bool isRed = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 15, color: Colors.grey)),
+        Text(
+          "${amount < 0 ? '-' : ''}\$${amount.abs().toStringAsFixed(2)}",
+          style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: isRed ? Colors.red : Colors.black),
+        ),
+      ],
+    );
+  }
+
+  void _showPromoDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Enter Voucher",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _promoController,
+                decoration: InputDecoration(
+                  hintText: "Promo Code",
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: Icon(Icons.card_giftcard, color: _freshMintGreen),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Cancel"),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _applyPromo();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _freshMintGreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                    ),
+                    child: const Text(
+                      "Apply",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

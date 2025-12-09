@@ -102,4 +102,18 @@ class OrderModel {
     placedat: json['placedat'],
     orderItems: (json['order_items'] as List? ?? []).map((e) => OrderItemModel.fromJson(e)).toList(),
   );
+
+   // ✅ Add this method
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'userid': userid,
+        'shopid': shopid,
+        'promoid': promoid,
+        'status': status,
+        'subtotalcents': subtotalcents,
+        'discountcents': discountcents,
+        'totalcents': totalcents,
+        'placedat': placedat,
+        'order_items': orderItems.map((e) => e.toJson()).toList(),
+      };
 }
