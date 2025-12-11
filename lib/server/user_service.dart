@@ -61,7 +61,6 @@ class UserService {
         return false;
       }
     } catch (e) {
-      print('Error during login: $e');
       return false;
     }
   }
@@ -70,7 +69,7 @@ class UserService {
   static Future<bool> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token');
+      final token = prefs.getString('token');
       if (token == null) return false;
 
       final response = await http.post(
@@ -82,14 +81,14 @@ class UserService {
       );
 
       if (response.statusCode == 200) {
-        await prefs.remove('jwt_token');
+        final res = await prefs.remove('token');
         return true;
       } else {
-        print('Logout failed: ${response.body}');
+
         return false;
       }
     } catch (e) {
-      print('Error during logout: $e');
+
       return false;
     }
   }

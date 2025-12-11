@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Align, Alignment, AppBar, AssetImage, BlendMode, BorderRadius, BorderSide, BouncingScrollPhysics, BoxDecoration, BoxFit, BoxShadow, BoxShape, BuildContext, Center, CircularProgressIndicator, ClipRRect, Color, ColorFilter, ColorFiltered, Colors, Column, ConnectionState, Container, CrossAxisAlignment, CustomScrollView, DecorationImage, Dialog, EdgeInsets, ElevatedButton, Expanded, FontWeight, FutureBuilder, Icon, IconButton, Icons, Image, InkWell, Key, LinearGradient, MainAxisSize, MainAxisAlignment, Material, MaterialPageRoute, Navigator, Offset, OutlinedButton, Padding, Positioned, PreferredSize, RoundedRectangleBorder, Row, Scaffold, Shadow, Size, SizedBox, SliverChildBuilderDelegate, SliverList, SliverToBoxAdapter, Spacer, Stack, State, StatefulWidget, StatelessWidget, Text, TextAlign, TextButton, TextStyle, VoidCallback, Widget, debugPrint, showDialog, ScaffoldMessenger, SnackBar, Opacity;
+import 'package:intl/intl.dart';
+
+import 'package:frontend/screen/user/store_screen/no_store_nearby_screen.dart';
 import '../../server/shop_serviec.dart';
 import '../../models/shop.dart';
 import '../../core/widgets/card/shop_card.dart';
@@ -9,8 +12,8 @@ import '../../models/user.dart';
 import '../order/order_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final int userId;
-  const HomeScreen({Key? key, required this.userId}) : super(key: key);
+  final int? userId;
+  const HomeScreen({super.key,  this.userId});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -21,6 +24,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   late Future<List<Shop>> _shopsFuture;
 
+  // theme color (used for badges / distance badges if needed)
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initPage() async {
     try {
-      user = await AuthUtils.checkAuthAndGetUser(context: context, userId: widget.userId);
+      user = await AuthUtils.checkAuthAndGetUser(context: context, userId: widget.userId ?? 0);
     } catch (e) {
       debugPrint('Error: $e');
     } finally {
@@ -43,8 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60.0),
-        child: Navbar(userId: widget.userId),
+        preferredSize: const Size.fromHeight(60.0),
+        child: Navbar(userId: widget.userId ?? 0),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -98,38 +104,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const Spacer(),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black87,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              child: const Text('JOIN NOW', style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {},
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                side: const BorderSide(color: Colors.white, width: 1.5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              child: const Text('GUEST', style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -162,7 +136,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           title: "Pickup",
                           imagePath: 'assets/images/pickup.jpg',
                           isActive: true,
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => NoStoreNearbyScreen(userId: widget.userId ?? 0)),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -251,20 +230,77 @@ class _HomeScreenState extends State<HomeScreen> {
                       (context, index) {
                     final shop = shops[index];
 
+                    // compute open/closed status for this shop
+                    final shopStatus = _evaluateShopOpenStatus(shop.openTime, shop.closeTime);
+                    final bool isOpen = shopStatus.isOpen;
+                    final opensText = shopStatus.opensAtFormatted ?? _formatTimeOrFallback(shop.openTime);
+                    final closesText = shopStatus.closesAtFormatted ?? _formatTimeOrFallback(shop.closeTime);
+
+                    // Display ShopCard but dim + overlay when closed
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-                      child: ShopCard(
-                        shop: shop,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ShopDetailsScreen(
-                                shopId: shop.id,
+                      child: Stack(
+                        children: [
+                          // Dimmed ShopCard when closed
+                          Opacity(
+                            opacity: isOpen ? 1.0 : 0.35,
+                            child: ShopCard(
+                              shop: shop,
+                              onTap: () {
+                                if (isOpen) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ShopDetailsScreen(
+                                        shopId: shop.id,
+                                        userId: widget.userId,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  final msg = 'This shop is closed. Opens at $opensText';
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+                                }
+                              },
+                            ),
+                          ),
+
+                          // Centered full overlay when closed
+                          if (!isOpen)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.55),
+                                  borderRadius: BorderRadius.circular(12), // match ShopCard internal radius roughly
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        "CLOSED",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "Opens at $opensText",
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          );
-                        },
+
+                        ],
                       ),
                     );
                   },
@@ -423,12 +459,94 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  // ---------------------------
+  // OPEN/CLOSED TIME LOGIC (copied from SelectStorePage style)
+  // ---------------------------
+  _ShopOpenStatus _evaluateShopOpenStatus(String? openTimeStr, String? closeTimeStr) {
+    // If either is missing — treat as open
+    if ((openTimeStr == null || openTimeStr.trim().isEmpty) ||
+        (closeTimeStr == null || closeTimeStr.trim().isEmpty)) {
+      return _ShopOpenStatus(isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
+    }
+
+    final openSeconds = _parseTimeToSeconds(openTimeStr);
+    final closeSeconds = _parseTimeToSeconds(closeTimeStr);
+    if (openSeconds == null || closeSeconds == null) {
+      // parse failed -> assume open
+      return _ShopOpenStatus(isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
+    }
+
+    final now = DateTime.now();
+    final nowSeconds = now.hour * 3600 + now.minute * 60 + now.second;
+
+    bool isOpen;
+    if (openSeconds < closeSeconds) {
+      isOpen = (nowSeconds >= openSeconds && nowSeconds < closeSeconds);
+    } else if (openSeconds > closeSeconds) {
+      // overnight window
+      isOpen = (nowSeconds >= openSeconds) || (nowSeconds < closeSeconds);
+    } else {
+      // equal -> treat as 24h open
+      isOpen = true;
+    }
+
+    final opensAtFormatted = _formatTimeString(openTimeStr);
+    final closesAtFormatted = _formatTimeString(closeTimeStr);
+
+    return _ShopOpenStatus(
+      isOpen: isOpen,
+      opensAtFormatted: opensAtFormatted,
+      closesAtFormatted: closesAtFormatted,
+    );
+  }
+
+  int? _parseTimeToSeconds(String? s) {
+    if (s == null) return null;
+    final trimmed = s.trim();
+    if (trimmed.isEmpty) return null;
+
+    final parts = trimmed.split(':');
+    try {
+      if (parts.length >= 2) {
+        final h = int.tryParse(parts[0]) ?? 0;
+        final m = int.tryParse(parts[1]) ?? 0;
+        final sec = (parts.length >= 3) ? int.tryParse(parts[2].split('.').first) ?? 0 : 0;
+        if (h < 0 || h > 23 || m < 0 || m > 59 || sec < 0 || sec > 59) return null;
+        return h * 3600 + m * 60 + sec;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  String? _formatTimeString(String? s) {
+    final seconds = _parseTimeToSeconds(s);
+    if (seconds == null) return null;
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final dt = DateTime(2000, 1, 1, h, m);
+    final formatter = DateFormat.jm(); // "1:29 AM"
+    return formatter.format(dt);
+  }
+
+  String _formatTimeOrFallback(String? s) {
+    return _formatTimeString(s) ?? (s ?? '--:--');
+  }
+}
+
+class _ShopOpenStatus {
+  final bool isOpen;
+  final String? opensAtFormatted;
+  final String? closesAtFormatted;
+  _ShopOpenStatus({required this.isOpen, this.opensAtFormatted, this.closesAtFormatted});
 }
 
 // ===== Navbar =====
 class Navbar extends StatelessWidget {
   final int userId;
-const Navbar({required this.userId, Key? key}) : super(key: key);
+  const Navbar({required this.userId, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

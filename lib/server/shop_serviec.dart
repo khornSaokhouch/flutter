@@ -15,7 +15,6 @@ class ShopService {
 
     try {
       final response = await http.get(uri, headers: headers);
-
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         return ShopsResponse.fromJson(jsonData);

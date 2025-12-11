@@ -116,12 +116,14 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
 
       final userModel = await AuthService.firebaseLogin(idToken);
       if (userModel != null && mounted) {
-        Navigator.pushReplacement(
+         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (_) => Layout(userId: userModel.user!.id!),
           ),
+              (route) => false, // Remove all previous routes → no back button
         );
+
       } else {
         showMessage(context, 'Backend Google login failed.', color: Colors.red);
       }

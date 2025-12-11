@@ -83,6 +83,88 @@ class OrderService {
       throw Exception('createOrder failed: ${res.statusCode} ${res.body}');
     }
   }
+  static Future<List<OrderModel>> fetchAllOrders({required int userid}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    // 1️⃣ Build the correct endpoint with ?userid=
+    final uri = Uri.parse('${ApiConfig.baseUrl}/users/orders/all')
+        .replace(queryParameters: {'userid': userid.toString()});
+
+    // 2️⃣ Set auth or normal headers
+    final headers = token == null
+        ? ApiConfig.headers
+        : await ApiConfig.authHeaders(token);
+
+    // 3️⃣ Call API
+    final response = await http.get(uri, headers: headers);
+
+    // 4️⃣ Parse
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+
+      // If API returns a raw list
+      if (decoded is List) {
+        return decoded
+            .map<OrderModel>((e) => OrderModel.fromJson(e))
+            .toList();
+      }
+
+      // If API returns "data": [...]
+      if (decoded is Map && decoded['data'] is List) {
+        return (decoded['data'] as List)
+            .map<OrderModel>((e) => OrderModel.fromJson(e))
+            .toList();
+      }
+
+      throw Exception('Unexpected JSON format');
+    } else {
+      throw Exception(
+          'Failed to load orders: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  static Future<List<OrderModel>> fetchAllOrdersForShop({required int shopid}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    // 1️⃣ Build the correct endpoint with ?userid=
+    final uri = Uri.parse('${ApiConfig.baseUrl}/users/orders/all')
+        .replace(queryParameters: {'shopid': shopid.toString()});
+
+    // 2️⃣ Set auth or normal headers
+    final headers = token == null
+        ? ApiConfig.headers
+        : await ApiConfig.authHeaders(token);
+
+    // 3️⃣ Call API
+    final response = await http.get(uri, headers: headers);
+
+    // 4️⃣ Parse
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+
+      // If API returns a raw list
+      if (decoded is List) {
+        return decoded
+            .map<OrderModel>((e) => OrderModel.fromJson(e))
+            .toList();
+      }
+
+      // If API returns "data": [...]
+      if (decoded is Map && decoded['data'] is List) {
+        return (decoded['data'] as List)
+            .map<OrderModel>((e) => OrderModel.fromJson(e))
+            .toList();
+      }
+
+      throw Exception('Unexpected JSON format');
+    } else {
+      throw Exception(
+          'Failed to load orders: ${response.statusCode} ${response.body}');
+    }
+  }
+
 
 
 
@@ -111,61 +193,6 @@ class OrderService {
       }
     } else {
       throw Exception('getOrder failed: ${res.statusCode} ${res.body}');
-    }
-  }
-
-  /// Get all orders (endpoint: /orders/all)
-  Future<List<OrderModel>> getAllOrders({String? token}) async {
-    final uri = Uri.parse('$baseUrl/orders/all');
-
-    final headers = token == null
-        ? ApiConfig.headers
-        : await ApiConfig.authHeaders(token);
-
-    final res = await http.get(uri, headers: headers);
-
-    if (res.statusCode == 200) {
-      final decoded = json.decode(res.body);
-
-      List<dynamic> list = [];
-
-      // Handle several common API shapes:
-      // 1) { "data": [ ... ] }
-      // 2) { "data": { "data": [ ... ], "meta": { ... } } } (paginated)
-      // 3) [ ... ] (top-level list)
-      if (decoded is List) {
-        list = decoded;
-      } else if (decoded is Map<String, dynamic>) {
-        final data = decoded['data'];
-        if (data is List) {
-          list = data;
-        } else if (data is Map<String, dynamic> && data['data'] is List) {
-          list = data['data'] as List<dynamic>;
-        } else if (data == null) {
-          // sometimes API returns top-level list inside other key names; try fallback:
-          list = [];
-        } else {
-          // unknown structure; try to coerce a single object into a list
-          if (data is Map<String, dynamic>) {
-            list = [data];
-          }
-        }
-      } else {
-        throw Exception('getAllOrders failed: unexpected response shape: ${res.body}');
-      }
-
-      return list.map((e) {
-        if (e is Map<String, dynamic>) {
-          return OrderModel.fromJson(e);
-        } else if (e is Map) {
-          // cast if necessary
-          return OrderModel.fromJson(Map<String, dynamic>.from(e));
-        } else {
-          throw Exception('getAllOrders failed: unexpected list element: $e');
-        }
-      }).toList();
-    } else {
-      throw Exception('getAllOrders failed: ${res.statusCode} ${res.body}');
     }
   }
 

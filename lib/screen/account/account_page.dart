@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/screen/account/personal_info_screen.dart';
-// import 'package:shared_preferences/shared_preferences.dart'; // Uncomment if needed for logout
 import '../../core/utils/auth_utils.dart';
 import '../../models/user.dart';
+import '../../server/user_service.dart';
+import '../guest/guest_screen.dart';
 
 class AccountPage extends StatefulWidget {
   final int userId;
@@ -19,6 +20,7 @@ class _AccountPageState extends State<AccountPage> {
   bool faceId = true;
   bool passcodeLock = false;
   bool isLoading = true;
+  bool _isLoggingOut = false;
 
   // --- Theme Colors ---
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
@@ -45,6 +47,66 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
+  Future<void> _onLogoutPressed() async {
+    // ui ios logout
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => CupertinoAlertDialog(
+        title: const Text("Log Out"),
+        content: const Padding(
+          padding: EdgeInsets.only(top: 8.0),
+          child: Text("Are you sure you want to log out?"),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel",
+              style: TextStyle(color: Colors.black), // 👈 BLACK TEXT
+            ),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Logout"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoggingOut = true);
+
+    try {
+      final success = await UserService.logout();
+      if (!mounted) return;
+
+      if (success) {
+        // Navigate to login and remove all previous routes
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => GuestLayout()),
+              (route) => false,
+        );
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logout failed. Please try again.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Logout error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('An error occurred while logging out.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,173 +114,181 @@ class _AccountPageState extends State<AccountPage> {
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: _freshMintGreen))
           : RefreshIndicator(
-              onRefresh: _initPage,
-              color: _freshMintGreen,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  // 1. Large App Bar with Profile Info
-                  SliverAppBar(
-                    backgroundColor: _bgGrey,
-                    expandedHeight: 220.0,
-                    pinned: true,
-                    elevation: 0,
-                    centerTitle: true,
-                    title: Text(
-                      "My Profile",
-                      style: TextStyle(
-                        color: _espressoBrown,
-                        fontWeight: FontWeight.bold,
+        onRefresh: _initPage,
+        color: _freshMintGreen,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // 1. Large App Bar with Profile Info
+            SliverAppBar(
+              backgroundColor: _bgGrey,
+              expandedHeight: 220.0,
+              pinned: true,
+              elevation: 0,
+
+              // 👇 REMOVE centerTitle or set to false
+              centerTitle: true,
+              automaticallyImplyLeading: false,
+              title: Text(
+                "My Profile",
+                style: TextStyle(
+                  color: _espressoBrown,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              flexibleSpace: FlexibleSpaceBar(
+                background: Padding(
+                  padding: const EdgeInsets.only(top: 80.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _freshMintGreen, width: 2),
+                        ),
+                        child: CircleAvatar(
+                          radius: 45,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: (user?.imageUrl != null && user!.imageUrl!.isNotEmpty)
+                              ? NetworkImage(user!.imageUrl!)
+                              : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                        ),
                       ),
-                    ),
-                    flexibleSpace: FlexibleSpaceBar(
-                      background: Padding(
-                        padding: const EdgeInsets.only(top: 80.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Avatar
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: _freshMintGreen, width: 2),
-                              ),
-                              child: CircleAvatar(
-                                radius: 45,
-                                backgroundColor: Colors.grey[200],
-                                backgroundImage: (user?.imageUrl != null && user!.imageUrl!.isNotEmpty)
-                                    ? NetworkImage(user!.imageUrl!)
-                                    : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                              ),
+                      const SizedBox(height: 12),
+                      Text(
+                        user?.name ?? 'Guest User',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: _espressoBrown,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user?.email ?? 'No email linked',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // 2. Settings Sections
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle("General"),
+                    _buildSectionContainer([
+                      _buildSettingsTile(
+                        icon: Icons.person_outline_rounded,
+                        title: 'Personal Info',
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UpdateProfileScreen(userId: user?.id ?? widget.userId),
                             ),
-                            const SizedBox(height: 12),
-                            // Name
-                            Text(
-                              user?.name ?? 'Guest User',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: _espressoBrown,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            // Email/Role
-                            Text(
-                              user?.email ?? 'No email linked',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
+                          );
+                          if (result == true) _initPage();
+                        },
+                      ),
+                      _buildDivider(),
+                      _buildSettingsTile(
+                        icon: Icons.credit_card_rounded,
+                        title: 'Cards & Payments',
+                        onTap: () {},
+                      ),
+                      _buildDivider(),
+                      _buildSettingsTile(
+                        icon: Icons.history_rounded,
+                        title: 'Transaction History',
+                        onTap: () {},
+                      ),
+                    ]),
+
+                    const SizedBox(height: 24),
+
+                    _buildSectionTitle("Security"),
+                    _buildSectionContainer([
+                      _buildSwitchTile(
+                        title: '2-factor authentication',
+                        value: twoFactorAuth,
+                        onChanged: (val) => setState(() => twoFactorAuth = val),
+                      ),
+                      _buildDivider(),
+                      _buildSwitchTile(
+                        title: 'Face ID',
+                        value: faceId,
+                        onChanged: (val) => setState(() => faceId = val),
+                      ),
+                    ]),
+
+                    const SizedBox(height: 24),
+
+                    _buildSectionTitle("Support"),
+                    _buildSectionContainer([
+                      _buildSettingsTile(
+                        icon: Icons.privacy_tip_outlined,
+                        title: 'Privacy & Data',
+                        onTap: () {},
+                      ),
+                      _buildDivider(),
+                      _buildSettingsTile(
+                        icon: Icons.help_outline_rounded,
+                        title: 'Help Center',
+                        onTap: () {},
+                      ),
+                    ]),
+
+                    const SizedBox(height: 40),
+
+                    // Logout Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: _isLoggingOut ? null : _onLogoutPressed,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.red.withOpacity(0.05),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _isLoggingOut
+                            ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            color: Colors.red,
+                          ),
+                        )
+                            : const Text(
+                          "Log Out",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-
-                  // 2. Settings Sections
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildSectionTitle("General"),
-                          _buildSectionContainer([
-                            _buildSettingsTile(
-                              icon: Icons.person_outline_rounded,
-                              title: 'Personal Info',
-                              onTap: () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => UpdateProfileScreen(userId: user!.id!),
-                                  ),
-                                );
-                                if (result == true) _initPage();
-                              },
-                            ),
-                            _buildDivider(),
-                            _buildSettingsTile(
-                              icon: Icons.credit_card_rounded,
-                              title: 'Cards & Payments',
-                              onTap: () {},
-                            ),
-                            _buildDivider(),
-                            _buildSettingsTile(
-                              icon: Icons.history_rounded,
-                              title: 'Transaction History',
-                              onTap: () {},
-                            ),
-                          ]),
-
-                          const SizedBox(height: 24),
-
-                          _buildSectionTitle("Security"),
-                          _buildSectionContainer([
-                            _buildSwitchTile(
-                              title: '2-factor authentication',
-                              value: twoFactorAuth,
-                              onChanged: (val) => setState(() => twoFactorAuth = val),
-                            ),
-                            _buildDivider(),
-                            _buildSwitchTile(
-                              title: 'Face ID',
-                              value: faceId,
-                              onChanged: (val) => setState(() => faceId = val),
-                            ),
-                          ]),
-
-                          const SizedBox(height: 24),
-
-                          _buildSectionTitle("Support"),
-                          _buildSectionContainer([
-                            _buildSettingsTile(
-                              icon: Icons.privacy_tip_outlined,
-                              title: 'Privacy & Data',
-                              onTap: () {},
-                            ),
-                            _buildDivider(),
-                            _buildSettingsTile(
-                              icon: Icons.help_outline_rounded,
-                              title: 'Help Center',
-                              onTap: () {},
-                            ),
-                          ]),
-
-                          const SizedBox(height: 40),
-
-                          // Logout Button (Visual only based on your snippet)
-                          SizedBox(
-                            width: double.infinity,
-                            child: TextButton(
-                              onPressed: () {
-                                // Add logout logic here
-                              },
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                backgroundColor: Colors.red.withOpacity(0.05),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text(
-                                "Log Out",
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                    const SizedBox(height: 40),
+                  ],
+                ),
               ),
             ),
+          ],
+        ),
+      ),
     );
   }
 

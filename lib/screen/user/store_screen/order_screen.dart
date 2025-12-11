@@ -55,6 +55,7 @@ class _CartScreenState extends State<CartScreen> {
   // Inputs
   final TextEditingController _promoController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
+  final FocusNode _noteFocusNode = FocusNode(); // <-- added focus node
 
   // Promo State
   String? _promoCode;
@@ -93,6 +94,7 @@ class _CartScreenState extends State<CartScreen> {
   void dispose() {
     _promoController.dispose();
     _noteController.dispose();
+    _noteFocusNode.dispose(); // <-- dispose focus node
     super.dispose();
   }
 
@@ -148,23 +150,6 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  String _optionsText(List<dynamic> modifiers) {
-    if (modifiers.isEmpty) return '';
-    try {
-      return modifiers.map((m) {
-        if (m is Map) {
-          final sel = (m['selected_option'] ?? m['selected'] ?? m['option'] ?? '').toString();
-          if (sel.isEmpty) return '';
-          return sel;
-        } else {
-          return m.toString();
-        }
-      }).where((s) => s.isNotEmpty).join(", ");
-    } catch (_) {
-      return modifiers.join(", ");
-    }
-  }
-
   void _addOrMergeItem(Map<String, dynamic> item) {
     final incomingKey = _modifiersKey(item['modifiers']);
     for (int i = 0; i < _cartItems.length; i++) {
@@ -185,22 +170,6 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
-  void _removeItemAt(int index) {
-    if (index < 0 || index >= _cartItems.length) return;
-    setState(() {
-      _cartItems.removeAt(index);
-      _recalculateSubtotalInternal();
-    });
-  }
-
-  void _updateQtyAt(int index, int qty) {
-    if (index < 0 || index >= _cartItems.length) return;
-    final newQty = qty < 1 ? 1 : qty;
-    setState(() {
-      _cartItems[index]['qty'] = newQty;
-      _recalculateSubtotalInternal();
-    });
-  }
 
   void _recalculateSubtotalInternal() {
     double sum = 0.0;
@@ -243,7 +212,7 @@ class _CartScreenState extends State<CartScreen> {
           _isPromoApplied = true;
           _discountAmount = computed;
         });
-        if (mounted) Navigator.pop(context); // Close dialog
+        if (mounted && Navigator.canPop(context)) Navigator.pop(context); // Close dialog safely
       }
     } catch (e) {
       _clearPromoUI();
@@ -263,8 +232,32 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
-  double _computeDiscountForAdapter(PromotionAdapter promo, double subtotal) {
-    return (subtotal * (promo.value / 100.0)).clamp(0.0, subtotal);
+  double _computeDiscountForAdapter(PromotionAdapter promo, double subtotalDollars) {
+    final int subtotalCents = (subtotalDollars * 100).round();
+
+    int discountCents = 0;
+
+    switch (promo.type) {
+      case PromotionType.percentage:
+      // promo.value is percentage (e.g. 15 => 15%)
+        final double percent = promo.value;
+        discountCents = ((subtotalCents * percent) / 100.0).round();
+        break;
+
+      case PromotionType.fixed:
+      // promo.value is cents (e.g. 125 => $1.25). Round to int to be safe.
+        discountCents = promo.value.round();
+        break;
+
+      case PromotionType.unknown:
+      default:
+        discountCents = 0;
+    }
+
+    // clamp
+    discountCents = discountCents.clamp(0, subtotalCents);
+
+    return discountCents / 100.0;
   }
 
   // ---------- Order Logic ----------
@@ -284,15 +277,15 @@ class _CartScreenState extends State<CartScreen> {
         for (final m in mods) {
           if (m is Map) {
             final groupId =
-                _parseInt(m['group_id'] ?? m['groupId'], fallback: 0);
+            _parseInt(m['group_id'] ?? m['groupId'], fallback: 0);
             final optionId =
-                _parseInt(m['option_id'] ?? m['optionId'], fallback: 0);
+            _parseInt(m['option_id'] ?? m['optionId'], fallback: 0);
             final groupName =
-                (m['group_name'] ?? m['group'] ?? m['groupName'] ?? '')
-                    .toString();
+            (m['group_name'] ?? m['group'] ?? m['groupName'] ?? '')
+                .toString();
             final selectedOption =
-                (m['selected_option'] ?? m['selected'] ?? m['option'] ?? '')
-                    .toString();
+            (m['selected_option'] ?? m['selected'] ?? m['option'] ?? '')
+                .toString();
             if (groupId != 0 ||
                 optionId != 0 ||
                 groupName.isNotEmpty ||
@@ -399,143 +392,151 @@ class _CartScreenState extends State<CartScreen> {
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
         ),
       ),
-      body: _cartItems.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey[300]),
-                  const SizedBox(height: 16),
-                  const Text("Cart is empty", style: TextStyle(color: Colors.grey, fontSize: 16)),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. Order Details Header
-                        _buildSectionHeader("Order Details"),
-                        const SizedBox(height: 12),
+      // Wrap the body with GestureDetector so tapping outside TextField closes keyboard
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          FocusScope.of(context).unfocus(); // <-- dismiss keyboard
+        },
+        child: _cartItems.isEmpty
+            ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              const Text("Cart is empty", style: TextStyle(color: Colors.grey, fontSize: 16)),
+            ],
+          ),
+        )
+            : Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Order Details Header
+                    _buildSectionHeader("Order Details"),
+                    const SizedBox(height: 12),
 
-                        // 2. List of Items (Card Style)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4))
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: _cartItems
-                                .map((item) => _buildDetailItem(item))
-                                .toList(),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // 3. Notes Section
-                        const Text("Notes", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: TextField(
-                            controller: _noteController,
-                            maxLines: 2,
-                            decoration: const InputDecoration(
-                              hintText: "E.g. Less sugar, allergies...",
-                              hintStyle: TextStyle(color: Colors.grey),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.all(16),
-                            ),
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // 4. Order Discount
-                        _buildSectionHeader("Order Discount"),
-                        const SizedBox(height: 12),
-                        _buildClickableTile(
-                          icon: Icons.confirmation_number_outlined,
-                          title: _isPromoApplied
-                              ? "Code: $_promoCode"
-                              : "Use Voucher",
-                          subtitle: _isPromoApplied
-                              ? "Discount Applied"
-                              : "Save orders with promos",
-                          trailing: _isPromoApplied
-                              ? Text("-\$${_discountAmount.toStringAsFixed(2)}",
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red))
-                              : const Icon(Icons.arrow_forward_ios,
-                                  size: 14, color: Colors.grey),
-                          onTap: () => _showPromoDialog(),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // 5. Payment Details
-                        _buildSectionHeader("Payment Details"),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            children: [
-                              _buildSummaryRow("Subtotal", _subtotalLocal),
-                              if (_isPromoApplied) ...[
-                                const SizedBox(height: 8),
-                                _buildSummaryRow("Discount", -_discountAmount, isRed: true),
-                              ],
-                              const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  child: Divider(height: 1)),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("Total Payment",
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.grey[700])),
-                                  Text("\$${_total.toStringAsFixed(2)}",
-                                      style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w900,
-                                          color: _espressoBrown)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 100), // Bottom padding
-                      ],
+                    // 2. List of Items (Card Style)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4))
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: _cartItems
+                            .map((item) => _buildDetailItem(item))
+                            .toList(),
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 24),
+
+                    // 3. Notes Section
+                    const Text("Notes", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: TextField(
+                        controller: _noteController,
+                        focusNode: _noteFocusNode, // <-- attach the focus node here
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          hintText: "E.g. Less sugar, allergies...",
+                          hintStyle: TextStyle(color: Colors.grey),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // 4. Order Discount
+                    _buildSectionHeader("Order Discount"),
+                    const SizedBox(height: 12),
+                    _buildClickableTile(
+                      icon: Icons.confirmation_number_outlined,
+                      title: _isPromoApplied
+                          ? "Code: $_promoCode"
+                          : "Use Voucher",
+                      subtitle: _isPromoApplied
+                          ? "Discount Applied"
+                          : "Save orders with promos",
+                      trailing: _isPromoApplied
+                          ? Text("-\$${_discountAmount.toStringAsFixed(2)}",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red))
+                          : const Icon(Icons.arrow_forward_ios,
+                          size: 14, color: Colors.grey),
+                      onTap: () => _showPromoDialog(),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // 5. Payment Details
+                    _buildSectionHeader("Payment Details"),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildSummaryRow("Subtotal", _subtotalLocal),
+                          if (_isPromoApplied) ...[
+                            const SizedBox(height: 8),
+                            _buildSummaryRow("Discount", -_discountAmount, isRed: true),
+                          ],
+                          const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Divider(height: 1)),
+                          Row(
+                            mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Total Payment",
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[700])),
+                              Text("\$${_total.toStringAsFixed(2)}",
+                                  style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                      color: _espressoBrown)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 100), // Bottom padding
+                  ],
                 ),
-              ],
+              ),
             ),
+          ],
+        ),
+      ),
 
       // 6. Place Order Button
       bottomNavigationBar: Container(
@@ -564,15 +565,15 @@ class _CartScreenState extends State<CartScreen> {
             ),
             child: _isPlacingOrder
                 ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2),
-                  )
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                  color: Colors.white, strokeWidth: 2),
+            )
                 : const Text(
-                    "Place Order",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+              "Place Order",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       ),
@@ -616,7 +617,7 @@ class _CartScreenState extends State<CartScreen> {
                 item['image'] ?? '',
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.coffee, color: Colors.grey),
+                const Icon(Icons.coffee, color: Colors.grey),
               ),
             ),
           ),
@@ -784,7 +785,6 @@ class _CartScreenState extends State<CartScreen> {
                   const SizedBox(width: 10),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
                       _applyPromo();
                     },
                     style: ElevatedButton.styleFrom(

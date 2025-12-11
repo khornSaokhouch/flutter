@@ -379,13 +379,13 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
 
 
         // Orders page (uses your existing ShopsOrdersPage widget)
-        ShopsOrdersPage(),
+        ShopsOrdersPage(shopId: widget.shopId,),
 
         // Products page (uses your existing ShopsProductsPage widget)
         ShopsProductsPage(),
 
         // Profile page (uses your existing ShopsProfilePage widget)
-        ShopsProfilePage(),
+        ShopsProfilePage(shopId: widget.shopId,),
       ],
       accentColor: _freshMintGreen,
     );

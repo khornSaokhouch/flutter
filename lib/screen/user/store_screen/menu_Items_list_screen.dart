@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/user/store_screen/search_page_screen.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../core/utils/auth_utils.dart';
@@ -56,7 +57,7 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Future<void> _checkAuth() async {
-    final user = await AuthUtils.checkAuthAndGetUser(
+    await AuthUtils.checkAuthAndGetUser(
       context: context,
       userId: widget.userId,
     );
@@ -244,10 +245,17 @@ class _MenuScreenState extends State<MenuScreen> {
             letterSpacing: 1.2,
           ),
         ),
-        actions: [
+         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SearchPage(shopId:widget.shopId, userId: widget.userId), // 👉 your next page
+                ),
+              );
+            },
           ),
         ],
         bottom: PreferredSize(

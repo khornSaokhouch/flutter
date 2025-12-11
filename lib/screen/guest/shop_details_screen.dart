@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+
 // import 'package:url_launcher/url_launcher.dart'; // Uncomment if you want real map launching
+
 import '../../models/shop.dart';
 import '../../server/shop_serviec.dart';
+import '../user/store_screen/menu_Items_list_screen.dart';
 
 class ShopDetailsScreen extends StatefulWidget {
   final int shopId;
+  final int? userId;
 
-  const ShopDetailsScreen({super.key, required this.shopId});
+  const ShopDetailsScreen({super.key, required this.shopId, this.userId});
 
   @override
   State<ShopDetailsScreen> createState() => _ShopDetailsScreenState();
@@ -15,6 +20,11 @@ class ShopDetailsScreen extends StatefulWidget {
 
 class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   late Future<Shop?> _shopFuture;
+
+  // User location
+  Position? _userPosition;
+  double? _distanceKm; // computed distance between user and shop in km
+  String? _locationError;
 
   // --- THEME COLORS ---
   final Color _espressoBrown = const Color(0xFF4B2C20);
@@ -29,7 +39,104 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
     ));
+
+    // Start fetching the shop data
     _shopFuture = ShopService.fetchShopById(widget.shopId);
+
+    // Begin acquiring user location in the background and store it in state.
+    // We don't block UI — FutureBuilder will still show shop while we fetch location.
+    _determinePosition().then((pos) {
+      setState(() {
+        _userPosition = pos;
+      });
+    }).catchError((e) {
+      setState(() {
+        _locationError = e.toString();
+      });
+    });
+  }
+
+  // Safely request location permissions and return the current position.
+  Future<Position?> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw 'Location services are disabled.';
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw 'Location permissions are denied';
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw 'Location permissions are permanently denied, we cannot request permissions.';
+    }
+
+    // When we reach here, permissions are granted and we can get the position
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+  }
+
+  // Open maps with directions (Google Maps web URL as a generic fallback)
+  Future<void> _openMap(Shop shop) async {
+    final double? shopLat = shop.latitude;
+    final double? shopLng = shop.longitude;
+
+    if (shopLat == null || shopLng == null) {
+      // fallback to any provided google map url on the shop model
+      final url = shop.googleMapUrl;
+      if (url != null && url.isNotEmpty) {
+        final uri = Uri.parse(url);
+
+      } else {
+        _showSnackbar('Shop coordinates are not available.');
+      }
+      return;
+    }
+
+    // If we have user position, open directions from user to shop
+    String mapsUrl;
+    if (_userPosition != null) {
+      mapsUrl = 'https://www.google.com/maps/dir/?api=1&origin=${_userPosition!.latitude},${_userPosition!.longitude}&destination=$shopLat,$shopLng&travelmode=driving';
+    } else {
+      // open a pin at the shop location
+      mapsUrl = 'https://www.google.com/maps/search/?api=1&query=$shopLat,$shopLng';
+    }
+
+    final uri = Uri.parse(mapsUrl);
+
+  }
+
+  void _showSnackbar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // Compute distance in kilometers between user and shop and store it in _distanceKm.
+  void _computeDistanceIfPossible(Shop shop) {
+    if (_userPosition == null) return;
+    if (shop.latitude == null || shop.longitude == null) return;
+
+    final meters = Geolocator.distanceBetween(
+      _userPosition!.latitude,
+      _userPosition!.longitude,
+      shop.latitude!,
+      shop.longitude!,
+    );
+
+    final km = meters / 1000.0;
+
+    // Only update state if value changed enough to avoid excessive rebuilds
+    if (_distanceKm == null || (_distanceKm! - km).abs() > 0.001) {
+      setState(() {
+        _distanceKm = double.parse(km.toStringAsFixed(2));
+      });
+    }
   }
 
   @override
@@ -49,6 +156,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
           final shop = snapshot.data!;
           final bool isOpen = shop.status == 1;
+
+          // If we have both user and shop coords, compute and show distance.
+// Use addPostFrameCallback to avoid calling setState synchronously during build.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _computeDistanceIfPossible(shop);
+          });
 
           return Stack(
             children: [
@@ -79,12 +192,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                           color: Colors.white.withOpacity(0.9),
                           shape: BoxShape.circle,
                         ),
-                        child: IconButton(
-                          icon: const Icon(Icons.favorite_border_rounded, color: Colors.black),
-                          onPressed: () {
-                            // Toggle Favorite Logic
-                          },
-                        ),
                       ),
                     ],
                     flexibleSpace: FlexibleSpaceBar(
@@ -93,7 +200,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         fit: StackFit.expand,
                         children: [
                           _buildHeaderImage(shop.imageUrl),
-                          // Gradient Overlay for text readability if title was on image
                           Container(
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
@@ -112,7 +218,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   // 2. MAIN CONTENT BODY
                   SliverToBoxAdapter(
                     child: Container(
-                      // Negative margin to pull content over the image
                       transform: Matrix4.translationValues(0.0, -30.0, 0.0),
                       decoration: BoxDecoration(
                         color: _bgWhite,
@@ -130,7 +235,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Drag Handle
                             Center(
                               child: Container(
                                 width: 40,
@@ -143,7 +247,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               ),
                             ),
 
-                            // Shop Name & Status
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -162,7 +265,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             ),
                             const SizedBox(height: 12),
                             _buildStatusPill(isOpen),
-                            
+
                             const SizedBox(height: 24),
 
                             // QUICK ACTION BUTTONS (Map, Call, Info)
@@ -170,21 +273,19 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 _buildQuickAction(
-                                  icon: Icons.map_outlined, 
-                                  label: "Map", 
-                                  onTap: () {
-                                    // _launchMap(shop.googleMapUrl);
-                                  }
+                                  icon: Icons.map_outlined,
+                                  label: "Map",
+                                  onTap: () => _openMap(shop),
                                 ),
                                 _buildQuickAction(
-                                  icon: Icons.call_outlined, 
-                                  label: "Call", 
-                                  onTap: () {}
+                                  icon: Icons.call_outlined,
+                                  label: "Call",
+                                  onTap: () {},
                                 ),
                                 _buildQuickAction(
-                                  icon: Icons.share_outlined, 
-                                  label: "Share", 
-                                  onTap: () {}
+                                  icon: Icons.share_outlined,
+                                  label: "Share",
+                                  onTap: () {},
                                 ),
                               ],
                             ),
@@ -193,17 +294,16 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             const Divider(height: 1, color: Color(0xFFEEEEEE)),
                             const SizedBox(height: 24),
 
-                            // DETAILS SECTION
                             const Text(
                               "Details",
                               style: TextStyle(
-                                fontSize: 18, 
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87
                               ),
                             ),
                             const SizedBox(height: 16),
-                            
+
                             // Location Card
                             _buildDetailTile(
                               icon: Icons.location_on_rounded,
@@ -211,7 +311,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               subtitle: shop.location ?? "Location not available",
                             ),
                             const SizedBox(height: 16),
-                            
+
                             // Time Card
                             _buildDetailTile(
                               icon: Icons.access_time_filled_rounded,
@@ -223,7 +323,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
 
                             const SizedBox(height: 24),
 
-                            // OWNER / MANAGER SECTION
                             if (shop.owner.name.isNotEmpty) ...[
                               Container(
                                 padding: const EdgeInsets.all(16),
@@ -272,7 +371,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               ),
                             ],
 
-                            // Extra space for the sticky bottom button
                             const SizedBox(height: 100),
                           ],
                         ),
@@ -301,7 +399,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   ),
                   child: Row(
                     children: [
-                      // Price or Info (Optional)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -310,26 +407,30 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                           Text(
-                            "${shop.distanceInKm?.toStringAsFixed(1) ?? '2.4'} km", // Dummy data if null
+                            _distanceKm != null
+                                ? "${_distanceKm!.toStringAsFixed(2)} km"
+                                : (shop.distanceInKm != null ? "${shop.distanceInKm!.toStringAsFixed(2)} km" : "— km"),
                             style: TextStyle(
-                              fontSize: 18, 
-                              fontWeight: FontWeight.bold,
-                              color: _espressoBrown
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: _espressoBrown
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(width: 20),
-                      // MAIN CTA BUTTON
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: isOpen 
-                            ? () {
-                                // Navigate to Menu
-                              } 
-                            : null,
+                          onPressed: isOpen
+                              ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => MenuScreen(userId: widget.userId ?? 0, shopId: shop.id,)),
+                            );
+                          }
+                              : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _freshMintGreen, // YOUR UNIT GREEN
+                            backgroundColor: _freshMintGreen,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 18),
                             elevation: 0,
@@ -346,6 +447,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                             ),
                           ),
                         ),
+
                       ),
                     ],
                   ),
@@ -391,9 +493,9 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.circle, 
-            size: 8, 
-            color: isOpen ? _freshMintGreen : Colors.red
+              Icons.circle,
+              size: 8,
+              color: isOpen ? _freshMintGreen : Colors.red
           ),
           const SizedBox(width: 6),
           Text(
@@ -410,8 +512,8 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   }
 
   Widget _buildQuickAction({
-    required IconData icon, 
-    required String label, 
+    required IconData icon,
+    required String label,
     required VoidCallback onTap
   }) {
     return InkWell(

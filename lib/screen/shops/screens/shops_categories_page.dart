@@ -365,13 +365,13 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
 
 
         // 2: Orders page
-        ShopsOrdersPage(),
+        ShopsOrdersPage(shopId: widget.shopId,),
 
         // 3: Products page
         ShopsProductsPage(),
 
         // 4: Profile page
-        ShopsProfilePage(),
+        ShopsProfilePage(shopId: widget.shopId,),
       ],
       accentColor: _freshMintGreen,
     );

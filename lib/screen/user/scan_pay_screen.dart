@@ -67,6 +67,7 @@ class _ScanPayScreenState extends State<ScanPayScreen>
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        automaticallyImplyLeading: false,
         title: Text(
           'PAYMENT',
           style: TextStyle(
