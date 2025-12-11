@@ -50,19 +50,23 @@ class AuthUtils {
     final userIdString = user.id?.toString() ?? '';
 
     if (user.role == 'owner') {
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
-          // Navigate by role
         MaterialPageRoute(
           builder: (_) => ShopsHomePage(userId: userIdString),
         ),
+            (route) => false, // remove all previous routes
       );
     } else {
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => Layout(userId: user.id!)),
+        MaterialPageRoute(
+          builder: (_) => Layout(userId: user.id!),
+        ),
+            (route) => false, // remove all previous routes
       );
     }
+
   }
 
 }

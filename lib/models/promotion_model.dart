@@ -7,7 +7,7 @@ class PromotionModel {
   final int shopid;
   final String code;
   final String type; // raw type from API (e.g. "percentage" or "fixed")
-  final num value; // raw numeric value from API
+  final num value; // raw numeric value from API (could be int/double/string)
   final String? startsat; // raw string from API (nullable)
   final String? endsat; // raw string from API (nullable)
   final int? isactive; // 1 or 0 typically
@@ -124,36 +124,39 @@ class PromotionModel {
     return !e.isAfter(DateTime.now().toUtc());
   }
 
-  /// Minimal adapter used by `_computeDiscountForPromotion` from cart code:
+  /// Minimal adapter used by `_computeDiscountForAdapter` from cart code:
   /// - type: PromotionType
-  /// - value: double
-  /// - expiresAt / startsAt / isActive: passed through
-  /// - minSubtotal / maxDiscount: not present in API — return null
+  /// - value: double (if percentage -> percent value; if fixed -> cents encoded in double but will be rounded to int)
   PromotionAdapter toAdapter() {
     return PromotionAdapter(
       code: code,
       type: promotionType,
+      // We store raw numeric value here. For `fixed` promotions the API should
+      // provide cents (e.g. 125 => 125 cents). We'll round to int when computing.
       value: valueDouble,
       isActive: isActive,
       startsAt: startsAt,
       endsAt: expiresAt,
       shopId: shopid,
-      minSubtotal: null,
       maxDiscount: null,
+      minSubtotal: null,
       message: null,
     );
   }
 }
 
-/// Small adapter the cart code can use (keeps cart-side logic decoupled).
+/// Single adapter type used by cart code.
+/// CONTRACT:
+///  - if type == PromotionType.percentage -> `value` represents percentage (e.g. 15 means 15%)
+///  - if type == PromotionType.fixed -> `value` represents **cents** (e.g. 125 means $1.25)
 class PromotionAdapter {
   final String code;
   final PromotionType type;
-  final double value;
+  final double value; // percent OR cents (cents stored as numeric; will be rounded)
   final bool? isActive;
   final DateTime? startsAt;
   final DateTime? endsAt;
-  final int shopId;            // ← added for clean shop checking
+  final int shopId;
   final double? maxDiscount;
   final double? minSubtotal;
   final String? message;
@@ -162,7 +165,7 @@ class PromotionAdapter {
     required this.code,
     required this.type,
     required this.value,
-    required this.shopId,      // required!
+    required this.shopId,
     this.isActive,
     this.startsAt,
     this.endsAt,
@@ -171,4 +174,14 @@ class PromotionAdapter {
     this.message,
   });
 }
+
+/// --------------------
+/// UTIL: discount computation to use in your cart
+/// --------------------
+///
+/// Works entirely in integer cents so rounding is consistent:
+/// - for percentage: discountCents = round(subtotalCents * percent / 100)
+/// - for fixed: discountCents = round(promo.value)   (promo.value should represent cents)
+///
+/// Returns discount in dollars (double) where the value is cents/100.0
 

@@ -8,13 +8,15 @@ import '../../../routes/footer_nav_routes.dart';
 import '../../../server/shop_serviec.dart';
 import '../../../server/item_service.dart';
 import '../../home_screen.dart';
+import '../../user/store_screen/search_page_screen.dart';
+import '../guest_screen.dart';
 import '../guest_store_screen/select_store_page.dart';
 import '../guest_home_screen.dart';
 
 class GuestMenuScreen extends StatefulWidget {
   final int shopId;
 
-  const GuestMenuScreen({Key? key, required this.shopId}) : super(key: key);
+  const GuestMenuScreen({super.key, required this.shopId});
 
   @override
   State<GuestMenuScreen> createState() => _GuestMenuScreen();
@@ -119,7 +121,7 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
       setState(() => _selectedIndex = index);
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const GuestScreen()), 
+        MaterialPageRoute(builder: (context) => const GuestLayout()),
       );
     } else {
       showModalBottomSheet(
@@ -186,7 +188,14 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SearchPage(shopId:widget.shopId), // 👉 your next page
+                ),
+              );
+            },
           ),
         ],
         bottom: PreferredSize(

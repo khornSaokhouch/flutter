@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
+
+import './order_detail_screen.dart';
+
 
 class OrderSuccessScreen extends StatelessWidget {
   final Map<String, dynamic> orderData;
@@ -17,18 +20,32 @@ class OrderSuccessScreen extends StatelessWidget {
     final int id = orderData['id'] ?? 0;
     final String status = orderData['status'] ?? 'Placed';
     final DateTime placedAt = DateTime.tryParse(orderData['placedat'].toString()) ?? DateTime.now();
-    
+
     final double subtotal = (orderData['subtotalcents'] ?? 0) / 100;
     final double discount = (orderData['discountcents'] ?? 0) / 100;
     final double total = (orderData['totalcents'] ?? 0) / 100;
 
     return Scaffold(
-      backgroundColor: Colors.white, // ✅ Background is White
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
+            // Top row with back icon (left) - keeps centered content visually balanced
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back),
+                    color: Colors.black87,
+                  ),
+                ],
+              ),
+            ),
+
             const Spacer(flex: 1),
-            
+
             // 1. Animated Success Icon
             Container(
               padding: const EdgeInsets.all(24),
@@ -38,9 +55,9 @@ class OrderSuccessScreen extends StatelessWidget {
               ),
               child: Icon(Icons.check_circle_rounded, color: _freshMintGreen, size: 80),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // 2. Success Message
             Text(
               "Order Placed Successfully!",
@@ -64,7 +81,7 @@ class OrderSuccessScreen extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: _bgGrey, // Light grey card on white bg
+                color: _bgGrey,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.grey.shade200),
               ),
@@ -87,7 +104,7 @@ class OrderSuccessScreen extends StatelessWidget {
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Divider(color: Colors.grey), // Dotted line effect placeholder
+                    child: Divider(color: Colors.grey),
                   ),
                   _buildDetailRow("Subtotal", subtotal),
                   if (discount > 0) ...[
@@ -116,12 +133,17 @@ class OrderSuccessScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
+                  // Primary action: View Order Details (navigates to OrderDetailScreen)
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Navigate to Track Order (Logic needed)
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => OrderDetailScreen(orderData: orderData),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _freshMintGreen,
@@ -129,9 +151,31 @@ class OrderSuccessScreen extends StatelessWidget {
                         elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
-                      child: const Text("Track Order", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      child: const Text("View Order Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
                   ),
+                  const SizedBox(height: 12),
+
+                  // Secondary action: Track Order (placeholder - you can integrate tracking)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        // TODO: replace with your tracking page/logic
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => OrderDetailScreen(orderData: orderData),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      child: const Text("Track Order", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ),
+                  ),
+
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () {
@@ -165,3 +209,6 @@ class OrderSuccessScreen extends StatelessWidget {
     );
   }
 }
+
+
+

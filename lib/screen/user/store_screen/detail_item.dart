@@ -477,7 +477,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                 child: ElevatedButton(
                   onPressed: () async {
                     // If not logged in -> show login bottom sheet and wait for user id
-                    if (_currentUserId == null) {
+                    if (_currentUserId == null || _currentUserId == 0) {
                       final result = await showModalBottomSheet<int?>(
                         context: context,
                         isScrollControlled: true,
@@ -485,7 +485,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                         builder: (_) => const LoginBottomSheet(),
                       );
 
-                      if (result == null) {
+                      if (result == null || result == 0) {
                         // user cancelled or login failed
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(

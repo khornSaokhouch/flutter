@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
+import '../../models/order_model.dart';
+import '../../server/order_service.dart';
+
+/// Top-level helper to normalize possibly-relative image URLs.
+String? _resolveImageUrl(String? url) {
+  if (url == null || url.isEmpty) return null;
+  if (url.startsWith('http')) return url;
+
+  const base = 'http://127.0.0.1:8000/'; // change to your API base
+  if (url.startsWith('/')) return base + url.substring(1);
+  return base + url;
+}
 
 class HistoryScreen extends StatefulWidget {
   final int userId;
-
-  // Corrected constructor
-  const HistoryScreen({required this.userId, Key? key}) : super(key: key);
+  const HistoryScreen({required this.userId, super.key});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -13,46 +23,22 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // --- Theme Colors ---
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
   final Color _espressoBrown = const Color(0xFF4B2C20);
   final Color _bgGrey = const Color(0xFFF9FAFB);
 
-  // --- Static Data ---
-  final List<StaticOrder> _orders = [
-    StaticOrder(
-      id: "#28492",
-      shopName: "Starbucks - Central Market",
-      date: "Today, 10:23 AM",
-      items: "2x Iced Americano, 1x Croissant",
-      price: 12.50,
-      status: OrderStatus.completed,
-      imageUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/Starbucks_Corporation_Logo_2011.svg/1200px-Starbucks_Corporation_Logo_2011.svg.png",
-    ),
-    StaticOrder(
-      id: "#28455",
-      shopName: "The Coffee Bean & Tea Leaf",
-      date: "Yesterday, 4:15 PM",
-      items: "1x Matcha Latte (Large)",
-      price: 5.75,
-      status: OrderStatus.cancelled,
-      imageUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/9/9f/The_Coffee_Bean_%26_Tea_Leaf_logo.svg/1200px-The_Coffee_Bean_%26_Tea_Leaf_logo.svg.png",
-    ),
-    StaticOrder(
-      id: "#28102",
-      shopName: "Brown Coffee and Bakery",
-      date: "Sep 24, 08:30 AM",
-      items: "1x Cappuccino, 1x Bagel",
-      price: 8.20,
-      status: OrderStatus.upcoming,
-      imageUrl: "", // Will use fallback icon
-    ),
-  ];
+  bool _isLoading = false;
+  String? _error;
+  List<OrderModel> _orders = [];
+
+  // initial/full-page load vs pull-to-refresh
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadOrders();
   }
 
   @override
@@ -60,6 +46,93 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     _tabController.dispose();
     super.dispose();
   }
+
+  Future<void> _loadOrders({bool fromRefresh = false}) async {
+    if (fromRefresh) {
+      setState(() => _isRefreshing = true);
+    } else {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
+
+    try {
+      final orders = await OrderService.fetchAllOrders(userid: widget.userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _orders = orders;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+      });
+
+      // show a short snackbar to notify the user
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load orders: $_error')));
+        }
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _isRefreshing = false;
+      });
+    }
+  }
+
+  /// Add a sample item to an order locally, and optionally persist.
+  Future<void> _addSampleItemToOrder(OrderModel order) async {
+    final newItemMap = {
+      'id': 99,
+      'name': 'Latte',
+      'price': '4.50', // dollars -> 450 cents if your model converts
+      'image_url': null,
+    };
+
+    setState(() {
+      order.addItemFromItem(newItemMap, quantity: 1);
+    });
+
+    // If you have an API to persist this change, call it and handle errors.
+  }
+
+  OrderStatus _statusFromString(String? s) {
+    final str = (s ?? '').toLowerCase();
+    if (str.contains('pending')) return OrderStatus.pending;
+    if (str.contains('paid')) return OrderStatus.paid;
+    if (str.contains('prepar')) return OrderStatus.preparing;
+    if (str.contains('ready')) return OrderStatus.ready;
+    if (str.contains('complete')) return OrderStatus.completed;
+    if (str.contains('cancel')) return OrderStatus.cancelled;
+    if (str.contains('process')) return OrderStatus.processing;
+    if (str.contains('upcom')) return OrderStatus.upcoming;
+    return OrderStatus.pending;
+  }
+
+  String _formattedItemsText(OrderModel order) {
+    if (order.orderItems.isEmpty) return 'No items';
+    return order.orderItems.map((it) => '${it.quantity}x ${it.namesnapshot}').join(', ');
+  }
+
+  int _itemsCount(OrderModel order) {
+    if (order.orderItems.isEmpty) return 0;
+    return order.orderItems.fold<int>(0, (prev, it) => prev + it.quantity);
+  }
+
+  String _formatPriceFromCents(int cents) {
+    final d = cents / 100.0;
+    return d.toStringAsFixed(2);
+  }
+
+  List<OrderModel> get _pastOrders => _orders.where((o) => _statusFromString(o.status) != OrderStatus.upcoming).toList();
+  List<OrderModel> get _upcomingOrders => _orders.where((o) => _statusFromString(o.status) == OrderStatus.upcoming).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -69,75 +142,43 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: Text(
-          "HISTORY",
-          style: TextStyle(
-            color: _espressoBrown,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.0,
-            fontSize: 18,
-          ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: Colors.grey[200], height: 1),
-        ),
+        automaticallyImplyLeading: false,
+        title: Text("HISTORY", style: TextStyle(color: _espressoBrown, fontWeight: FontWeight.w800, letterSpacing: 1.0, fontSize: 18)),
+        bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(color: Colors.grey[200], height: 1)),
       ),
       body: Column(
         children: [
           const SizedBox(height: 16),
-          // 1. Custom Tab Bar
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 24),
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25), border: Border.all(color: Colors.grey.shade200)),
             child: TabBar(
               controller: _tabController,
-              indicator: BoxDecoration(
-                color: _freshMintGreen,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: _freshMintGreen.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
+              indicator: BoxDecoration(color: _freshMintGreen, borderRadius: BorderRadius.circular(20)),
               labelColor: Colors.white,
               unselectedLabelColor: Colors.grey[500],
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               overlayColor: MaterialStateProperty.all(Colors.transparent),
-              tabs: const [
-                Tab(text: 'Past Orders'),
-                Tab(text: 'Upcoming'),
-              ],
+              tabs: const [Tab(text: 'Past Orders'), Tab(text: 'Upcoming')],
             ),
           ),
           const SizedBox(height: 16),
-
-          // 2. Content
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                // Past Orders List
-                ListView.separated(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  itemCount: _orders.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    return _buildOrderCard(_orders[index]);
-                  },
+                // Past Orders Tab
+                RefreshIndicator(
+                  onRefresh: () => _loadOrders(fromRefresh: true),
+                  child: _buildOrdersListView(_pastOrders, emptyMessage: 'No past orders'),
                 ),
 
-                // Upcoming (Empty State Example)
-                _buildEmptyState(),
+                // Upcoming Tab
+                RefreshIndicator(
+                  onRefresh: () => _loadOrders(fromRefresh: true),
+                  child: _buildOrdersListView(_upcomingOrders, emptyMessage: 'No Upcoming Orders'),
+                ),
               ],
             ),
           ),
@@ -146,154 +187,137 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     );
   }
 
-  // --- Widgets ---
+  Widget _buildOrdersListView(List<OrderModel> orders, {required String emptyMessage}) {
+    if (_isLoading && !_isRefreshing) {
+      // full-page loading placeholder
+      return ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+        itemBuilder: (_, __) => _buildLoadingPlaceholderCard(),
+        separatorBuilder: (_, __) => const SizedBox(height: 16),
+        itemCount: 6,
+      );
+    }
 
-  Widget _buildOrderCard(StaticOrder order) {
+    if (_error != null && orders.isEmpty) {
+      return ListView(physics: const AlwaysScrollableScrollPhysics(), children: [Center(child: Padding(padding: const EdgeInsets.all(28.0), child: Text('Error: $_error')))]);
+    }
+
+    if (orders.isEmpty) {
+      return ListView(physics: const AlwaysScrollableScrollPhysics(), children: [SizedBox(height: 60), _buildEmptyState()]);
+    }
+
+    return ListView.separated(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      itemCount: orders.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, index) => _buildOrderCard(orders[index]),
+    );
+  }
+
+  Widget _buildLoadingPlaceholderCard() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 6))]),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(children: [
+            Container(width: 50, height: 50, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12))),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(height: 14, color: Colors.grey[100]), const SizedBox(height: 8), Container(height: 12, width: 120, color: Colors.grey[100])])),
+            const SizedBox(width: 8),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Container(height: 16, width: 60, color: Colors.grey[100]), const SizedBox(height: 8), Container(height: 12, width: 60, color: Colors.grey[100])])
+          ]),
+          const SizedBox(height: 12),
+          Container(width: double.infinity, height: 20, color: Colors.grey[100]),
+          const SizedBox(height: 12),
+          Row(children: [Container(height: 30, width: 90, color: Colors.grey[100]), const Spacer(), Container(height: 30, width: 70, color: Colors.grey[100])])
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Top Row: Image + Name + Price
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Shop Logo
+    );
+  }
+
+  Widget _buildOrderCard(OrderModel order) {
+    final statusEnum = _statusFromString(order.status);
+    final itemsText = _formattedItemsText(order);
+    final itemsCount = _itemsCount(order);
+    final priceText = _formatPriceFromCents(order.totalcents);
+
+    final String? rawImage = order.orderItems.isNotEmpty ? (order.orderItems.first.item?.imageUrl) : null;
+    final String? imageUrl = _resolveImageUrl(rawImage);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order))),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 6))]),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // IMAGE THUMBNAIL
                 Container(
                   width: 50,
                   height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade100),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: order.imageUrl.isNotEmpty
-                        ? Image.network(
-                            order.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(Icons.store, color: _freshMintGreen),
-                          )
-                        : Icon(Icons.store, color: _freshMintGreen),
-                  ),
+                  decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)),
+                  clipBehavior: Clip.hardEdge,
+                  child: imageUrl != null
+                      ? Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    width: 50,
+                    height: 50,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)));
+                    },
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.local_cafe_outlined, size: 28, color: Colors.grey),
+                  )
+                      : const Icon(Icons.local_cafe_outlined, size: 28, color: Colors.grey),
                 ),
+
                 const SizedBox(width: 14),
-                // Info
+
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.shopName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        order.date,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                      ),
-                    ],
-                  ),
-                ),
-                // Price
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      "\$${order.price.toStringAsFixed(2)}",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _espressoBrown,
-                      ),
-                    ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(order.orderItems.isNotEmpty ? order.orderItems.first.namesnapshot : 'Shop', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
                     const SizedBox(height: 4),
-                    Text(
-                      "${order.items.split(',').length} items",
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                    ),
-                  ],
-                )
-              ],
-            ),
-            
-            const SizedBox(height: 12),
-            
-            // Items Summary
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: _bgGrey,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                order.items,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[700],
-                  fontStyle: FontStyle.italic,
+                    Text(order.placedat ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  ]),
                 ),
-              ),
-            ),
 
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text("\$$priceText", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _espressoBrown)),
+                  const SizedBox(height: 4),
+                  Text("$itemsCount items", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                ]),
+              ]),
 
-            // Bottom Actions
-            Row(
-              children: [
-                _buildStatusBadge(order.status),
+              const SizedBox(height: 12),
+
+              Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: _bgGrey, borderRadius: BorderRadius.circular(8)), child: Text(itemsText, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: Colors.grey[700], fontStyle: FontStyle.italic))),
+
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+
+              Row(children: [
+                _buildStatusBadge(statusEnum),
                 const Spacer(),
-                if (order.status == OrderStatus.completed) ...[
-                  _buildActionButton(
-                    label: "Rate",
-                    textColor: Colors.black,
-                    bgColor: Colors.white,
-                    borderColor: Colors.grey.shade300,
-                    onTap: () {},
-                  ),
+                if (statusEnum == OrderStatus.completed) ...[
+                  _buildActionButton(label: "Rate", textColor: Colors.black, bgColor: Colors.white, borderColor: Colors.grey.shade300, onTap: () {/* rate */}),
                   const SizedBox(width: 10),
-                  _buildActionButton(
-                    label: "Reorder",
-                    textColor: Colors.white,
-                    bgColor: _freshMintGreen,
-                    borderColor: _freshMintGreen,
-                    onTap: () {},
-                  ),
+                  _buildActionButton(label: "Reorder", textColor: Colors.white, bgColor: _freshMintGreen, borderColor: _freshMintGreen, onTap: () {
+                    _addSampleItemToOrder(order);
+                  }),
                 ] else ...[
-                   _buildActionButton(
-                    label: "Help",
-                    textColor: Colors.grey,
-                    bgColor: Colors.white,
-                    borderColor: Colors.grey.shade200,
-                    onTap: () {},
-                  ),
+                  _buildActionButton(label: "Help", textColor: Colors.grey, bgColor: Colors.white, borderColor: Colors.grey.shade200, onTap: () {/* help */}),
                 ]
-              ],
-            )
-          ],
+              ])
+            ],
+          ),
         ),
       ),
     );
@@ -305,6 +329,26 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     IconData icon;
 
     switch (status) {
+      case OrderStatus.pending:
+        color = Colors.orange.shade700;
+        text = "Pending";
+        icon = Icons.hourglass_empty_rounded;
+        break;
+      case OrderStatus.paid:
+        color = Colors.green.shade700;
+        text = "Paid";
+        icon = Icons.payment_rounded;
+        break;
+      case OrderStatus.preparing:
+        color = Colors.deepOrange;
+        text = "Preparing";
+        icon = Icons.kitchen_rounded;
+        break;
+      case OrderStatus.ready:
+        color = Colors.blue.shade600;
+        text = "Ready";
+        icon = Icons.check_circle_outline;
+        break;
       case OrderStatus.completed:
         color = _freshMintGreen;
         text = "Completed";
@@ -327,29 +371,10 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
         break;
     }
 
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
-        ),
-      ],
-    );
+    return Row(children: [Icon(icon, color: color, size: 16), const SizedBox(width: 6), Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13))]);
   }
 
-  Widget _buildActionButton({
-    required String label,
-    required Color textColor,
-    required Color bgColor,
-    required Color borderColor,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildActionButton({required String label, required Color textColor, required Color bgColor, required Color borderColor, required VoidCallback onTap}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -357,19 +382,8 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: borderColor),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
+          decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: borderColor)),
+          child: Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 13)),
         ),
       ),
     );
@@ -377,74 +391,66 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
-              ],
-            ),
-            child: Icon(Icons.receipt_long_rounded, size: 50, color: Colors.grey[300]),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "No Upcoming Orders",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: _espressoBrown,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Looks like you don't have any\nactive orders right now.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 30),
-          ElevatedButton(
-            onPressed: () {
-              // Navigate to Home
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _freshMintGreen,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-            ),
-            child: const Text("Start Ordering", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]), child: Icon(Icons.receipt_long_rounded, size: 50, color: Colors.grey[300])),
+        const SizedBox(height: 20),
+        Text("No Upcoming Orders", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _espressoBrown)),
+        const SizedBox(height: 8),
+        const Text("Looks like you don't have any\nactive orders right now.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+        const SizedBox(height: 30),
+        ElevatedButton(onPressed: () {/* go home */}, style: ElevatedButton.styleFrom(backgroundColor: _freshMintGreen, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)), padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12)), child: const Text("Start Ordering", style: TextStyle(fontWeight: FontWeight.bold))),
+      ]),
     );
   }
 }
 
-// --- Static Data Models ---
+enum OrderStatus { pending, paid, preparing, ready, completed, cancelled, processing, upcoming }
 
-enum OrderStatus { completed, cancelled, processing, upcoming }
+class OrderDetailScreen extends StatelessWidget {
+  final OrderModel order;
+  const OrderDetailScreen({required this.order, super.key});
 
-class StaticOrder {
-  final String id;
-  final String shopName;
-  final String date;
-  final String items;
-  final double price;
-  final OrderStatus status;
-  final String imageUrl;
+  @override
+  Widget build(BuildContext context) {
+    final statusText = order.status;
+    final price = (order.totalcents / 100.0).toStringAsFixed(2);
+    final itemsText = order.orderItems.isNotEmpty ? order.orderItems.map((i) => '${i.quantity}x ${i.namesnapshot}').join(', ') : 'No items';
 
-  StaticOrder({
-    required this.id,
-    required this.shopName,
-    required this.date,
-    required this.items,
-    required this.price,
-    required this.status,
-    required this.imageUrl,
-  });
+    return Scaffold(
+      appBar: AppBar(title: const Text('Order Details'), backgroundColor: Colors.white, foregroundColor: Colors.black87, elevation: 0),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            Text('Order #${order.id ?? ''}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 12),
+            Text("Placed at: ${order.placedat ?? ''}"),
+            const SizedBox(height: 8),
+            Text("Status: $statusText"),
+            const SizedBox(height: 8),
+            Text("Items: $itemsText"),
+            const SizedBox(height: 8),
+            Text("Total: \$$price"),
+            const SizedBox(height: 16),
+            if (order.orderItems.isNotEmpty)
+              ...order.orderItems.map((it) {
+                final imageUrl = _resolveImageUrl(it.item?.imageUrl);
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[50]),
+                    clipBehavior: Clip.hardEdge,
+                    child: imageUrl != null ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.local_cafe_outlined)) : const Icon(Icons.local_cafe_outlined),
+                  ),
+                  title: Text('${it.quantity} x ${it.namesnapshot}'),
+                  subtitle: Text('\$${(it.unitpriceCents / 100.0).toStringAsFixed(2)}'),
+                );
+              }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
 }
