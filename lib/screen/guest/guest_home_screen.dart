@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../server/shop_serviec.dart';
+import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
+import 'package:intl/intl.dart'; // Used for time formatting
+
+// --- Services & Models ---
+import '../../server/shop_serviec.dart'; 
 import '../../models/shop.dart';
+
+// --- Components ---
 import '../../core/widgets/card/shop_card.dart';
+import '../../core/widgets/loading/logo_loading.dart'; // ✅ Imported your new component
+
+// --- Screens ---
 import './shop_details_screen.dart';
 import 'guest_store_screen/guest_no_store_nearby_screen.dart';
-import 'package:intl/intl.dart';
 
 class GuestScreen extends StatefulWidget {
   const GuestScreen({super.key});
@@ -15,304 +23,307 @@ class GuestScreen extends StatefulWidget {
 
 class _GuestScreenState extends State<GuestScreen> {
   late Future<List<Shop>> _shopsFuture;
+  
+  // Theme Colors
+  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+  final Color _espressoBrown = const Color(0xFF4B2C20);
 
   @override
   void initState() {
     super.initState();
-    _shopsFuture =
-        ShopService.fetchShops().then((response) => response?.data ?? []);
+    _loadShops();
+  }
+
+  void _loadShops() {
+    setState(() {
+      _shopsFuture = ShopService.fetchShops().then((response) => response?.data ?? []);
+    });
+  }
+
+  Future<void> _handleRefresh() async {
+    // Simulate delay to show the pulsing animation
+    await Future.delayed(const Duration(milliseconds: 1500));
+    _loadShops();
+    await _shopsFuture; 
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // ✅ UPDATED: Background is now White
+      backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60.0),
         child: Navbar(),
       ),
-      // ✅ UPDATED: Using CustomScrollView for smooth scrolling performance
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Banner & pickup/delivery sections (unchanged)...
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 20.0),
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                  image: const DecorationImage(
-                    image: AssetImage("assets/images/banner.jpg"),
-                    fit: BoxFit.cover,
+      // 1. PULL TO REFRESH with Custom Logo
+      body: CustomRefreshIndicator(
+        onRefresh: _handleRefresh,
+        builder: (BuildContext context, Widget child, IndicatorController controller) {
+          return Stack(
+            alignment: Alignment.topCenter,
+            children: <Widget>[
+              // The Loading Logo slides down
+              if (!controller.isIdle)
+                Positioned(
+                  top: 35.0 * controller.value, 
+                  child: Opacity(
+                    opacity: controller.value.clamp(0.0, 1.0),
+                    // ✅ Using your reusable component here
+                    child: const LogoLoading(size: 40), 
                   ),
                 ),
+              // The Scrollable Content
+              Transform.translate(
+                offset: Offset(0, 100.0 * controller.value),
+                child: child,
+              ),
+            ],
+          );
+        },
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // --- Banner Section ---
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 20.0),
                 child: Container(
-                  padding: const EdgeInsets.all(20.0),
+                  height: 200,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.black12, Colors.black54],
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Join the Rewards program to enjoy free beverages!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          height: 1.4,
-                          shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
-                        ),
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black87,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              child: const Text('JOIN NOW',
-                                  style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {},
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                side: const BorderSide(color: Colors.white, width: 1.5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              child: const Text('GUEST',
-                                  style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
                       ),
                     ],
+                    image: const DecorationImage(
+                      image: AssetImage("assets/images/banner.jpg"),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(20.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black12, Colors.black54],
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Join the Rewards program to enjoy free beverages!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            height: 1.4,
+                            shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+                          ),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {},
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black87,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                ),
+                                child: const Text('JOIN NOW', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {},
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(color: Colors.white, width: 1.5),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                ),
+                                child: const Text('GUEST', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
-          // Pickup & Delivery Section (unchanged)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Greeting!!',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+            // --- Pickup & Delivery Buttons ---
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Greeting!!',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildBigCard(
-                          title: "Pickup",
-                          imagePath: 'assets/images/pickup.jpg',
-                          isActive: true,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const GuestNoStoreNearbyScreen()),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildBigCard(
-                          title: "Delivery",
-                          imagePath: 'assets/images/pickup.jpg',
-                          isActive: false,
-                          onTap: () => _showComingSoonDialog(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 30)),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Nearby Stores',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1B4D3E),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      "See All",
-                      style: TextStyle(color: Color(0xFF4A6B5C)),
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ),
-
-          // SHOPS LIST
-          FutureBuilder<List<Shop>>(
-            future: _shopsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: Center(
-                      child: CircularProgressIndicator(color: Color(0xFF1B4D3E)),
-                    ),
-                  ),
-                );
-              } else if (snapshot.hasError) {
-                return SliverToBoxAdapter(
-                  child: Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  ),
-                );
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: Center(
-                      child: Text('No stores found nearby.'),
-                    ),
-                  ),
-                );
-              }
-
-              final shops = snapshot.data!;
-
-              return SliverList(
-                delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                    final shop = shops[index];
-
-                    // compute open/closed
-                    final openTimeStr = shop.openTime ?? '';
-                    final closeTimeStr = shop.closeTime ?? '';
-                    final shopStatus = _evaluateShopOpenStatus(openTimeStr, closeTimeStr);
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-                      child: Stack(
-                        children: [
-                          // Shop card (your existing widget)
-                          ShopCard(
-                            shop: shop,
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildBigCard(
+                            title: "Pickup",
+                            imagePath: 'assets/images/pickup.jpg',
+                            isActive: true,
                             onTap: () {
-                              if (shopStatus.isOpen) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ShopDetailsScreen(shopId: shop.id),
-                                  ),
-                                );
-                              } else {
-                                // Prevent navigation when closed — show next open info
-                                final next = shopStatus.opensAtFormatted ?? 'unknown';
-                                final message = 'This shop is currently closed. Opens at $next';
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(message)),
-                                );
-                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const GuestNoStoreNearbyScreen()),
+                              );
                             },
                           ),
-
-                          // Top-right badge: Open / Closed
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: _StatusBadge(isOpen: shopStatus.isOpen),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildBigCard(
+                            title: "Delivery",
+                            imagePath: 'assets/images/pickup.jpg',
+                            isActive: false,
+                            onTap: () => _showComingSoonDialog(context),
                           ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
-                          // Center overlay when closed
-                          if (!shopStatus.isOpen)
-                            Positioned.fill(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16), // match ShopCard radius
+            const SliverToBoxAdapter(child: SizedBox(height: 30)),
+
+            // --- Nearby Stores Header ---
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Nearby Stores',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1B4D3E)),
+                    ),
+                    TextButton(
+                      onPressed: () {},
+                      child: const Text("See All", style: TextStyle(color: Color(0xFF4A6B5C))),
+                    )
+                  ],
+                ),
+              ),
+            ),
+
+            // --- SHOPS LIST ---
+            FutureBuilder<List<Shop>>(
+              future: _shopsFuture,
+              builder: (context, snapshot) {
+                // 2. INITIAL LOADING with Custom Component
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(60.0),
+                      child: LogoLoading(size: 60), // ✅ Using your new component
+                    ),
+                  );
+                } else if (snapshot.hasError) {
+                  return SliverToBoxAdapter(
+                    child: Center(child: Text('Error: ${snapshot.error}')),
+                  );
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: Center(child: Text('No stores found nearby.')),
+                    ),
+                  );
+                }
+
+                final shops = snapshot.data!;
+
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final shop = shops[index];
+                      // Determine if shop is open based on time strings
+                      final status = _evaluateShopOpenStatus(shop.openTime, shop.closeTime);
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                        child: Stack(
+                          children: [
+                            // The Card
+                            ShopCard(
+                              shop: shop,
+                              onTap: () {
+                                if (status.isOpen) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ShopDetailsScreen(shopId: shop.id),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Shop is closed. Opens at ${status.opensAtFormatted}')),
+                                  );
+                                }
+                              },
+                            ),
+                            
+                            // Open/Closed Badge
+                            Positioned(
+                              top: 10,
+                              right: 10,
+                              child: _StatusBadge(isOpen: status.isOpen),
+                            ),
+
+                            // Closed Overlay (Optional: grey out if closed)
+                            if(!status.isOpen)
+                              Positioned.fill(
                                 child: Container(
-                                  color: Colors.black.withOpacity(0.45),
-                                  alignment: Alignment.center,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.65),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      'Closed',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.6,
-                                      ),
-                                    ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(16)
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  },
-                  childCount: shops.length,
-                ),
-              );
-            },
-          ),
+                              )
+                          ],
+                        ),
+                      );
+                    },
+                    childCount: shops.length,
+                  ),
+                );
+              },
+            ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 30)),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 30)),
+          ],
+        ),
       ),
     );
   }
+
+  // --- Helper Widgets ---
 
   Widget _buildBigCard({
     required String title,
@@ -340,12 +351,9 @@ class _GuestScreenState extends State<GuestScreen> {
               child: isActive
                   ? Image.asset(imagePath, fit: BoxFit.cover)
                   : ColorFiltered(
-                colorFilter: const ColorFilter.mode(
-                  Colors.grey,
-                  BlendMode.saturation,
-                ),
-                child: Image.asset(imagePath, fit: BoxFit.cover),
-              ),
+                      colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.saturation),
+                      child: Image.asset(imagePath, fit: BoxFit.cover),
+                    ),
             ),
             Positioned.fill(
               child: Container(
@@ -353,20 +361,14 @@ class _GuestScreenState extends State<GuestScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.8),
-                    ],
+                    colors: [Colors.transparent, Colors.transparent, Colors.black.withOpacity(0.8)],
                     stops: const [0.0, 0.5, 1.0],
                   ),
                 ),
               ),
             ),
             if (!isActive)
-              Positioned.fill(
-                child: Container(color: Colors.black.withOpacity(0.3)),
-              ),
+              Positioned.fill(child: Container(color: Colors.black.withOpacity(0.3))),
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -414,18 +416,11 @@ class _GuestScreenState extends State<GuestScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE8F5E9),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.rocket_launch_rounded,
-                    size: 32, color: Color(0xFF1B4D3E)),
+                decoration: const BoxDecoration(color: Color(0xFFE8F5E9), shape: BoxShape.circle),
+                child: const Icon(Icons.rocket_launch_rounded, size: 32, color: Color(0xFF1B4D3E)),
               ),
               const SizedBox(height: 20),
-              const Text(
-                "Coming Soon!",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+              const Text("Coming Soon!", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               Text(
                 "We are working hard to bring delivery to your location.",
@@ -440,8 +435,7 @@ class _GuestScreenState extends State<GuestScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B4D3E),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text("Got it"),
@@ -454,118 +448,59 @@ class _GuestScreenState extends State<GuestScreen> {
     );
   }
 
-  /// ---------------------------
-  /// OPEN/CLOSED TIME LOGIC
-  /// ---------------------------
-  /// Returns structured result about open/closed and formatted times.
+  // --- Logic for Shop Hours ---
   _ShopOpenStatus _evaluateShopOpenStatus(String? openTimeStr, String? closeTimeStr) {
-    // If either is missing — treat as open
-    if ((openTimeStr == null || openTimeStr.trim().isEmpty) ||
-        (closeTimeStr == null || closeTimeStr.trim().isEmpty)) {
-      return _ShopOpenStatus(isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
+    if ((openTimeStr == null || openTimeStr.isEmpty) || (closeTimeStr == null || closeTimeStr.isEmpty)) {
+      return _ShopOpenStatus(isOpen: true, opensAtFormatted: null);
+    }
+    int? _toSeconds(String? s) {
+      if (s == null) return null;
+      final parts = s.trim().split(':');
+      if (parts.length < 2) return null;
+      return (int.tryParse(parts[0]) ?? 0) * 3600 + (int.tryParse(parts[1]) ?? 0) * 60;
     }
 
-    // parse both times into seconds-since-midnight
-    final openSeconds = _parseTimeToSeconds(openTimeStr);
-    final closeSeconds = _parseTimeToSeconds(closeTimeStr);
-    if (openSeconds == null || closeSeconds == null) {
-      // parse failed -> assume open
-      return _ShopOpenStatus(isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
-    }
+    final openSec = _toSeconds(openTimeStr);
+    final closeSec = _toSeconds(closeTimeStr);
+    if(openSec == null || closeSec == null) return _ShopOpenStatus(isOpen: true);
 
     final now = DateTime.now();
-    final nowSeconds = now.hour * 3600 + now.minute * 60 + now.second;
+    final nowSec = now.hour * 3600 + now.minute * 60 + now.second;
+    bool isOpen = (openSec < closeSec) 
+        ? (nowSec >= openSec && nowSec < closeSec) 
+        : (nowSec >= openSec || nowSec < closeSec); // Overnight
 
-    bool isOpen;
-    // normal same-day window (open < close)
-    if (openSeconds < closeSeconds) {
-      isOpen = (nowSeconds >= openSeconds && nowSeconds < closeSeconds);
-    } else if (openSeconds > closeSeconds) {
-      // overnight window, e.g., open 20:00 (72000) -> close 04:00 (14400)
-      isOpen = (nowSeconds >= openSeconds) || (nowSeconds < closeSeconds);
-    } else {
-      // openSeconds == closeSeconds -> treat as open 24h
-      isOpen = true;
-    }
-
-    final opensAtFormatted = _formatTimeString(openTimeStr);
-    final closesAtFormatted = _formatTimeString(closeTimeStr);
-
-    return _ShopOpenStatus(
-      isOpen: isOpen,
-      opensAtFormatted: opensAtFormatted,
-      closesAtFormatted: closesAtFormatted,
-    );
-  }
-
-  /// Parse "HH:mm:ss" or "HH:mm" into seconds since midnight.
-  /// Returns null if parse fails.
-  int? _parseTimeToSeconds(String? s) {
-    if (s == null) return null;
-    final trimmed = s.trim();
-    if (trimmed.isEmpty) return null;
-
-    // Remove fractional seconds if present and handle both ":" separated
-    final parts = trimmed.split(':');
-    try {
-      if (parts.length >= 2) {
-        final h = int.tryParse(parts[0]) ?? 0;
-        final m = int.tryParse(parts[1]) ?? 0;
-        final sec = (parts.length >= 3) ? int.tryParse(parts[2].split('.').first) ?? 0 : 0;
-        if (h < 0 || h > 23 || m < 0 || m > 59 || sec < 0 || sec > 59) return null;
-        return h * 3600 + m * 60 + sec;
-      }
-    } catch (_) {
-      return null;
-    }
-    return null;
-  }
-
-  /// Convert "HH:mm:ss" or "HH:mm" to a human friendly format, e.g. "1:29 AM" or "13:35"
-  String? _formatTimeString(String? s) {
-    final seconds = _parseTimeToSeconds(s);
-    if (seconds == null) return null;
-    final h = seconds ~/ 3600;
-    final m = (seconds % 3600) ~/ 60;
-    final dt = DateTime(2000, 1, 1, h, m);
-    // Use intl to format 12-hour with am/pm; if you prefer 24-hour, use DateFormat.Hm()
-    final formatter = DateFormat.jm(); // e.g. "1:29 AM"
-    return formatter.format(dt);
+    return _ShopOpenStatus(isOpen: isOpen, opensAtFormatted: openTimeStr);
   }
 }
 
-/// Small value class for status
 class _ShopOpenStatus {
   final bool isOpen;
   final String? opensAtFormatted;
-  final String? closesAtFormatted;
-  _ShopOpenStatus({required this.isOpen, this.opensAtFormatted, this.closesAtFormatted});
+  _ShopOpenStatus({required this.isOpen, this.opensAtFormatted});
 }
 
-/// Badge widget used on top-right of each shop card
 class _StatusBadge extends StatelessWidget {
   final bool isOpen;
-  const _StatusBadge({required this.isOpen, Key? key}) : super(key: key);
+  const _StatusBadge({required this.isOpen});
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isOpen ? Colors.green.shade600 : Colors.red.shade600;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))],
+        color: isOpen ? Colors.green : Colors.red,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
       ),
       child: Text(
-        isOpen ? 'Open' : 'Closed',
+        isOpen ? "Open" : "Closed",
         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
       ),
     );
   }
 }
 
-// ===== Navbar =====
 class Navbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -597,7 +532,7 @@ class Navbar extends StatelessWidget {
             'assets/images/img_1.png',
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) =>
-            const Icon(Icons.coffee, color: Color(0xFF1B4D3E)),
+                const Icon(Icons.coffee, color: Color(0xFF1B4D3E)),
           ),
         ),
       ),

@@ -7,6 +7,7 @@ import '../../../models/shop.dart';
 import '../../../server/shop_serviec.dart';
 import 'guest_menu_Items_list_screen.dart';
 import 'package:intl/intl.dart';
+import '../../../core/widgets/loading/logo_loading.dart';
 
 class GuestSelectStorePage extends StatefulWidget {
   const GuestSelectStorePage({super.key});
@@ -133,16 +134,26 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
         ],
       ),
       body: loading
-          ? Center(
+    ? Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: _freshMintGreen),
-            const SizedBox(height: 16),
-            const Text("Locating nearby stores...", style: TextStyle(color: Colors.grey)),
+            LogoLoading(
+              size: 80,
+              imagePath: 'assets/images/img_1.png',
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              "Locating nearby stores...",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+              ),
+            ),
           ],
         ),
       )
+
           : shops.isEmpty
           ? _buildEmptyState()
           : ListView.separated(

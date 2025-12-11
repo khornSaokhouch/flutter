@@ -5,6 +5,7 @@ import '../../../core/widgets/store/pickup_delivery_toggle.dart';
 import '../../../models/shop.dart';
 import '../../../server/shop_serviec.dart';
 import 'select_store_page.dart'; 
+import '../../../core/widgets/loading/logo_loading.dart';
 
 class GuestNoStoreNearbyScreen extends StatefulWidget {
   final int? userId;
@@ -125,24 +126,28 @@ class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
   Widget build(BuildContext context) {
     // ✅ RESTORED: Loading State UI
     if (_checkingLocation) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _buildAppBar(),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: _freshMintGreen),
-              const SizedBox(height: 16),
-              Text(
-                "Locating nearby stores...",
-                style: TextStyle(color: Colors.grey[600]),
-              )
-            ],
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: _buildAppBar(),
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          LogoLoading(
+            size: 80, // Customize your preferred size
+            imagePath: 'assets/images/img_1.png',
           ),
-        ),
-      );
-    }
+          const SizedBox(height: 24),
+          Text(
+            "Locating nearby stores...",
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+          )
+        ],
+      ),
+    ),
+  );
+}
+
 
     // ✅ Main UI (Premium White & Green)
     return Scaffold(
