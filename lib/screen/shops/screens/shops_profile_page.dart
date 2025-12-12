@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:frontend/screen/shops/screens/reports_page_screen.dart';
+import 'package:frontend/screen/shops/screens/security_page_screen.dart';
 import 'package:intl/intl.dart';
 
 import '../../../models/order_model.dart';
@@ -8,6 +10,7 @@ import '../../../server/order_service.dart';
  // adjust path/name if different
 import '../../../server/shop_serviec.dart';
 import '../../guest/guest_screen.dart';
+import 'my_shop_page_screen.dart';
 
 class ShopsProfilePage extends StatefulWidget {
   final int shopId;
@@ -295,13 +298,35 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
           SliverList(
             delegate: SliverChildListDelegate([
               _buildSectionTitle("Shop Management"),
-              _buildSettingTile(Icons.store, "My Shops", () {}),
+              _buildSettingTile(Icons.store, "My Shops", () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MyShopPage(),
+                  ),
+                );
+              }),
               _buildSettingTile(Icons.people_outline, "Staff Management", () {}),
-              _buildSettingTile(Icons.pie_chart_outline, "Reports & Analytics", () {}),
+              _buildSettingTile(Icons.pie_chart_outline, "Reports & Analytics", () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>  ReportsPage(),
+                  ),
+                );
+              }),
 
               _buildSectionTitle("Account"),
               _buildSettingTile(Icons.notifications_outlined, "Notifications", () {}),
-              _buildSettingTile(Icons.lock_outline, "Security", () {}),
+              _buildSettingTile(Icons.lock_outline, "Security", () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>  SecurityPage(),
+                  ),
+                );
+              }),
+
               _buildSettingTile(Icons.help_outline, "Help & Support", () {}),
 
               const SizedBox(height: 20),

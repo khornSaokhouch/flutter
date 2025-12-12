@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../../models/shop.dart'; // Keep your import
+import '../../../models/shop.dart';
+import '../../utils/message_utils.dart';
+import '../../utils/utils.dart'; // Keep your import
 
 class ShopCard extends StatelessWidget {
   final Shop shop;
   final VoidCallback? onTap;
 
   const ShopCard({
-    Key? key,
+    super.key,
     required this.shop,
     this.onTap,
-  }) : super(key: key);
+  });
 
   bool get isOpen => shop.status == 1;
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +122,7 @@ class ShopCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             (shop.openTime != null && shop.closeTime != null)
-                                ? '${shop.openTime} - ${shop.closeTime}'
+                                ? '${formatTimeToAmPm(context, shop.openTime)} - ${formatTimeToAmPm(context, shop.closeTime)}'
                                 : 'Hours unavailable',
                             style: TextStyle(
                               fontSize: 13,
@@ -126,6 +130,7 @@ class ShopCard extends StatelessWidget {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
+
                         ],
                       ),
                     ],

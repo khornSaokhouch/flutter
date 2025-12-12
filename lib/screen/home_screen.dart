@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:frontend/screen/user/layout.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -81,7 +82,7 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
     try {
       final googleSignIn = Platform.isIOS || Platform.isMacOS
           ? GoogleSignIn(
-              clientId: '1043515983877-7ai2eljhepol58vkep9hgi5gb2244cfb.apps.googleusercontent.com',
+             clientId: dotenv.env['GOOGLE_CLIENT_ID'],
               scopes: ['email'],
             )
           : GoogleSignIn(scopes: ['email']);
@@ -173,10 +174,8 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
           AppleIDAuthorizationScopes.fullName,
         ],
         webAuthenticationOptions: WebAuthenticationOptions(
-          clientId: 'com.kheangsenghorng.frontend.service',
-          redirectUri: Uri.parse(
-            'https://drinking-coffee-8eb88.firebaseapp.com/__/auth/handler',
-          ),
+          clientId: dotenv.env['GOOGLE_WEB_CLIENT_ID']!,
+          redirectUri: Uri.parse(dotenv.env['GOOGLE_WEB_REDIRECT_URI']!),
         ),
       );
 

@@ -15,7 +15,7 @@ class ShopsBottomNavigation extends StatefulWidget {
     this.initialIndex = 0,
     this.accentColor = const Color(0xFF4E8D7C),
     this.items,
-  })  : assert(pages.length == (items?.length ?? 4), 'pages length must match items length');
+  })  : assert(pages.length == (items?.length ?? 5), 'pages length must match items length');
 
   @override
   State<ShopsBottomNavigation> createState() => _ShopsBottomNavigationState();
@@ -48,6 +48,11 @@ class _ShopsBottomNavigationState extends State<ShopsBottomNavigation> {
             icon: Icon(Icons.shopping_bag_outlined),
             activeIcon: Icon(Icons.shopping_bag),
             label: 'Orders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.local_offer_outlined), // ← Promotions icon
+            activeIcon: Icon(Icons.local_offer),
+            label: 'Promotions',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.storefront_outlined),

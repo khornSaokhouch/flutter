@@ -168,7 +168,6 @@ class OrderService {
 
 
 
-
   /// Get single order by id. Optional token override.
   Future<OrderModel> getOrder(int id, {String? token}) async {
     final uri = Uri.parse('$baseUrl/orders/$id');
@@ -197,26 +196,40 @@ class OrderService {
   }
 
   /// Update order with partial fields. `updates` should be a Map of fields to change.
-  Future<OrderModel> updateOrder(int id, Map<String, dynamic> updates, {String? token}) async {
-    final uri = Uri.parse('$baseUrl/orders/$id');
+  Future<OrderModel> updateOrder(int id, Map<String, dynamic> payload) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
 
-    final headers = token == null
-        ? ApiConfig.headers
-        : await ApiConfig.authHeaders(token);
+    final headers =
+    token == null ? ApiConfig.headers : await ApiConfig.authHeaders(token);
 
-    final res = await http.patch(uri, headers: headers, body: json.encode(updates));
+    final uri = Uri.parse('$baseUrl/shop/orders/$id');
+
+    final res = await http.patch(
+      uri,
+      headers: headers,
+      body: jsonEncode(payload),
+    );
 
     if (res.statusCode == 200) {
-      final decoded = json.decode(res.body);
-      if (decoded is Map<String, dynamic> && decoded['data'] is Map<String, dynamic>) {
-        return OrderModel.fromJson(decoded['data'] as Map<String, dynamic>);
-      } else {
-        throw Exception('updateOrder failed: unexpected response shape: ${res.body}');
-      }
-    } else {
-      throw Exception('updateOrder failed: ${res.statusCode} ${res.body}');
+      final decoded = jsonDecode(res.body);
+      final data = decoded['data'] ?? decoded;
+      return OrderModel.fromJson(data);
     }
+
+    if (res.statusCode == 422) {
+      final decoded = jsonDecode(res.body);
+      throw Exception(jsonEncode({
+        'status': 422,
+        'errors': decoded['errors'] ?? decoded,
+      }));
+    }
+
+    throw Exception('updateOrder failed: ${res.statusCode} ${res.body}');
   }
+
+
+
 
   /// Delete an order by id
   Future<void> deleteOrder(int id, {String? token}) async {

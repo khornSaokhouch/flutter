@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
 // --- Imports ---
+import '../../core/utils/utils.dart';
 import '../../models/shop.dart';
 import '../../server/shop_serviec.dart';
 import '../user/store_screen/menu_Items_list_screen.dart';
@@ -285,9 +286,15 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                               icon: Icons.access_time_filled_rounded,
                               title: "Opening Hours",
                               subtitle: (shop.openTime != null && shop.closeTime != null)
-                                  ? "${shop.openTime} - ${shop.closeTime}"
+                                  ? (
+                                  (formatTimeToAmPm(context, shop.openTime).isNotEmpty &&
+                                      formatTimeToAmPm(context, shop.closeTime).isNotEmpty)
+                                      ? '${formatTimeToAmPm(context, shop.openTime)} - ${formatTimeToAmPm(context, shop.closeTime)}'
+                                      : 'Hours not listed'
+                              )
                                   : "Hours not listed",
                             ),
+
 
                             const SizedBox(height: 24),
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
-import 'package:intl/intl.dart'; // Used for time formatting
+// Used for time formatting
 
 // --- Services & Models ---
-import '../../server/shop_serviec.dart'; 
+import '../../server/shop_serviec.dart';
 import '../../models/shop.dart';
 
 // --- Components ---
@@ -11,8 +11,9 @@ import '../../core/widgets/card/shop_card.dart';
 import '../../core/widgets/loading/logo_loading.dart'; // ✅ Imported your new component
 
 // --- Screens ---
+import '../home_screen.dart';
 import './shop_details_screen.dart';
-import 'guest_store_screen/guest_no_store_nearby_screen.dart';
+import 'guest_screen.dart';
 
 class GuestScreen extends StatefulWidget {
   const GuestScreen({super.key});
@@ -23,10 +24,8 @@ class GuestScreen extends StatefulWidget {
 
 class _GuestScreenState extends State<GuestScreen> {
   late Future<List<Shop>> _shopsFuture;
-  
+
   // Theme Colors
-  final Color _freshMintGreen = const Color(0xFF4E8D7C);
-  final Color _espressoBrown = const Color(0xFF4B2C20);
 
   @override
   void initState() {
@@ -44,7 +43,7 @@ class _GuestScreenState extends State<GuestScreen> {
     // Simulate delay to show the pulsing animation
     await Future.delayed(const Duration(milliseconds: 1500));
     _loadShops();
-    await _shopsFuture; 
+    await _shopsFuture;
   }
 
   @override
@@ -65,11 +64,11 @@ class _GuestScreenState extends State<GuestScreen> {
               // The Loading Logo slides down
               if (!controller.isIdle)
                 Positioned(
-                  top: 35.0 * controller.value, 
+                  top: 35.0 * controller.value,
                   child: Opacity(
                     opacity: controller.value.clamp(0.0, 1.0),
                     // ✅ Using your reusable component here
-                    child: const LogoLoading(size: 40), 
+                    child: const LogoLoading(size: 40),
                   ),
                 ),
               // The Scrollable Content
@@ -131,8 +130,15 @@ class _GuestScreenState extends State<GuestScreen> {
                         Row(
                           children: [
                             Expanded(
-                              child: ElevatedButton(
-                                onPressed: () {},
+                              child:ElevatedButton(
+                                onPressed: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true, // makes bottom sheet taller
+                                    backgroundColor: Colors.transparent, // rounded corners visible
+                                    builder: (_) => const LoginBottomSheet(),
+                                  );
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   foregroundColor: Colors.black87,
@@ -141,8 +147,9 @@ class _GuestScreenState extends State<GuestScreen> {
                                     borderRadius: BorderRadius.circular(30),
                                   ),
                                 ),
-                                child: const Text('JOIN NOW', style: TextStyle(fontWeight: FontWeight.bold)),
+                                child: const Text('LOGIN NOW', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
+
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -189,7 +196,9 @@ class _GuestScreenState extends State<GuestScreen> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const GuestNoStoreNearbyScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const GuestLayout(selectedIndex: 2),
+                                ),
                               );
                             },
                           ),
@@ -224,7 +233,14 @@ class _GuestScreenState extends State<GuestScreen> {
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1B4D3E)),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const GuestLayout(selectedIndex: 2),
+                          ),
+                        );
+                      },
                       child: const Text("See All", style: TextStyle(color: Color(0xFF4A6B5C))),
                     )
                   ],
@@ -288,7 +304,7 @@ class _GuestScreenState extends State<GuestScreen> {
                                 }
                               },
                             ),
-                            
+
                             // Open/Closed Badge
                             Positioned(
                               top: 10,
@@ -466,8 +482,8 @@ class _GuestScreenState extends State<GuestScreen> {
 
     final now = DateTime.now();
     final nowSec = now.hour * 3600 + now.minute * 60 + now.second;
-    bool isOpen = (openSec < closeSec) 
-        ? (nowSec >= openSec && nowSec < closeSec) 
+    bool isOpen = (openSec < closeSec)
+        ? (nowSec >= openSec && nowSec < closeSec)
         : (nowSec >= openSec || nowSec < closeSec); // Overnight
 
     return _ShopOpenStatus(isOpen: isOpen, opensAtFormatted: openTimeStr);
@@ -502,6 +518,8 @@ class _StatusBadge extends StatelessWidget {
 }
 
 class Navbar extends StatelessWidget {
+  const Navbar({super.key});
+
   @override
   Widget build(BuildContext context) {
     return AppBar(

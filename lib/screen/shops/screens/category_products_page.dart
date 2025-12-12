@@ -7,6 +7,7 @@ import 'package:frontend/screen/shops/screens/shop_product_detai.dart';
 import 'package:frontend/screen/shops/screens/shops_orders_page.dart';
 import 'package:frontend/screen/shops/screens/shops_products_page.dart';
 import 'package:frontend/screen/shops/screens/shops_profile_page.dart';
+import 'package:frontend/screen/shops/screens/shops_promotions_screen.dart';
 
 import '../../../models/shops_models/shop_item_owner_models.dart';
 import '../../../server/shops_server/item_owner_service.dart';
@@ -377,12 +378,13 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       pages: [
         _buildMainView(),
 
-
         // Orders page (uses your existing ShopsOrdersPage widget)
         ShopsOrdersPage(shopId: widget.shopId,),
 
+        PromotionsScreen(shopId: widget.shopId,),
+
         // Products page (uses your existing ShopsProductsPage widget)
-        ShopsProductsPage(),
+        ShopsProductsPage(shopId: widget.shopId),
 
         // Profile page (uses your existing ShopsProfilePage widget)
         ShopsProfilePage(shopId: widget.shopId,),
