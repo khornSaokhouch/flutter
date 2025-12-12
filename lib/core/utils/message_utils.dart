@@ -36,3 +36,4 @@ void showSnackBar(BuildContext context, String message, SnackBarType type) {
     ),
   );
 }
+

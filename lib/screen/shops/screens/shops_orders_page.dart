@@ -1,5 +1,5 @@
+// lib/screen/shops/screens/shops_orders_page.dart
 import 'package:flutter/material.dart';
-
 import '../../../models/order_model.dart';
 import '../../../server/order_service.dart';
 
@@ -24,7 +24,11 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
   String? _error;
   List<OrderModel> _orders = [];
 
-  // search field (local filtering)
+  // tracks per-order busy state (e.g., updating)
+  final Map<int, bool> _orderBusy = {};
+
+  // service
+  final OrderService _orderService = OrderService();
 
   // tabs
   final List<String> _tabs = ['Pending', 'Preparing', 'Ready', 'History'];
@@ -42,7 +46,7 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
     super.dispose();
   }
 
-  Future<void> _loadOrders() async {
+  Future<void> _loadOrders([int? shopId]) async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -59,9 +63,7 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
         _error = e.toString();
       });
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -82,59 +84,36 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgGrey,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false, // No back button for dashboard tabs
-        title: Text(
-          "INCOMING ORDERS",
-          style: TextStyle(
-              color: _espressoBrown,
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-              letterSpacing: 1.0),
-        ),
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: _freshMintGreen,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: _freshMintGreen,
-          isScrollable: true,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          tabs: _tabs.map((t) => Tab(text: t)).toList(),
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Error: $_error', style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: _loadOrders,
-                child: const Text('Retry'),
-              ),
-            ],
-          ))
-          : TabBarView(
-        controller: _tabController,
-        children: _tabs.map((tab) => _buildOrderList(tab)).toList(),
-      ),
-    );
+  Future<void> _updateOrderStatus(OrderModel order, String newStatus) async {
+    if (order.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order has no id')));
+      return;
+    }
+
+    final key = order.id!;
+    setState(() => _orderBusy[key] = true);
+
+    try {
+      final updated = await _orderService.updateOrder(key, {'status': newStatus});
+
+      // replace in local list
+      setState(() {
+        final idx = _orders.indexWhere((o) => o.id == key);
+        if (idx != -1) _orders[idx] = updated;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Order $key updated to $newStatus')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update order: $e')));
+    } finally {
+      setState(() => _orderBusy.remove(key));
+    }
   }
 
   Widget _buildOrderList(String statusFilter) {
     // Filter by model fields (not Map)
     final filtered = _orders.where((o) {
-      if (statusFilter == "History") return true; // all for demo
+      if (statusFilter == "History") return true; // show all in History tab
       return o.status.toLowerCase() == statusFilter.toLowerCase();
     }).toList();
 
@@ -146,7 +125,18 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
       separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final order = filtered[index];
-        return _buildOrderCard(order);
+        return Stack(
+          children: [
+            _buildOrderCard(order),
+            if (order.id != null && (_orderBusy[order.id!] ?? false))
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.12), borderRadius: BorderRadius.circular(16)),
+                  child: const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2))),
+                ),
+              ),
+          ],
+        );
       },
     );
   }
@@ -154,9 +144,13 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
   Widget _buildOrderCard(OrderModel order) {
     final String status = order.status;
     Color statusColor;
-    if (status.toLowerCase() == 'pending') statusColor = Colors.orange;
-    else if (status.toLowerCase() == 'preparing') statusColor = Colors.blue;
-    else statusColor = _freshMintGreen;
+    if (status.toLowerCase() == 'pending') {
+      statusColor = Colors.orange;
+    } else if (status.toLowerCase() == 'preparing') {
+      statusColor = Colors.blue;
+    } else {
+      statusColor = _freshMintGreen;
+    }
 
     final idText = order.id != null ? '#${order.id}' : '—';
     final timeText = _formatPlacedAt(order.placedat);
@@ -167,7 +161,6 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () {
-        // navigate to detail screen; replace with your screen
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -179,45 +172,26 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4))
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           children: [
             // Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade100)), borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
                       Container(
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8)),
-                        child: Text(status,
-                            style: TextStyle(
-                                color: statusColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
                       const SizedBox(width: 8),
-                      Text(idText,
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _espressoBrown,
-                              fontSize: 16)),
+                      Text(idText, style: TextStyle(fontWeight: FontWeight.bold, color: _espressoBrown, fontSize: 16)),
                     ],
                   ),
                   Text(timeText, style: const TextStyle(color: Colors.grey, fontSize: 12)),
@@ -234,35 +208,18 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
                   Container(
                     width: 50,
                     height: 50,
-                    decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
                     child: Icon(Icons.receipt_long, color: Colors.grey[600]),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          // fallback to user id if no customer name
-                          'Customer ${order.userid}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(itemsText,
-                            style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                        const SizedBox(height: 8),
-                        Text(
-                          _formatMoney(order.totalcents),
-                          style: TextStyle(
-                              color: _freshMintGreen,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16),
-                        ),
-                      ],
-                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Customer ${order.userid}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      const SizedBox(height: 4),
+                      Text(itemsText, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Text(_formatMoney(order.totalcents), style: TextStyle(color: _freshMintGreen, fontWeight: FontWeight.w800, fontSize: 16)),
+                    ]),
                   ),
                 ],
               ),
@@ -276,14 +233,11 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {
-                          // implement decline
-                        },
+                        onPressed: () => _updateOrderStatus(order, 'declined'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: const BorderSide(color: Colors.red),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: const Text("Decline"),
                       ),
@@ -291,14 +245,11 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          // implement accept
-                        },
+                        onPressed: () => _updateOrderStatus(order, 'preparing'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _freshMintGreen,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
                         ),
                         child: const Text("Accept"),
@@ -314,14 +265,11 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // implement mark as ready
-                    },
+                    onPressed: () => _updateOrderStatus(order, 'ready'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _espressoBrown,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
                     child: const Text("Mark as Ready"),
@@ -346,6 +294,39 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bgGrey,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Text("INCOMING ORDERS", style: TextStyle(color: _espressoBrown, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: 1.0)),
+        centerTitle: true,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: _freshMintGreen,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: _freshMintGreen,
+          isScrollable: true,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+          tabs: _tabs.map((t) => Tab(text: t)).toList(),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 8),
+            ElevatedButton(onPressed: _loadOrders, child: const Text('Retry')),
+          ]))
+          : TabBarView(controller: _tabController, children: _tabs.map((tab) => _buildOrderList(tab)).toList()),
+    );
+  }
 }
 
 /// Placeholder detail screen — replace with your real screen.
@@ -361,16 +342,13 @@ class OrderDetailScreenPlaceholder extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Status: ${order.status}'),
-            const SizedBox(height: 8),
-            Text('Total: \$${(order.totalcents / 100.0).toStringAsFixed(2)}'),
-            const SizedBox(height: 8),
-            Text('Items: ${order.orderItems.length}'),
-          ],
-        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Status: ${order.status}'),
+          const SizedBox(height: 8),
+          Text('Total: \$${(order.totalcents / 100.0).toStringAsFixed(2)}'),
+          const SizedBox(height: 8),
+          Text('Items: ${order.orderItems.length}'),
+        ]),
       ),
     );
   }
