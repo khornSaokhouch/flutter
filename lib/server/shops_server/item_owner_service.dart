@@ -88,6 +88,8 @@ class ItemOwnerService {
     }
   }
 
+
+
   /// Fetch all items for a category using backend's showAllByCategory($categoryId)
   static Future<List<Item>> fetchItemsByCategory(int categoryId) async {
     // NOTE: fixed string quoting and route. Adjust route if your backend uses a different path.

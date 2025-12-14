@@ -1,5 +1,4 @@
-
-/// ✅ Root Response
+// lib/models/shops_models/shop_item_owner_models.dart
 class ItemsResponse {
   final String message;
   final List<ShopItem> data;
@@ -13,10 +12,9 @@ class ItemsResponse {
     final dataList = json['data'] as List<dynamic>? ?? [];
     return ItemsResponse(
       message: json['message'] ?? '',
-      data: dataList.map((e) => ShopItem.fromJson(e)).toList(),
+      data: dataList.map((e) => ShopItem.fromJson(Map<String, dynamic>.from(e as Map))).toList(),
     );
   }
-
 
   Map<String, dynamic> toJson() => {
     'message': message,
@@ -24,36 +22,43 @@ class ItemsResponse {
   };
 }
 
-/// ✅ ShopItem = Item inside a shop/category
 class ShopItem {
+  // This 'id' is the ItemOwner id (the record that links an item to a shop)
+  final int id;
   final int shopId;
   final int categoryId;
   final Category category;
   final Item item;
+  final int inactive; // 0 == active, 1 == inactive
 
   ShopItem({
+    required this.id,
     required this.shopId,
     required this.categoryId,
     required this.category,
     required this.item,
+    required this.inactive,
   });
 
   factory ShopItem.fromJson(Map<String, dynamic> json) => ShopItem(
-    shopId: json['shop_id'] ?? 0,
-    categoryId: json['category_id'] ?? 0,
-    category: Category.fromJson(json['category'] ?? {}),
-    item: Item.fromJson(json['item'] ?? {}),
+    id: _toInt(json['id']),
+    shopId: _toInt(json['shop_id']),
+    categoryId: _toInt(json['category_id']),
+    category: Category.fromJson(Map<String, dynamic>.from(json['category'] ?? {})),
+    item: Item.fromJson(Map<String, dynamic>.from(json['item'] ?? {})),
+    inactive: _toInt(json['inactive'] ?? 0),
   );
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'shop_id': shopId,
     'category_id': categoryId,
     'category': category.toJson(),
     'item': item.toJson(),
+    'inactive': inactive,
   };
 }
 
-/// ✅ Category model
 class Category {
   final int id;
   final String name;
@@ -70,11 +75,11 @@ class Category {
   });
 
   factory Category.fromJson(Map<String, dynamic> json) => Category(
-    id: json['id'] ?? 0,
-    name: json['name'] ?? '',
-    description: json['description'],
-    status: json['status'] ?? 0,
-    imageUrl: json['image_url'],
+    id: _toInt(json['id']),
+    name: (json['name'] ?? '').toString(),
+    description: json['description']?.toString(),
+    status: _toInt(json['status']),
+    imageUrl: json['image_url']?.toString(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -82,15 +87,15 @@ class Category {
     'name': name,
     'description': description,
     'status': status,
+    'image_url': imageUrl,
   };
 }
 
-/// ✅ Item model
 class Item {
   final int id;
   final String name;
   final String? description;
-  final double priceCents;
+  final double priceCents; // keep as numeric representation of cents/dollars per your convention
   final String imageUrl;
   final int isAvailable;
 
@@ -103,19 +108,33 @@ class Item {
     required this.isAvailable,
   });
 
-  factory Item.fromJson(Map<String, dynamic> json) => Item(
-    id: json['id'] is String ? int.parse(json['id']) : (json['id'] ?? 0),
-    name: json['name'] ?? '',
-    description: json['description'],
-    priceCents: json['price_cents'] is String
-        ? double.tryParse(json['price_cents']) ?? 0.0
-        : (json['price_cents']?.toDouble() ?? 0.0),
-    imageUrl: json['image_url'] ?? '',
-    isAvailable: json['is_available'] is String
-        ? int.parse(json['is_available'])
-        : (json['is_available'] ?? 0),
-  );
+  factory Item.fromJson(Map<String, dynamic> json) {
+    final id = _toInt(json['id']);
+    final name = (json['name'] ?? '').toString();
+    final description = json['description']?.toString();
+    // price_cents might be a string like "190.00" or a number; normalize to double
+    double parsePriceCents(dynamic v) {
+      if (v == null) return 0.0;
+      if (v is num) return v.toDouble();
+      final s = v.toString();
+      // attempt parse as double
+      final parsed = double.tryParse(s.replaceAll(',', ''));
+      return parsed ?? 0.0;
+    }
 
+    final priceCents = parsePriceCents(json['price_cents'] ?? json['priceCents'] ?? 0);
+    final imageUrl = json['image_url']?.toString() ?? '';
+    final isAvailable = _toInt(json['is_available'] ?? json['isAvailable'] ?? 0);
+
+    return Item(
+      id: id,
+      name: name,
+      description: description,
+      priceCents: priceCents,
+      imageUrl: imageUrl,
+      isAvailable: isAvailable,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -125,4 +144,13 @@ class Item {
     'image_url': imageUrl,
     'is_available': isAvailable,
   };
+}
+
+/// small helper for parsing ints robustly
+int _toInt(dynamic v) {
+  if (v == null) return 0;
+  if (v is int) return v;
+  if (v is double) return v.toInt();
+  if (v is String) return int.tryParse(v) ?? 0;
+  return 0;
 }

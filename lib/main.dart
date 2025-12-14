@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:frontend/core/utils/splash_screen.dart';
 import 'firebase_options.dart';
 
@@ -16,7 +17,9 @@ Future<void> main() async {
   } catch (e) {
     throw Exception('Error loading .env file: $e');
   }
-
+  Stripe.publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY']!;
+  Stripe.merchantIdentifier = dotenv.env['STRIPE_MERCHANT_ID']!;
+  await Stripe.instance.applySettings();
   runApp(const MyApp());
 }
 

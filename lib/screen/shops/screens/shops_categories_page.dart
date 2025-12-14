@@ -4,6 +4,7 @@ import 'package:frontend/screen/shops/screens/shops_home_page.dart';
 import 'package:frontend/screen/shops/screens/shops_orders_page.dart';
 import 'package:frontend/screen/shops/screens/shops_products_page.dart';
 import 'package:frontend/screen/shops/screens/shops_profile_page.dart';
+import 'package:frontend/screen/shops/screens/shops_promotions_screen.dart';
 import 'package:frontend/screen/shops/widgets/shops_bottom_navigation.dart';
 
 import '../../../models/shops_models/shop_categories_models.dart';
@@ -367,8 +368,10 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
         // 2: Orders page
         ShopsOrdersPage(shopId: widget.shopId,),
 
+        PromotionsScreen(shopId: widget.shopId,),
+
         // 3: Products page
-        ShopsProductsPage(),
+        ShopsProductsPage(shopId: widget.shopId,),
 
         // 4: Profile page
         ShopsProfilePage(shopId: widget.shopId,),

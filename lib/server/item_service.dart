@@ -54,6 +54,40 @@ class ItemService {
 
   }
 
+  Future<bool> updateItemStatus({
+    required int id,
+    required int newStatus,
+  }) async {
+    final url = Uri.parse("$baseUrl/shop/items/$id/status");
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      return false;
+    }
+
+    final headers = await ApiConfig.authHeaders(token);
+
+    final response = await http.patch(
+      url,
+      headers: headers,
+      body: jsonEncode({
+         "inactive": newStatus,
+      }),
+
+    );
+    print(response.body);
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+
+
   /// Fetch Shop Item Option Status by itemId and shopId
   // For guests (no auth)
   static Future<List<ShopItemOptionStatusModel>?> fetchItemOptionStatusGuest(

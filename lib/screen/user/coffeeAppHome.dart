@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show Align, Alignment, AppBar, AssetImage
 import 'package:intl/intl.dart';
 
 import 'package:frontend/screen/user/store_screen/no_store_nearby_screen.dart';
+import '../../core/utils/utils.dart';
 import '../../server/shop_serviec.dart';
 import '../../models/shop.dart';
 import '../../core/widgets/card/shop_card.dart';
@@ -10,6 +11,7 @@ import '../guest/shop_details_screen.dart';
 import '../../core/utils/auth_utils.dart';
 import '../../models/user.dart';
 import '../order/order_screen.dart';
+import 'layout.dart';
 
 class HomeScreen extends StatefulWidget {
   final int? userId;
@@ -24,8 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   late Future<List<Shop>> _shopsFuture;
 
-  // theme color (used for badges / distance badges if needed)
-  final Color _freshMintGreen = const Color(0xFF4E8D7C);
+
 
   @override
   void initState() {
@@ -139,7 +140,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => NoStoreNearbyScreen(userId: widget.userId ?? 0)),
+                              MaterialPageRoute(
+                                builder: (_) => Layout(
+                                  userId: widget.userId ?? 0,
+                                  selectedIndex: 2, // 2 = NoStoreNearbyScreen in your Layout._screens
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -180,7 +186,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => Layout(
+                            userId: widget.userId ?? 0,
+                            selectedIndex: 2, // 2 = NoStoreNearbyScreen in your Layout._screens
+                          ),
+                        ),
+                      );
+
+                    },
                     child: const Text(
                       "See All",
                       style: TextStyle(color: Color(0xFF4A6B5C)),
@@ -323,6 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isActive,
     required VoidCallback onTap,
   }) {
+
     return Container(
       height: 140,
       decoration: BoxDecoration(
@@ -470,8 +488,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return _ShopOpenStatus(isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
     }
 
-    final openSeconds = _parseTimeToSeconds(openTimeStr);
-    final closeSeconds = _parseTimeToSeconds(closeTimeStr);
+    final openSeconds = parseTimeToSeconds(openTimeStr);
+    final closeSeconds = parseTimeToSeconds(closeTimeStr);
     if (openSeconds == null || closeSeconds == null) {
       // parse failed -> assume open
       return _ShopOpenStatus(isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
@@ -491,8 +509,8 @@ class _HomeScreenState extends State<HomeScreen> {
       isOpen = true;
     }
 
-    final opensAtFormatted = _formatTimeString(openTimeStr);
-    final closesAtFormatted = _formatTimeString(closeTimeStr);
+    final opensAtFormatted = formatTimeString(openTimeStr);
+    final closesAtFormatted = formatTimeString(closeTimeStr);
 
     return _ShopOpenStatus(
       isOpen: isOpen,
@@ -501,38 +519,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  int? _parseTimeToSeconds(String? s) {
-    if (s == null) return null;
-    final trimmed = s.trim();
-    if (trimmed.isEmpty) return null;
 
-    final parts = trimmed.split(':');
-    try {
-      if (parts.length >= 2) {
-        final h = int.tryParse(parts[0]) ?? 0;
-        final m = int.tryParse(parts[1]) ?? 0;
-        final sec = (parts.length >= 3) ? int.tryParse(parts[2].split('.').first) ?? 0 : 0;
-        if (h < 0 || h > 23 || m < 0 || m > 59 || sec < 0 || sec > 59) return null;
-        return h * 3600 + m * 60 + sec;
-      }
-    } catch (_) {
-      return null;
-    }
-    return null;
-  }
-
-  String? _formatTimeString(String? s) {
-    final seconds = _parseTimeToSeconds(s);
-    if (seconds == null) return null;
-    final h = seconds ~/ 3600;
-    final m = (seconds % 3600) ~/ 60;
-    final dt = DateTime(2000, 1, 1, h, m);
-    final formatter = DateFormat.jm(); // "1:29 AM"
-    return formatter.format(dt);
-  }
 
   String _formatTimeOrFallback(String? s) {
-    return _formatTimeString(s) ?? (s ?? '--:--');
+    return formatTimeString(s) ?? (s ?? '--:--');
   }
 }
 
@@ -546,7 +536,7 @@ class _ShopOpenStatus {
 // ===== Navbar =====
 class Navbar extends StatelessWidget {
   final int userId;
-  const Navbar({required this.userId, Key? key}) : super(key: key);
+  const Navbar({required this.userId, super.key});
 
   @override
   Widget build(BuildContext context) {

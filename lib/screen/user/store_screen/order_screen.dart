@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 
 // Adjust these imports to match your project structure:
 import '../../../models/order_model.dart';
 import '../../../models/promotion_model.dart';
 import '../../../server/order_service.dart';
+import '../../../server/payment_service.dart'; // Should expose StripeService.createPaymentIntent
 import '../../../server/promotion_service.dart';
 import './order_success_screen.dart'; // Make sure this file exists
 
@@ -51,11 +53,12 @@ class _CartScreenState extends State<CartScreen> {
   final List<Map<String, dynamic>> _cartItems = [];
   double _subtotalLocal = 0.0;
   bool _isPlacingOrder = false;
+  bool _isPaying = false;
 
   // Inputs
   final TextEditingController _promoController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
-  final FocusNode _noteFocusNode = FocusNode(); // <-- added focus node
+  final FocusNode _noteFocusNode = FocusNode();
 
   // Promo State
   String? _promoCode;
@@ -64,7 +67,8 @@ class _CartScreenState extends State<CartScreen> {
   bool _isApplying = false;
 
   // Totals
-  double get _discountedSubtotal => (_subtotalLocal - _discountAmount).clamp(0.0, double.infinity);
+  double get _discountedSubtotal =>
+      (_subtotalLocal - _discountAmount).clamp(0.0, double.infinity);
   double get _total => _discountedSubtotal;
 
   @override
@@ -94,7 +98,7 @@ class _CartScreenState extends State<CartScreen> {
   void dispose() {
     _promoController.dispose();
     _noteController.dispose();
-    _noteFocusNode.dispose(); // <-- dispose focus node
+    _noteFocusNode.dispose();
     super.dispose();
   }
 
@@ -137,7 +141,8 @@ class _CartScreenState extends State<CartScreen> {
       if (mods is List) {
         final normalized = mods.map((m) {
           if (m is Map) {
-            final entries = m.entries.toList()..sort((a, b) => a.key.toString().compareTo(b.key.toString()));
+            final entries = m.entries.toList()
+              ..sort((a, b) => a.key.toString().compareTo(b.key.toString()));
             return Map.fromEntries(entries);
           }
           return m;
@@ -170,7 +175,6 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
-
   void _recalculateSubtotalInternal() {
     double sum = 0.0;
     for (final it in _cartItems) {
@@ -196,29 +200,47 @@ class _CartScreenState extends State<CartScreen> {
       if (promotion == null) throw PromotionNotFoundException();
 
       final adapter = promotion.toAdapter();
-      if (adapter.shopId != widget.shopId)
+      if (adapter.shopId != widget.shopId) {
         throw PromotionNotFoundException("Invalid shop.");
+      }
 
       final computed = _computeDiscountForAdapter(adapter, _subtotalLocal);
 
       if (computed <= 0) {
         _clearPromoUI();
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(adapter.message ?? 'Promo not applicable.')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(adapter.message ?? 'Promo not applicable.')),
+          );
+        }
       } else {
-        setState(() {
-          _promoCode = adapter.code;
-          _isPromoApplied = true;
-          _discountAmount = computed;
-        });
-        if (mounted && Navigator.canPop(context)) Navigator.pop(context); // Close dialog safely
+        if (mounted) {
+          setState(() {
+            _promoCode = adapter.code;
+            _isPromoApplied = true;
+            _discountAmount = computed;
+          });
+          // Close dialog and return success
+          Navigator.of(context).pop(true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(adapter.message ?? 'Promo applied')),
+          );
+        }
+      }
+    } on PromotionNotFoundException catch (e) {
+      _clearPromoUI();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
       }
     } catch (e) {
       _clearPromoUI();
-      if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isApplying = false);
     }
@@ -260,10 +282,66 @@ class _CartScreenState extends State<CartScreen> {
     return discountCents / 100.0;
   }
 
-  // ---------- Order Logic ----------
+  // ---------- Payment (Stripe PaymentSheet) ----------
 
   int _toCents(double amount) => (amount * 100).round();
 
+  /// Returns true if payment succeeded, false otherwise.
+  Future<bool> _handlePaymentSheetPayment() async {
+    setState(() => _isPaying = true);
+
+    try {
+      final int amountCents = _toCents(_total);
+
+      // call your backend via PaymentService / StripeService
+      final resp = await StripeService.createPaymentIntent(
+        amount: amountCents,
+        currency: 'usd', // change as needed
+
+      );
+
+      final clientSecret = resp['client_secret'] ?? resp['clientSecret'];
+      final publishableKey = resp['publishableKey'] ?? resp['publishable_key'];
+
+      if (publishableKey != null && publishableKey is String && publishableKey.isNotEmpty) {
+        Stripe.publishableKey = publishableKey;
+        await Stripe.instance.applySettings();
+      }
+
+      if (clientSecret == null) {
+        throw Exception('Payment intent returned no client_secret.');
+      }
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Your Shop',
+          // Configure applePay/googlePay if supported on backend
+        ),
+      );
+
+      await Stripe.instance.presentPaymentSheet();
+      return true;
+    } on StripeException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment failed: ${e.error.localizedMessage ?? e.error.message}')),
+        );
+      }
+      return false;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment error: $e')),
+        );
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => _isPaying = false);
+    }
+  }
+
+  // ---------- Order Logic ----------
   OrderModel _buildOrderFromCart() {
     final int userId = widget.userId ?? 0;
     final int shopId = widget.shopId;
@@ -303,13 +381,17 @@ class _CartScreenState extends State<CartScreen> {
       final price = _parseDouble(it['price']);
       final qty = _parseInt(it['qty']);
 
+      // safer id parsing
+      final rawId = it['id'];
+      final parsedId = (rawId is int) ? rawId : int.tryParse(rawId?.toString() ?? '') ;
+
       return OrderItemModel(
-        id: (it['id'] is int) ? it['id'] as int : null,
-        itemid: int.tryParse('${it['id'] ?? it['itemid'] ?? 0}') ?? 0,
+        id: parsedId,
+        itemid: parsedId ?? int.tryParse('${it['itemid'] ?? 0}') ?? 0,
         namesnapshot: it['name']?.toString() ?? '',
         unitpriceCents: _toCents(price),
         quantity: qty,
-        notes: _noteController.text, // Added notes from controller
+        notes: _noteController.text,
         optionGroups: optionGroups,
       );
     }).toList();
@@ -327,12 +409,25 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  /// Full flow:
+  /// 1) Run Stripe PaymentSheet (client only)
+  /// 2) If payment succeeds, create the order on the server
   Future<void> _createOrder() async {
     if (_isPlacingOrder || _cartItems.isEmpty) return;
 
     setState(() => _isPlacingOrder = true);
 
     try {
+      // 1) Run payment sheet
+      final paymentSucceeded = await _handlePaymentSheetPayment();
+
+      if (!paymentSucceeded) {
+        // Payment canceled or failed -> do not create order
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
+      // 2) Build order now that payment is successful
       final order = _buildOrderFromCart();
 
       // Create order via your service
@@ -346,11 +441,8 @@ class _CartScreenState extends State<CartScreen> {
           ),
         );
 
-        // Convert OrderModel to JSON/Map for the Success Screen
-        // Ensure your OrderModel has a toJson() method.
         Map<String, dynamic> orderData = createdOrder.toJson();
 
-        // Navigate to OrderSuccessScreen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -395,17 +487,17 @@ class _CartScreenState extends State<CartScreen> {
       // Wrap the body with GestureDetector so tapping outside TextField closes keyboard
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onTap: () {
-          FocusScope.of(context).unfocus(); // <-- dismiss keyboard
-        },
+        onTap: () => FocusScope.of(context).unfocus(),
         child: _cartItems.isEmpty
             ? Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey[300]),
+              Icon(Icons.shopping_cart_outlined,
+                  size: 60, color: Colors.grey[300]),
               const SizedBox(height: 16),
-              const Text("Cart is empty", style: TextStyle(color: Colors.grey, fontSize: 16)),
+              const Text("Cart is empty",
+                  style: TextStyle(color: Colors.grey, fontSize: 16)),
             ],
           ),
         )
@@ -444,7 +536,10 @@ class _CartScreenState extends State<CartScreen> {
                     const SizedBox(height: 24),
 
                     // 3. Notes Section
-                    const Text("Notes", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                    const Text("Notes",
+                        style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     Container(
                       decoration: BoxDecoration(
@@ -454,7 +549,7 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       child: TextField(
                         controller: _noteController,
-                        focusNode: _noteFocusNode, // <-- attach the focus node here
+                        focusNode: _noteFocusNode,
                         maxLines: 2,
                         decoration: const InputDecoration(
                           hintText: "E.g. Less sugar, allergies...",
@@ -462,7 +557,8 @@ class _CartScreenState extends State<CartScreen> {
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
                         ),
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                        style:
+                        const TextStyle(fontWeight: FontWeight.w500),
                       ),
                     ),
 
@@ -505,10 +601,13 @@ class _CartScreenState extends State<CartScreen> {
                           _buildSummaryRow("Subtotal", _subtotalLocal),
                           if (_isPromoApplied) ...[
                             const SizedBox(height: 8),
-                            _buildSummaryRow("Discount", -_discountAmount, isRed: true),
+                            _buildSummaryRow(
+                                "Discount", -_discountAmount,
+                                isRed: true),
                           ],
                           const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
+                              padding:
+                              EdgeInsets.symmetric(vertical: 16),
                               child: Divider(height: 1)),
                           Row(
                             mainAxisAlignment:
@@ -554,21 +653,19 @@ class _CartScreenState extends State<CartScreen> {
         child: SizedBox(
           height: 55,
           child: ElevatedButton(
-            onPressed: (_cartItems.isEmpty || _isPlacingOrder)
-                ? null
-                : _createOrder,
+            onPressed:
+            (_cartItems.isEmpty || _isPlacingOrder || _isPaying) ? null : _createOrder,
             style: ElevatedButton.styleFrom(
               backgroundColor: _freshMintGreen,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
             ),
-            child: _isPlacingOrder
+            child: (_isPlacingOrder || _isPaying)
                 ? const SizedBox(
               width: 24,
               height: 24,
-              child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2),
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
             )
                 : const Text(
               "Place Order",
@@ -598,7 +695,6 @@ class _CartScreenState extends State<CartScreen> {
     final name = item['name'];
     final qty = item['qty'];
     final basePrice = _parseDouble(item['price']);
-    // Filter out null/empty modifiers
     List<dynamic> modifiers = item['modifiers'] ?? [];
 
     return Container(
@@ -616,8 +712,7 @@ class _CartScreenState extends State<CartScreen> {
               child: Image.network(
                 item['image'] ?? '',
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                const Icon(Icons.coffee, color: Colors.grey),
+                errorBuilder: (_, __, ___) => const Icon(Icons.coffee, color: Colors.grey),
               ),
             ),
           ),
@@ -633,9 +728,7 @@ class _CartScreenState extends State<CartScreen> {
                     Text("${qty}x $name",
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 15)),
-                    // Edit icon (visual only)
-                    const Icon(Icons.edit_outlined,
-                        size: 16, color: Colors.green),
+                    const Icon(Icons.edit_outlined, size: 16, color: Colors.green),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -647,8 +740,7 @@ class _CartScreenState extends State<CartScreen> {
                     const Text("Base Price",
                         style: TextStyle(fontSize: 13, color: Colors.black87)),
                     Text("\$${basePrice.toStringAsFixed(2)}",
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
 
@@ -656,7 +748,7 @@ class _CartScreenState extends State<CartScreen> {
                 ...modifiers.map((mod) {
                   String modName = "";
                   if (mod is Map) {
-                    modName = mod['selected_option'] ?? mod['option'] ?? '';
+                    modName = (mod['selected_option'] ?? mod['option'] ?? '').toString();
                   }
                   if (modName.isEmpty) return const SizedBox.shrink();
 
@@ -665,9 +757,7 @@ class _CartScreenState extends State<CartScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(modName,
-                            style: const TextStyle(
-                                fontSize: 13, color: Colors.grey)),
+                        Text(modName, style: const TextStyle(fontSize: 13, color: Colors.grey)),
                       ],
                     ),
                   );
@@ -677,12 +767,8 @@ class _CartScreenState extends State<CartScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Subtotal",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13)),
-                    Text("\$${(basePrice * qty).toStringAsFixed(2)}",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text("Subtotal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text("\$${(basePrice * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   ],
                 ),
               ],
@@ -717,8 +803,7 @@ class _CartScreenState extends State<CartScreen> {
         ),
         title: Text(title,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-        subtitle: Text(subtitle,
-            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         trailing: trailing,
       ),
     );
@@ -731,17 +816,14 @@ class _CartScreenState extends State<CartScreen> {
         Text(label, style: const TextStyle(fontSize: 15, color: Colors.grey)),
         Text(
           "${amount < 0 ? '-' : ''}\$${amount.abs().toStringAsFixed(2)}",
-          style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: isRed ? Colors.red : Colors.black),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isRed ? Colors.red : Colors.black),
         ),
       ],
     );
   }
 
-  void _showPromoDialog() {
-    showDialog(
+  void _showPromoDialog() async {
+    final applied = await showDialog<bool>(
       context: context,
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(
@@ -749,63 +831,75 @@ class _CartScreenState extends State<CartScreen> {
         ),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Enter Voucher",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _promoController,
-                decoration: InputDecoration(
-                  hintText: "Promo Code",
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  prefixIcon: Icon(Icons.card_giftcard, color: _freshMintGreen),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+          child: StatefulBuilder(
+            // use StatefulBuilder so we can show apply spinner inside dialog without rebuilding whole screen
+            builder: (contextDialog, setStateDialog) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Cancel"),
+                  Text(
+                    "Enter Voucher",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      _applyPromo();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _freshMintGreen,
-                      shape: RoundedRectangleBorder(
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _promoController,
+                    decoration: InputDecoration(
+                      hintText: "Promo Code",
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
-                    ),
-                    child: const Text(
-                      "Apply",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      prefixIcon: Icon(Icons.card_giftcard, color: _freshMintGreen),
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(contextDialog, false),
+                        child: const Text("Cancel"),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: _isApplying
+                            ? null
+                            : () async {
+                          // call _applyPromo and wait for it to pop(dialog, true) on success
+                          await _applyPromo();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _freshMintGreen,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        ),
+                        child: _isApplying
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text("Apply", style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  )
                 ],
-              )
-            ],
+              );
+            },
           ),
         ),
       ),
     );
+
+    // 'applied' can be true/false/null; we don't strictly need to do more here since _applyPromo already mutates state,
+    // but if you want to refresh UI or analytics you can do it here based on 'applied'.
+    if (applied == true) {
+      _recalculateSubtotal();
+    }
   }
 }
