@@ -88,6 +88,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           PlaceOrderButton(
             paymentMethod: _selectedPayment,
           ),
+
         ],
       ),
     );
