@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/api_endpoints.dart'; // contains ApiConfig
+import '../config/api_endpoints.dart';
+import '../models/payment_model.dart'; // contains ApiConfig
 
 class StripeService {
   // ===== GET TOKEN FROM PREFS =====
@@ -35,12 +36,16 @@ class StripeService {
   static Future<Map<String, dynamic>> createPaymentIntent({
     required int amount,
     required String currency,
+   int? userId,
+   int? orderId,
   }) async {
     final url = Uri.parse("${ApiConfig.baseUrl}/users/stripe/payment-intent");
     final headers = await _buildHeaders();
     final body = jsonEncode({
       "amount_cents": amount,
       "currency": currency,
+      "userid": userId,
+      "orderid": orderId,
     });
 
     final client = http.Client();
@@ -111,6 +116,24 @@ class StripeService {
     } finally {
       client.close();
     }
+  }
+
+  static Future<List<PaymentModel>> getPaymentsByUser(int userId) async {
+    final url = Uri.parse(
+      "${ApiConfig.baseUrl}/users/payments/user/$userId",
+    );
+
+    final headers = await _buildHeaders();
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load payments');
+    }
+
+    final decoded = jsonDecode(response.body);
+    final List list = decoded['data'];
+
+    return list.map((e) => PaymentModel.fromJson(e)).toList();
   }
 
 // ---------------- STRIPE WEBHOOK (Server Only) ----------------

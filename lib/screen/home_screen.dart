@@ -461,7 +461,10 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
                 // 9. Sign Up Footer
                 Center(
                   child: GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignUpScreen())),
+                    onTap: () {
+                      Navigator.pop(context); // close login sheet
+                      showSignUpBottomSheet(context); // open signup sheet
+                    },
                     child: RichText(
                       text: TextSpan(
                         text: "Don't have an account? ",
@@ -470,7 +473,7 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
                           TextSpan(
                             text: 'Sign Up',
                             style: TextStyle(
-                              color: _espressoBrown, // Espresso Brown
+                              color: _espressoBrown,
                               fontWeight: FontWeight.bold,
                               decoration: TextDecoration.underline,
                             ),
@@ -480,6 +483,7 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 10),
               ],
             ),
@@ -545,5 +549,14 @@ void showLoginBottomSheet(BuildContext context) {
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => const LoginBottomSheet(),
+  );
+}
+
+void showSignUpBottomSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => const SignUpScreen(),
   );
 }

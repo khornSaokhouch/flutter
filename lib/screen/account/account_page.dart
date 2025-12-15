@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/account/payment_history_screen.dart';
 import 'package:frontend/screen/account/personal_info_screen.dart';
 import '../../core/utils/auth_utils.dart';
 import '../../models/user.dart';
@@ -212,7 +213,16 @@ class _AccountPageState extends State<AccountPage> {
                       _buildSettingsTile(
                         icon: Icons.history_rounded,
                         title: 'Transaction History',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PaymentHistoryScreen(
+                                userId: widget.userId,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ]),
 

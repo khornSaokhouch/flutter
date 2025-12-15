@@ -1,8 +1,8 @@
+// lib/screen/order/order_success_screen.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
-import './order_detail_screen.dart';
-
+import '../widget/receipt_card.dart';
+import '../widget/success_actions.dart';
 
 class OrderSuccessScreen extends StatelessWidget {
   final Map<String, dynamic> orderData;
@@ -14,23 +14,66 @@ class OrderSuccessScreen extends StatelessWidget {
   final Color _espressoBrown = const Color(0xFF4B2C20);
   final Color _bgGrey = const Color(0xFFF9FAFB);
 
+  // helper: parse cents/dollars into double dollars
+  double _parseAmountToDollars(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is int) {
+      // treat int as cents
+      return v / 100.0;
+    }
+    if (v is double) return v;
+    if (v is String) {
+      final s = v.replaceAll(',', '').trim();
+      if (s.isEmpty) return 0.0;
+      // contains '.' => dollars
+      if (s.contains('.')) {
+        final d = double.tryParse(s);
+        return d ?? 0.0;
+      }
+      // otherwise try int: ambiguous => treat as cents if length > 3, else dollars
+      final n = int.tryParse(s);
+      if (n == null) return 0.0;
+      return (s.length > 3) ? (n / 100.0) : n.toDouble();
+    }
+    return 0.0;
+  }
+
+  DateTime _parsePlacedAt(dynamic v) {
+    try {
+      if (v == null) return DateTime.now();
+      if (v is DateTime) return v;
+      final s = v.toString();
+      return DateTime.tryParse(s) ?? DateTime.now();
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Data Parsing
-    final int id = orderData['id'] ?? 0;
-    final String status = orderData['status'] ?? 'Placed';
-    final DateTime placedAt = DateTime.tryParse(orderData['placedat'].toString()) ?? DateTime.now();
+    // --- Safely extract data from orderData map ---
+    final int id = (orderData['id'] is int) ? orderData['id'] as int : int.tryParse('${orderData['id'] ?? 0}') ?? 0;
+    final String status = (orderData['status'] ?? 'Placed').toString();
 
-    final double subtotal = (orderData['subtotalcents'] ?? 0) / 100;
-    final double discount = (orderData['discountcents'] ?? 0) / 100;
-    final double total = (orderData['totalcents'] ?? 0) / 100;
+    final DateTime placedAt = _parsePlacedAt(orderData['placedat'] ?? orderData['placed_at'] ?? orderData['placedAt']);
 
+    final double subtotal = orderData.containsKey('subtotal')
+        ? _parseAmountToDollars(orderData['subtotal'])
+        : _parseAmountToDollars(orderData['subtotalcents'] ?? orderData['subtotal_cents'] ?? orderData['subtotalCents']);
+
+    final double discount = orderData.containsKey('discount')
+        ? _parseAmountToDollars(orderData['discount'])
+        : _parseAmountToDollars(orderData['discountcents'] ?? orderData['discount_cents'] ?? orderData['discountCents']);
+
+    final double total = orderData.containsKey('total')
+        ? _parseAmountToDollars(orderData['total'])
+        : _parseAmountToDollars(orderData['totalcents'] ?? orderData['total_cents'] ?? orderData['totalCents']);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // Top row with back icon (left) - keeps centered content visually balanced
+            // Top row back icon (keeps centered content visually balanced)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Row(
@@ -76,114 +119,27 @@ class OrderSuccessScreen extends StatelessWidget {
 
             const SizedBox(height: 40),
 
-            // 3. Receipt Card
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: _bgGrey,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Order ID", style: TextStyle(color: Colors.grey[600])),
-                      Text("#$id", style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Date", style: TextStyle(color: Colors.grey[600])),
-                      Text(DateFormat('MMM dd, hh:mm a').format(placedAt), style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Divider(color: Colors.grey),
-                  ),
-                  _buildDetailRow("Subtotal", subtotal),
-                  if (discount > 0) ...[
-                    const SizedBox(height: 8),
-                    _buildDetailRow("Discount", -discount, isDiscount: true),
-                  ],
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Total Paid", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _espressoBrown)),
-                      Text(
-                        "\$${total.toStringAsFixed(2)}",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _freshMintGreen),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            // 3. Receipt Card (extracted widget) - pass extracted values
+            ReceiptCard(
+              id: id,
+              placedAt: placedAt,
+              subtotal: subtotal,
+              discount: discount,
+              total: total,
+              bgGrey: _bgGrey,
+              espressoBrown: _espressoBrown,
+              freshMintGreen: _freshMintGreen,
             ),
 
             const Spacer(flex: 2),
 
-            // 4. Buttons
+            // 4. Buttons (extracted widget)
             Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  // Primary action: View Order Details (navigates to OrderDetailScreen)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => OrderDetailScreen(orderData: orderData),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _freshMintGreen,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      ),
-                      child: const Text("View Order Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Secondary action: Track Order (placeholder - you can integrate tracking)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        // TODO: replace with your tracking page/logic
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => OrderDetailScreen(orderData: orderData),
-                          ),
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      ),
-                      child: const Text("Track Order", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    },
-                    child: Text("Back to Home", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
-                  ),
-                ],
+              child: SuccessActions(
+                orderData: orderData,
+                freshMintGreen: _freshMintGreen,
+                espressoBrown: _espressoBrown,
               ),
             ),
           ],
@@ -191,24 +147,4 @@ class OrderSuccessScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildDetailRow(String label, double amount, {bool isDiscount = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-        Text(
-          "${amount < 0 ? '-' : ''}\$${amount.abs().toStringAsFixed(2)}",
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: isDiscount ? Colors.red : Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
 }
-
-
-
