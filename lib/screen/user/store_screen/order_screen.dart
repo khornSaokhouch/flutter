@@ -285,123 +285,10 @@ class _CartScreenState extends State<CartScreen> {
 
   // ---------- Payment (Stripe PaymentSheet) ----------
 
-  Future<bool> _handleStripePayment() async {
-    try {
-      setState(() => _isPaying = true);
-
-      final resp = await StripeService.createPaymentIntent(
-        amount: _toCents(_total),
-        currency: 'usd',
-      );
-
-      Stripe.publishableKey = resp['publishableKey'];
-      await Stripe.instance.applySettings();
-
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: resp['client_secret'],
-          merchantDisplayName: 'Your Shop',
-        ),
-      );
-
-      await Stripe.instance.presentPaymentSheet();
-      return true;
-    } catch (_) {
-      return false;
-    } finally {
-      setState(() => _isPaying = false);
-    }
-  }
-
-  Future<bool> _handleKHQRPayment() async {
-    return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("Bank Transfer (KHQR)"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Text("Scan QR using ABA / Bakong"),
-            SizedBox(height: 16),
-            SizedBox(
-              width: 200,
-              height: 200,
-              child: ColoredBox(color: Colors.black12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("I've Paid"),
-          ),
-        ],
-      ),
-    ) ??
-        false;
-  }
-
 
   int _toCents(double amount) => (amount * 100).round();
 
   /// Returns true if payment succeeded, false otherwise.
-  Future<bool> _handlePaymentSheetPayment() async {
-    setState(() => _isPaying = true);
-
-    try {
-      final int amountCents = _toCents(_total);
-
-      // call your backend via PaymentService / StripeService
-      final resp = await StripeService.createPaymentIntent(
-        amount: amountCents,
-        currency: 'usd', // change as needed
-
-      );
-
-      final clientSecret = resp['client_secret'] ?? resp['clientSecret'];
-      final publishableKey = resp['publishableKey'] ?? resp['publishable_key'];
-
-      if (publishableKey != null && publishableKey is String && publishableKey.isNotEmpty) {
-        Stripe.publishableKey = publishableKey;
-        await Stripe.instance.applySettings();
-      }
-
-      if (clientSecret == null) {
-        throw Exception('Payment intent returned no client_secret.');
-      }
-
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: 'Your Shop',
-          // Configure applePay/googlePay if supported on backend
-        ),
-      );
-
-      await Stripe.instance.presentPaymentSheet();
-      return true;
-    } on StripeException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: ${e.error.localizedMessage ?? e.error.message}')),
-        );
-      }
-      return false;
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment error: $e')),
-        );
-      }
-      return false;
-    } finally {
-      if (mounted) setState(() => _isPaying = false);
-    }
-  }
 
   // ---------- Order Logic ----------
   OrderModel _buildOrderFromCart() {
@@ -480,21 +367,28 @@ class _CartScreenState extends State<CartScreen> {
     setState(() => _isPlacingOrder = true);
 
     try {
-      // 1) Run payment sheet
-      final paymentSucceeded = await _handlePaymentSheetPayment();
+
+
+      // 2) Build order now that payment is successful
+      final draftOrder = _buildOrderFromCart()
+        ..status = 'pending_payment';
+
+      final createdOrder = await OrderService()
+          .createOrder(draftOrder, promocode: _promoCode);
+
+      final orderId = createdOrder.id;
+
+      // Create order via your service
+
+      final paymentSucceeded =
+      await _handlePaymentSheetPayment(orderId!);
+
 
       if (!paymentSucceeded) {
         // Payment canceled or failed -> do not create order
         setState(() => _isPlacingOrder = false);
         return;
       }
-
-      // 2) Build order now that payment is successful
-      final order = _buildOrderFromCart();
-
-      // Create order via your service
-      final createdOrder = await OrderService().createOrder(order, promocode: _promoCode);
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -525,6 +419,62 @@ class _CartScreenState extends State<CartScreen> {
       if (mounted) setState(() => _isPlacingOrder = false);
     }
   }
+  Future<bool> _handlePaymentSheetPayment(int orderId) async {
+    setState(() => _isPaying = true);
+
+    try {
+      final int amountCents = _toCents(_total);
+
+      // call your backend via PaymentService / StripeService
+      final resp = await StripeService.createPaymentIntent(
+        amount: amountCents,
+        currency: 'usd', // change as needed
+        orderId : orderId,
+        userId :widget.userId,
+
+      );
+
+      final clientSecret = resp['client_secret'] ?? resp['clientSecret'];
+      final publishableKey = resp['publishableKey'] ?? resp['publishable_key'];
+
+      if (publishableKey != null && publishableKey is String && publishableKey.isNotEmpty) {
+        Stripe.publishableKey = publishableKey;
+        await Stripe.instance.applySettings();
+      }
+
+      if (clientSecret == null) {
+        throw Exception('Payment intent returned no client_secret.');
+      }
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Your Shop',
+          // Configure applePay/googlePay if supported on backend
+        ),
+      );
+
+      await Stripe.instance.presentPaymentSheet();
+      return true;
+    } on StripeException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment failed: ${e.error.localizedMessage ?? e.error.message}')),
+        );
+      }
+      return false;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment error: $e')),
+        );
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => _isPaying = false);
+    }
+  }
+
 
   // ---------- UI Widgets ----------
 
