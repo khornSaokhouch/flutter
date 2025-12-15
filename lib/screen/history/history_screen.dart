@@ -249,7 +249,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
 
     return InkWell(
       borderRadius: BorderRadius.circular(20),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order))),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(orderData: order))),
       child: Container(
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 6))]),
         child: Padding(
@@ -407,14 +407,14 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
 enum OrderStatus { pending, paid, preparing, ready, completed, cancelled, processing, upcoming }
 
 class OrderDetailScreen extends StatelessWidget {
-  final OrderModel order;
-  const OrderDetailScreen({required this.order, super.key});
+  final OrderModel orderData;
+  const OrderDetailScreen({required this.orderData, super.key});
 
   @override
   Widget build(BuildContext context) {
-    final statusText = order.status;
-    final price = (order.totalcents / 100.0).toStringAsFixed(2);
-    final itemsText = order.orderItems.isNotEmpty ? order.orderItems.map((i) => '${i.quantity}x ${i.namesnapshot}').join(', ') : 'No items';
+    final statusText = orderData.status;
+    final price = (orderData.totalcents / 100.0).toStringAsFixed(2);
+    final itemsText = orderData.orderItems.isNotEmpty ? orderData.orderItems.map((i) => '${i.quantity}x ${i.namesnapshot}').join(', ') : 'No items';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Order Details'), backgroundColor: Colors.white, foregroundColor: Colors.black87, elevation: 0),
@@ -422,9 +422,9 @@ class OrderDetailScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            Text('Order #${order.id ?? ''}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text('Order #${orderData.id ?? ''}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             const SizedBox(height: 12),
-            Text("Placed at: ${order.placedat ?? ''}"),
+            Text("Placed at: ${orderData.placedat ?? ''}"),
             const SizedBox(height: 8),
             Text("Status: $statusText"),
             const SizedBox(height: 8),
@@ -432,8 +432,8 @@ class OrderDetailScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text("Total: \$$price"),
             const SizedBox(height: 16),
-            if (order.orderItems.isNotEmpty)
-              ...order.orderItems.map((it) {
+            if (orderData.orderItems.isNotEmpty)
+              ...orderData.orderItems.map((it) {
                 final imageUrl = _resolveImageUrl(it.item?.imageUrl);
                 return ListTile(
                   contentPadding: EdgeInsets.zero,

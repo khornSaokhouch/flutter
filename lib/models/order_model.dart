@@ -1,3 +1,7 @@
+// models_order.dart
+
+import 'package:frontend/models/shop.dart'; // <- uses your Shop model
+
 /// ----------------------
 /// Utils for parsing
 /// ----------------------
@@ -93,7 +97,7 @@ class ItemModel {
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, name: $name, price: ${priceCents/100.0})';
+    return 'ItemModel(id: $id, name: $name, price: ${priceCents / 100.0})';
   }
 }
 
@@ -148,6 +152,7 @@ class OrderItemModel {
   final String? notes;
   final List<OptionGroupModel> optionGroups;
   final ItemModel? item; // nested item (optional)
+  final Shop? shop; // nested shop (optional) - uses your Shop model
 
   OrderItemModel({
     this.id,
@@ -159,11 +164,17 @@ class OrderItemModel {
     this.notes,
     required this.optionGroups,
     this.item,
+    this.shop,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     final optionGroupsList = (json['option_groups'] ?? json['optionGroups']) as List<dynamic>?;
     final nestedItemJson = json['item'] as Map<String, dynamic>?;
+
+    // Try to find shop payload at several possible locations:
+    final shopJson = (json['shop'] as Map<String, dynamic>?) ??
+        (json['store'] as Map<String, dynamic>?) ??
+        (nestedItemJson != null ? (nestedItemJson['shop'] as Map<String, dynamic>?) : null);
 
     return OrderItemModel(
       id: json['id'] == null ? null : _parseInt(json['id']),
@@ -175,6 +186,7 @@ class OrderItemModel {
       notes: json['notes']?.toString(),
       optionGroups: (optionGroupsList ?? []).map((e) => OptionGroupModel.fromJson(e as Map<String, dynamic>)).toList(),
       item: nestedItemJson == null ? null : ItemModel.fromJson(nestedItemJson),
+      shop: shopJson == null ? null : Shop.fromJson(shopJson),
     );
   }
 
@@ -188,6 +200,14 @@ class OrderItemModel {
     'notes': notes,
     'option_groups': optionGroups.map((e) => e.toJson()).toList(),
     'item': item?.toJson(),
+    'shop': shop == null ? null : {
+      'id': shop!.id,
+      'name': shop!.name,
+      'location': shop!.location,
+      'open_time': shop!.openTime,
+      'close_time': shop!.closeTime,
+      'image_url': shop!.imageUrl,
+    },
   };
 
   factory OrderItemModel.fromItem(
@@ -197,17 +217,11 @@ class OrderItemModel {
         List<OptionGroupModel> optionGroups = const [],
       }) {
     // If item is a Map (JSON), try to extract common fields; otherwise assume it's a typed Item.
-    final int id = (item is Map<String, dynamic>)
-        ? _parseInt(item['id'] ?? item['itemid'])
-        : (item.id is int ? item.id as int : _parseInt(item.id));
+    final int id = (item is Map<String, dynamic>) ? _parseInt(item['id'] ?? item['itemid']) : (item.id is int ? item.id as int : _parseInt(item.id));
 
-    final String name = (item is Map<String, dynamic>)
-        ? _parseString(item['name'] ?? item['namesnapshot'] ?? item['nameSnapshot'])
-        : _parseString(item.name);
+    final String name = (item is Map<String, dynamic>) ? _parseString(item['name'] ?? item['namesnapshot'] ?? item['nameSnapshot']) : _parseString(item.name);
 
-    final dynamic rawPrice = (item is Map<String, dynamic>)
-        ? (item['price_cents'] ?? item['price'] ?? item['priceCents'])
-        : (item.priceCents ?? item.price ?? item.priceCents);
+    final dynamic rawPrice = (item is Map<String, dynamic>) ? (item['price_cents'] ?? item['price'] ?? item['priceCents']) : (item.priceCents ?? item.price ?? item.priceCents);
 
     final int cents = parsePriceToCents(rawPrice);
 
@@ -221,12 +235,13 @@ class OrderItemModel {
       notes: notes,
       optionGroups: optionGroups,
       item: (item is Map<String, dynamic>) ? ItemModel.fromJson(item) : null,
+      shop: null,
     );
   }
 
   @override
   String toString() {
-    return 'OrderItem(itemid: $itemid, name: $namesnapshot, unitPrice: ${unitpriceCents/100.0}, qty: $quantity)';
+    return 'OrderItem(itemid: $itemid, name: $namesnapshot, unitPrice: ${unitpriceCents / 100.0}, qty: $quantity, shop: ${shop?.name})';
   }
 }
 
@@ -244,6 +259,7 @@ class OrderModel {
   int totalcents;
   String? placedat;
   List<OrderItemModel> orderItems;
+  Shop? shop; // optional top-level shop parsed using your Shop model
 
   OrderModel({
     this.id,
@@ -256,10 +272,12 @@ class OrderModel {
     required this.totalcents,
     this.placedat,
     required this.orderItems,
+    this.shop,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final itemsList = (json['order_items'] ?? json['orderItems']) as List<dynamic>?;
+    final shopJson = (json['shop'] as Map<String, dynamic>?) ?? (json['store'] as Map<String, dynamic>?);
 
     return OrderModel(
       id: json['id'] == null ? null : _parseInt(json['id']),
@@ -271,9 +289,8 @@ class OrderModel {
       discountcents: _parseInt(json['discountcents'] ?? json['discount_cents']),
       totalcents: _parseInt(json['totalcents'] ?? json['total_cents']),
       placedat: json['placedat'] ?? json['placed_at'],
-      orderItems: (itemsList ?? [])
-          .map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      orderItems: (itemsList ?? []).map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>)).toList(),
+      shop: shopJson == null ? null : Shop.fromJson(shopJson),
     );
   }
 
@@ -288,6 +305,16 @@ class OrderModel {
     'totalcents': totalcents,
     'placedat': placedat,
     'order_items': orderItems.map((e) => e.toJson()).toList(),
+    'shop': shop == null
+        ? null
+        : {
+      'id': shop!.id,
+      'name': shop!.name,
+      'location': shop!.location,
+      'open_time': shop!.openTime,
+      'close_time': shop!.closeTime,
+      'image_url': shop!.imageUrl,
+    },
   };
 
   /// Convenience: add an OrderItemModel directly
@@ -326,6 +353,6 @@ class OrderModel {
 
   @override
   String toString() {
-    return 'OrderModel(id: $id, userId: $userid, total: ${totalcents/100.0}, items: ${orderItems.length})';
+    return 'OrderModel(id: $id, userId: $userid, total: ${totalcents / 100.0}, items: ${orderItems.length}, shop: ${shop?.name})';
   }
 }

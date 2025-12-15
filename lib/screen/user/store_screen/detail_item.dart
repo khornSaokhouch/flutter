@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../models/Item_OptionGroup.dart';
 import '../../../server/item_service.dart';
 import '../../home_screen.dart';
+import '../checkout/checkout_screen.dart';
 import './order_screen.dart';
 
 
@@ -512,7 +513,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                     }).toList();
 
                     Navigator.push(
-                      context,
+                       context,
                       MaterialPageRoute(
                         builder: (_) => CartScreen(
                           id: item.id,
@@ -525,6 +526,10 @@ class _DetailItemState extends State<GuestDetailItem> {
                           userId: _currentUserId,
                         ),
                       ),
+                      // MaterialPageRoute(
+                      //   builder: (_) => const CheckoutScreen(),
+                      // ),
+
                     );
                   },
                   style: ElevatedButton.styleFrom(

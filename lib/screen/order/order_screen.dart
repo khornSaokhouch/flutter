@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/order_model.dart';
 import '../../server/order_service.dart';
-import '../user/store_screen//order_detail_screen.dart'; // ✅ Imported your detail screen
+import '../user/store_screen/order_detail_screen.dart'; // ✅ Imported your detail screen
 
 class AllOrdersScreen extends StatefulWidget {
   final int userId;
@@ -368,15 +368,17 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
 
     // 2. Prepare Data for Display
     final orderId = order.id != null ? '#${order.id}' : '#--';
-    final shopName = order.shopid != null ? 'Shop #${order.shopid}' : 'Unknown Shop';
-    
+
+    // Use shop model when available (fall back to id)
+    final shop = order.shop;
+    final shopName = shop?.name ?? (order.shopid != null ? 'Shop #${order.shopid}' : 'Unknown Shop');
+
     // Show summary of items
     final itemsSummary = order.orderItems.isNotEmpty
         ? order.orderItems.map((i) => "${i.quantity}x ${i.namesnapshot}").join(", ")
         : "No items";
 
     final dateStr = _formatPlacedAt(order.placedat);
-    // ✅ Fix: Use the formatter defined at the top
     final String priceStr = _formatMoney(order.totalcents);
 
     return Container(
@@ -397,22 +399,43 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-            // ✅ NAVIGATION TO DETAILS PAGE
-            // We map the OrderModel to the Map format required by OrderDetailScreen
+            // Build safe orderDataMap for details screen
             final orderDataMap = {
               'id': order.id,
+              'userid': order.userid,
               'status': order.status,
               'placedat': order.placedat,
               'subtotalcents': order.subtotalcents,
               'discountcents': order.discountcents,
               'totalcents': order.totalcents,
-              'shop_name': 'Shop #${order.shopid}', // Use actual name if available in model
-              'shop_address': 'Phnom Penh', // Placeholder unless available in model
-              'items': order.orderItems.map((item) => {
-                'name': item.namesnapshot,
-                'qty': item.quantity,
-                'price': item.unitpriceCents / 100.0, // Convert to dollars for display
-                'options': item.optionGroups.map((g) => g.selectedOption).join(', '),
+              'subtotal': (order.subtotalcents / 100.0),
+              'discount': (order.discountcents / 100.0),
+              'total': (order.totalcents / 100.0),
+              'shop_id': order.shopid,
+              'shop_name': shopName,
+              'shop_address': shop?.location,
+              'shop_image': shop?.imageUrl,
+              'items': order.orderItems.map((item) {
+                final imageUrl = item.item?.imageUrl ?? '';
+                final optionsText = (item.optionGroups.isNotEmpty)
+                    ? item.optionGroups
+                    .map((g) => g.selectedOption)
+                    .where((s) => s != null && s.isNotEmpty)
+                    .join(', ')
+                    : '';
+                return {
+                  'id': item.id,
+                  'itemid': item.itemid,
+                  'name': item.namesnapshot,
+                  'image': imageUrl,
+                  'qty': item.quantity,
+                  'unitprice_cents': item.unitpriceCents,
+                  'unitprice': item.unitpriceCents / 100.0,
+                  'line_total_cents': item.unitpriceCents * item.quantity,
+                  'line_total': (item.unitpriceCents * item.quantity) / 100.0,
+                  'options': optionsText,
+                  'notes': item.notes,
+                };
               }).toList(),
             };
 
@@ -436,7 +459,8 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
                       child: Text(
                         shopName,
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _espressoBrown),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
@@ -465,7 +489,8 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 40, height: 40,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(color: _bgGrey, borderRadius: BorderRadius.circular(10)),
                       child: Icon(Icons.receipt_long_rounded, color: Colors.grey[600]),
                     ),
@@ -531,4 +556,5 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
       ),
     );
   }
+
 }

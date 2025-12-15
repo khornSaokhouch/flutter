@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
@@ -283,6 +284,67 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // ---------- Payment (Stripe PaymentSheet) ----------
+
+  Future<bool> _handleStripePayment() async {
+    try {
+      setState(() => _isPaying = true);
+
+      final resp = await StripeService.createPaymentIntent(
+        amount: _toCents(_total),
+        currency: 'usd',
+      );
+
+      Stripe.publishableKey = resp['publishableKey'];
+      await Stripe.instance.applySettings();
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: resp['client_secret'],
+          merchantDisplayName: 'Your Shop',
+        ),
+      );
+
+      await Stripe.instance.presentPaymentSheet();
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      setState(() => _isPaying = false);
+    }
+  }
+
+  Future<bool> _handleKHQRPayment() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("Bank Transfer (KHQR)"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Text("Scan QR using ABA / Bakong"),
+            SizedBox(height: 16),
+            SizedBox(
+              width: 200,
+              height: 200,
+              child: ColoredBox(color: Colors.black12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("I've Paid"),
+          ),
+        ],
+      ),
+    ) ??
+        false;
+  }
+
 
   int _toCents(double amount) => (amount * 100).round();
 

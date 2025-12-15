@@ -165,6 +165,8 @@ PODS:
   - StripeUICore (24.23.3):
     - StripeCore (= 24.23.3)
   - TweetNacl (1.0.2)
+  - url_launcher_ios (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
@@ -181,6 +183,7 @@ DEPENDENCIES:
   - sign_in_with_apple (from `.symlinks/plugins/sign_in_with_apple/ios`)
   - stripe_ios (from `.symlinks/plugins/stripe_ios/ios`)
   - TweetNacl (~> 1.0)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
   trunk:
@@ -238,6 +241,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/sign_in_with_apple/ios"
   stripe_ios:
     :path: ".symlinks/plugins/stripe_ios/ios"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
   AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
@@ -279,6 +284,7 @@ SPEC CHECKSUMS:
   StripePaymentsUI: 1590647b3f635a58fb0e7058d86d3e9ff89250d4
   StripeUICore: a63d95d604e70a5895f9d6b09c49a46757e86353
   TweetNacl: 3abf4d1d2082b0114e7a67410e300892448951e6
+  url_launcher_ios: bb13df5870e8c4234ca12609d04010a21be43dfa
 
 PODFILE CHECKSUM: 157d62250fba55250fb6405e8a2e948fcabe5769
 
