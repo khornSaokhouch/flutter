@@ -1,9 +1,4 @@
-enum PaymentMethod {
-  stripe, // card, apple pay, google pay
-  khqr,   // ABA / Bakong
-  wallet,
-  cash,
-}
+enum PaymentMethod { stripe, khqr, bank }
 
 /// Helpers for API conversion
 PaymentMethod? paymentMethodFromString(String? value) {
@@ -20,11 +15,7 @@ PaymentMethod? paymentMethodFromString(String? value) {
     case 'bank_transfer':
       return PaymentMethod.khqr;
 
-    case 'wallet':
-      return PaymentMethod.wallet;
 
-    case 'cash':
-      return PaymentMethod.cash;
 
     default:
       return null;
@@ -37,9 +28,10 @@ String paymentMethodToString(PaymentMethod method) {
       return 'stripe';
     case PaymentMethod.khqr:
       return 'khqr';
-    case PaymentMethod.wallet:
+
       return 'wallet';
-    case PaymentMethod.cash:
-      return 'cash';
+    case PaymentMethod.bank:
+      // TODO: Handle this case.
+      throw UnimplementedError();
   }
 }

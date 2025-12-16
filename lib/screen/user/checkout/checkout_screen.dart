@@ -1,97 +1,111 @@
-import 'package:flutter/material.dart';
-import 'package:frontend/screen/user/checkout/widgets/payment_method_selector.dart';
-import '../../../models/payment_method.dart';
-import 'widgets/section_header.dart';
-import 'widgets/cart_item_card.dart';
-import 'widgets/notes_input.dart';
-import 'widgets/promo_tile.dart';
-import 'widgets/payment_summary_card.dart';
-import 'widgets/place_order_button.dart';
-import 'widgets/empty_cart.dart';
-
-
-PaymentMethod _selectedPayment = PaymentMethod.stripe;
-
-class CheckoutScreen extends StatefulWidget {
-  const CheckoutScreen({super.key});
-
-  @override
-  State<CheckoutScreen> createState() => _CheckoutScreenState();
-}
-class _CheckoutScreenState extends State<CheckoutScreen> {
-  PaymentMethod _selectedPayment = PaymentMethod.stripe;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isCartEmpty = false;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        leading: const BackButton(color: Colors.black),
-        title: const Text(
-          "Checkout",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-        ),
-      ),
-      body: isCartEmpty
-          ? const EmptyCart()
-          : Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionHeader(title: "Order Details"),
-                  const SizedBox(height: 12),
-                  const CartItemCard(),
-
-                  const SizedBox(height: 24),
-                  const SectionHeader(title: "Notes"),
-                  const SizedBox(height: 8),
-                  const NotesInput(),
-
-                  const SizedBox(height: 24),
-                  const SectionHeader(title: "Order Discount"),
-                  const SizedBox(height: 12),
-                  const PromoTile(),
-
-                  const SizedBox(height: 24),
-                  const SectionHeader(title: "Payment Method"),
-                  const SizedBox(height: 12),
-
-                  /// 🔽 PAYMENT METHOD SELECTOR
-                  PaymentMethodSelector(
-                    selected: _selectedPayment,
-                    onChanged: (method) {
-                      setState(() {
-                        _selectedPayment = method;
-                      });
-                    },
-                  ),
-
-                  const SizedBox(height: 24),
-                  const SectionHeader(title: "Payment Details"),
-                  const SizedBox(height: 12),
-                  const PaymentSummaryCard(),
-
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
-          ),
-          PlaceOrderButton(
-            paymentMethod: _selectedPayment,
-          ),
-
-        ],
-      ),
-    );
-  }
-}
-
+// import 'package:flutter/material.dart';
+// import 'package:frontend/screen/user/checkout/widgets/bank_payment.dart';
+// import 'package:frontend/screen/user/checkout/widgets/cart_item_card.dart';
+// import 'package:frontend/screen/user/checkout/widgets/empty_cart.dart';
+// import 'package:frontend/screen/user/checkout/widgets/khqr_payment.dart';
+// import 'package:frontend/screen/user/checkout/widgets/payment_method_selector.dart';
+// import 'package:frontend/screen/user/checkout/widgets/payment_summary_card.dart';
+// import 'package:frontend/screen/user/checkout/widgets/place_order_button.dart';
+// import 'package:frontend/screen/user/checkout/widgets/stripe_payment.dart';
+//
+// import '../../../models/order_model.dart';
+// import '../../../models/payment_method.dart';
+// import '../../../server/order_service.dart';
+// import '../store_screen/order_success_screen.dart';
+//
+//
+//
+// class CartScreen extends StatefulWidget {
+//   final int shopId;
+//   final int? userId;
+//
+//   const CartScreen({super.key, required this.shopId, this.userId});
+//
+//   @override
+//   State<CartScreen> createState() => _CartScreenState();
+// }
+//
+// class _CartScreenState extends State<CartScreen> {
+//   final List<Map<String, dynamic>> cartItems = [
+//     {'id': 1, 'name': 'Coffee', 'price': 2.5, 'qty': 2}
+//   ];
+//
+//   final TextEditingController noteController = TextEditingController();
+//   PaymentMethod paymentMethod = PaymentMethod.stripe;
+//   bool loading = false;
+//
+//   double get subtotal =>
+//       cartItems.fold(0, (s, i) => s + i['price'] * i['qty']);
+//   double get total => subtotal;
+//   int toCents(double v) => (v * 100).round();
+//
+//   Future<void> placeOrder() async {
+//     if (loading) return;
+//     setState(() => loading = true);
+//
+//     try {
+//       final order = await OrderService().createOrder(
+//         OrderModel(
+//           userid: widget.userId ?? 0,
+//           shopid: widget.shopId,
+//           status: 'pending_payment',
+//           subtotalcents: toCents(subtotal),
+//           discountcents: 0,
+//           totalcents: toCents(total),
+//           placedat: DateTime.now().toIso8601String(),
+//           orderItems: [],
+//         ),
+//       );
+//
+//       bool paid = false;
+//       switch (paymentMethod) {
+//         case PaymentMethod.stripe:
+//           paid = await payWithStripe(order.id!, total, widget.userId);
+//           break;
+//         case PaymentMethod.khqr:
+//           paid = await payWithKHQR(context, order.id!, total);
+//           break;
+//         case PaymentMethod.bank:
+//           paid = await payWithBank(context);
+//           break;
+//       }
+//
+//       if (!paid) return;
+//
+//       Navigator.pushReplacement(
+//         context,
+//         MaterialPageRoute(
+//           builder: (_) => OrderSuccessScreen(orderData: order.toJson()),
+//         ),
+//       );
+//     } finally {
+//       setState(() => loading = false);
+//     }
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: const Text("Checkout")),
+//       body: Padding(
+//         padding: const EdgeInsets.all(16),
+//         child: Column(
+//           children: [
+//             CartItemsWidget(cartItems: cartItems),
+//             NotesWidget(controller: noteController),
+//             PaymentMethodWidget(
+//               value: paymentMethod,
+//               onChanged: (v) => setState(() => paymentMethod = v),
+//             ),
+//             PaymentSummaryWidget(subtotal: subtotal, total: total),
+//             const Spacer(),
+//             PlaceOrderButton(
+//               loading: loading,
+//               onPressed: placeOrder,
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
