@@ -2,14 +2,22 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // Adjust these imports to match your project structure:
 import '../../../models/order_model.dart';
 import '../../../models/promotion_model.dart';
+import '../../../server/aba_service.dart';
 import '../../../server/order_service.dart';
 import '../../../server/payment_service.dart'; // Should expose StripeService.createPaymentIntent
 import '../../../server/promotion_service.dart';
 import './order_success_screen.dart'; // Make sure this file exists
+
+enum PaymentMethod {
+  stripe,
+  khqr,
+  bankTransfer,
+}
 
 class PromotionNotFoundException implements Exception {
   final String? message;
@@ -45,6 +53,8 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  PaymentMethod _selectedPayment = PaymentMethod.stripe;
+
   // --- Theme Colors ---
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
   final Color _espressoBrown = const Color(0xFF4B2C20);
@@ -71,6 +81,10 @@ class _CartScreenState extends State<CartScreen> {
   double get _discountedSubtotal =>
       (_subtotalLocal - _discountAmount).clamp(0.0, double.infinity);
   double get _total => _discountedSubtotal;
+
+
+
+
 
   @override
   void initState() {
@@ -380,8 +394,7 @@ class _CartScreenState extends State<CartScreen> {
 
       // Create order via your service
 
-      final paymentSucceeded =
-      await _handlePaymentSheetPayment(orderId!);
+      final paymentSucceeded = await _processPayment(orderId!);
 
 
       if (!paymentSucceeded) {
@@ -472,6 +485,19 @@ class _CartScreenState extends State<CartScreen> {
       return false;
     } finally {
       if (mounted) setState(() => _isPaying = false);
+    }
+  }
+
+  Future<bool> _processPayment(int orderId) async {
+    switch (_selectedPayment) {
+      case PaymentMethod.stripe:
+        return await _handlePaymentSheetPayment(orderId);
+
+      case PaymentMethod.khqr:
+        return await _handleKHQRPayment(orderId);
+
+      case PaymentMethod.bankTransfer:
+        return await _handleBankTransfer(orderId);
     }
   }
 
@@ -598,10 +624,15 @@ class _CartScreenState extends State<CartScreen> {
                     ),
 
                     const SizedBox(height: 24),
-
+                    _buildSectionHeader("Payment Method"),
+                    const SizedBox(height: 12),
+                    _buildPaymentMethodSelector(),
+                    const SizedBox(height: 24),
                     // 5. Payment Details
                     _buildSectionHeader("Payment Details"),
                     const SizedBox(height: 12),
+
+
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -914,4 +945,363 @@ class _CartScreenState extends State<CartScreen> {
       _recalculateSubtotal();
     }
   }
+
+  Widget _buildPaymentMethodSelector() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          _paymentTile(
+            title: "Credit / Debit Card",
+            subtitle: "Visa, MasterCard",
+            value: PaymentMethod.stripe,
+            icon: Icons.credit_card,
+          ),
+          _paymentTile(
+            title: "KHQR",
+            subtitle: "ABA, Acleda, Wing",
+            value: PaymentMethod.khqr,
+            icon: Icons.qr_code,
+          ),
+          _paymentTile(
+            title: "Bank Transfer",
+            subtitle: "Pay via bank slip",
+            value: PaymentMethod.bankTransfer,
+            icon: Icons.account_balance,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentTile({
+    required String title,
+    required String subtitle,
+    required PaymentMethod value,
+    required IconData icon,
+  }) {
+    return RadioListTile<PaymentMethod>(
+      value: value,
+      groupValue: _selectedPayment,
+      onChanged: (v) => setState(() => _selectedPayment = v!),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(subtitle),
+      secondary: Icon(icon),
+    );
+  }
+
+  // Future<bool> _handleKHQRPayment(int orderId) async {
+  //   const String currency = 'USD'; // 🔑 USD → settlement 111 111 111
+  //
+  //   late Map<String, dynamic> resp;
+  //
+  //   try {
+  //     resp = await ABAPaymentService.createKHQR(
+  //       amount: _toCents(_total),
+  //       orderId: orderId,
+  //       currency: currency,
+  //     );
+  //   } catch (e) {
+  //     if (!mounted) return false;
+  //
+  //     await showDialog(
+  //       context: context,
+  //       builder: (_) => AlertDialog(
+  //         title: const Text("Payment Error"),
+  //         content: Text(e.toString()),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             child: const Text("OK"),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //     return false;
+  //   }
+  //
+  //   final String? qrImage = resp['qr_image_url'];
+  //   final String? deeplink = resp['deeplink'];
+  //
+  //   if (!mounted) return false;
+  //
+  //   final paid = await showDialog<bool>(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (_) => Dialog(
+  //       shape: RoundedRectangleBorder(
+  //         borderRadius: BorderRadius.circular(16),
+  //       ),
+  //       child: Padding(
+  //         padding: const EdgeInsets.all(20),
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             // Title
+  //             const Text(
+  //               "Pay with ABA",
+  //               style: TextStyle(
+  //                 fontSize: 20,
+  //                 fontWeight: FontWeight.bold,
+  //               ),
+  //             ),
+  //
+  //             const SizedBox(height: 6),
+  //
+  //             Text(
+  //               "Currency: $currency",
+  //               style: const TextStyle(
+  //                 fontSize: 14,
+  //                 color: Colors.black54,
+  //               ),
+  //             ),
+  //
+  //             const SizedBox(height: 12),
+  //
+  //             const Text(
+  //               "Scan the QR or open ABA App to complete payment",
+  //               textAlign: TextAlign.center,
+  //               style: TextStyle(color: Colors.black54),
+  //             ),
+  //
+  //             const SizedBox(height: 20),
+  //
+  //             // QR Image
+  //             if (qrImage != null)
+  //               Container(
+  //                 padding: const EdgeInsets.all(12),
+  //                 decoration: BoxDecoration(
+  //                   borderRadius: BorderRadius.circular(12),
+  //                   border: Border.all(color: Colors.grey.shade300),
+  //                 ),
+  //                 child: Image.network(
+  //                   qrImage,
+  //                   height: 220,
+  //                   errorBuilder: (_, __, ___) =>
+  //                   const Text("Failed to load QR image"),
+  //                 ),
+  //               ),
+  //
+  //             const SizedBox(height: 20),
+  //
+  //             // Open ABA App
+  //             if (deeplink != null)
+  //               SizedBox(
+  //                 width: double.infinity,
+  //                 child: ElevatedButton.icon(
+  //                   icon: const Icon(Icons.open_in_new),
+  //                   label: const Text("Open ABA App"),
+  //                   style: ElevatedButton.styleFrom(
+  //                     padding: const EdgeInsets.symmetric(vertical: 14),
+  //                     textStyle: const TextStyle(fontSize: 16),
+  //                     shape: RoundedRectangleBorder(
+  //                       borderRadius: BorderRadius.circular(10),
+  //                     ),
+  //                   ),
+  //                   onPressed: () async {
+  //                     final uri = Uri.parse(deeplink);
+  //
+  //                     try {
+  //                       final launched = await launchUrl(
+  //                         uri,
+  //                         mode: LaunchMode.externalApplication,
+  //                       );
+  //
+  //                       if (!launched) {
+  //                         throw Exception();
+  //                       }
+  //                     } catch (_) {
+  //                       if (!mounted) return;
+  //                       await showDialog(
+  //                         context: context,
+  //                         builder: (_) => AlertDialog(
+  //                           title: const Text("ABA App Not Found"),
+  //                           content: const Text(
+  //                             "Please install the ABA Mobile app to continue payment.",
+  //                           ),
+  //                           actions: [
+  //                             TextButton(
+  //                               onPressed: () => Navigator.pop(context),
+  //                               child: const Text("OK"),
+  //                             ),
+  //                           ],
+  //                         ),
+  //                       );
+  //                     }
+  //                   },
+  //                 ),
+  //               ),
+  //
+  //             const SizedBox(height: 10),
+  //
+  //             // I Have Paid
+  //             SizedBox(
+  //               width: double.infinity,
+  //               child: OutlinedButton(
+  //                 onPressed: () => Navigator.pop(context, true),
+  //                 style: OutlinedButton.styleFrom(
+  //                   padding: const EdgeInsets.symmetric(vertical: 14),
+  //                   side: BorderSide(color: Theme.of(context).primaryColor),
+  //                   shape: RoundedRectangleBorder(
+  //                     borderRadius: BorderRadius.circular(10),
+  //                   ),
+  //                 ),
+  //                 child: const Text("I Have Paid"),
+  //               ),
+  //             ),
+  //
+  //             const SizedBox(height: 6),
+  //
+  //             // Cancel
+  //             TextButton(
+  //               onPressed: () => Navigator.pop(context, false),
+  //               child: const Text(
+  //                 "Cancel",
+  //                 style: TextStyle(color: Colors.black54),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  //
+  //   return paid == true;
+  // }
+
+  Future<bool> _handleKHQRPayment(int orderId) async {
+    const String currency = 'USD';
+
+    late Map<String, dynamic> resp;
+
+    try {
+      resp = await ABAPaymentService.generateQR(
+        orderId: orderId,
+        amount: _total, // must be double (e.g. 0.01)
+        currency: currency,
+      );
+    } catch (e) {
+      if (!mounted) return false;
+
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Payment Error"),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return false;
+    }
+
+    final String? qrBase64 = resp['qr_image'];
+    final String? deeplink = resp['deeplink'];
+
+    if (!mounted) return false;
+
+    final paid = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Pay with ABA",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 6),
+
+              Text(
+                "Currency: $currency",
+                style: const TextStyle(color: Colors.black54),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ✅ BASE64 QR IMAGE
+              if (qrBase64 != null)
+                Image.memory(
+                  base64Decode(qrBase64.split(',').last),
+                  height: 220,
+                ),
+
+              const SizedBox(height: 20),
+
+              // ✅ OPEN ABA APP
+              if (deeplink != null)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.open_in_new),
+                    label: const Text("Open ABA App"),
+                    onPressed: () async {
+                      final uri = Uri.parse(deeplink);
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                  ),
+                ),
+
+              const SizedBox(height: 10),
+
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text("I Have Paid"),
+                ),
+              ),
+
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel"),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return paid == true;
+  }
+
+  Future<bool> _handleBankTransfer(int orderId) async {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Bank Transfer"),
+        content: const Text(
+          "Please transfer to:\n\nABA Bank\nAccount: 123-456-789\n\nThen contact support.",
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Done"),
+          ),
+        ],
+      ),
+    );
+
+    return true; // pending verification
+  }
+
+
 }
