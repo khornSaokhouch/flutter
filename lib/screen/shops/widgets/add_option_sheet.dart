@@ -29,8 +29,8 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
   bool _isSubmitting = false;
 
   // Theme
-  final Color _freshMintGreen = const Color(0xFF4E8D7C);
-  final Color _espressoBrown = const Color(0xFF4B2C20);
+  final Color _primaryGreen = const Color(0xFF4E8D7C);
+  final Color _darkText = const Color(0xFF1A1A1A);
 
   @override
   void initState() {
@@ -71,7 +71,7 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Option successfully added'),
-            backgroundColor: _freshMintGreen,
+            backgroundColor: _primaryGreen,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -104,7 +104,7 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
         future: futureItem,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: _freshMintGreen));
+            return Center(child: CircularProgressIndicator(color: _primaryGreen));
           }
 
           if (snapshot.hasError) {
@@ -117,31 +117,40 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
           return Column(
             children: [
               const SizedBox(height: 12),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+              // Drag Handle
+              Container(width: 48, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
               
               // Header
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                 child: Row(
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Add Options", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _espressoBrown)),
-                        const Text("Select options to enable", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        Text("Add Options", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _darkText)),
+                        const SizedBox(height: 4),
+                        const Text("Enable options for this product", style: TextStyle(color: Colors.grey, fontSize: 14)),
                       ],
                     ),
                     const Spacer(),
-                    IconButton(onPressed: () => Navigator.pop(context, false), icon: const Icon(Icons.close)),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
+                        child: const Icon(Icons.close, size: 20),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
+              Divider(height: 1, color: Colors.grey[200]),
 
               // Content
               Flexible(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   itemCount: groups.length,
                   itemBuilder: (context, index) {
                     final g = groups[index];
@@ -159,9 +168,15 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8),
-                          child: Text(
-                            g.name ?? 'Group',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _espressoBrown),
+                          child: Row(
+                            children: [
+                              Container(width: 4, height: 16, decoration: BoxDecoration(color: _primaryGreen, borderRadius: BorderRadius.circular(2))),
+                              const SizedBox(width: 8),
+                              Text(
+                                g.name ?? 'Group',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _darkText),
+                              ),
+                            ],
                           ),
                         ),
                         ...visibleOptions.map((o) {
@@ -171,42 +186,68 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
                           final imageUrl = o.iconUrl;
 
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
+                            margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))
+                              ],
                               border: Border.all(color: Colors.grey.shade200),
                             ),
-                            child: ListTile(
-                              enabled: isActive && !_isSubmitting,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              leading: Container(
-                                width: 40, 
-                                height: 40,
-                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                                child: (imageUrl != null && imageUrl.isNotEmpty)
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          imageUrl,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 20),
-                                        ),
-                                      )
-                                    : const Icon(Icons.local_offer_outlined, size: 20, color: Colors.grey),
-                              ),
-                              title: Text(o.name ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: priceLabel.isNotEmpty 
-                                ? Text(priceLabel, style: TextStyle(color: _freshMintGreen, fontWeight: FontWeight.bold)) 
-                                : null,
-                              trailing: IconButton(
-                                icon: Icon(Icons.add_circle, color: (isActive && !_isSubmitting) ? _espressoBrown : Colors.grey),
-                                onPressed: (isActive && !_isSubmitting)
-                                    ? () async {
-                                        final ok = await _onOptionSelected(g, o);
-                                        if (mounted) Navigator.pop(context, ok);
-                                      }
-                                    : null,
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              child: ListTile(
+                                enabled: isActive && !_isSubmitting,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                leading: Container(
+                                  width: 48, 
+                                  height: 48,
+                                  decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+                                  child: (imageUrl != null && imageUrl.isNotEmpty)
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: Image.network(
+                                            imageUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 20, color: Colors.grey[400]),
+                                          ),
+                                        )
+                                      : Icon(Icons.local_offer_rounded, size: 24, color: _primaryGreen.withOpacity(0.5)),
+                                ),
+                                title: Text(o.name ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                                subtitle: priceLabel.isNotEmpty 
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(color: _primaryGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                            child: Text(priceLabel, style: TextStyle(color: _primaryGreen, fontWeight: FontWeight.bold, fontSize: 12)),
+                                          ),
+                                        ],
+                                      ),
+                                    ) 
+                                  : null,
+                                trailing: ElevatedButton(
+                                  onPressed: (isActive && !_isSubmitting)
+                                      ? () async {
+                                          final ok = await _onOptionSelected(g, o);
+                                          if (mounted) Navigator.pop(context, ok);
+                                        }
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _primaryGreen,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  child: const Text("Add"),
+                                ),
                               ),
                             ),
                           );

@@ -26,14 +26,12 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
   List<ShopItemOptionStatusModel> statuses = [];
 
   // UI state
-  final Map<int, int> _selectedOptionForGroup = {};
-  final Map<int, Set<int>> _selectedOptionSets = {};
   final Map<int, bool> _groupExpanded = {};
 
-  // Theme Colors
-  final Color _freshMintGreen = const Color(0xFF4E8D7C);
-  final Color _espressoBrown = const Color(0xFF4B2C20);
-  final Color _bgGrey = const Color(0xFFF9FAFB);
+  // Theme Colors (Kept your original green)
+  final Color _primaryGreen = const Color(0xFF4E8D7C);
+  final Color _bgWhite = const Color(0xFFFFFFFF);
+  final Color _espressoBrown = const Color(0xFF4B2C20); // From reference for text contrast
 
   @override
   void initState() {
@@ -41,7 +39,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
     _loadData();
   }
 
-  // --- Helpers (Unchanged) ---
+  // --- Helpers ---
   int _toCents(dynamic priceStr) {
     if (priceStr == null) return 0;
     final s = priceStr.toString();
@@ -68,40 +66,11 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
   bool _isOptionActive(dynamic v) => _toBool(v);
 
   bool get _itemActive {
-    return statuses.isNotEmpty ? statuses.first.status : true;
+    return statuses.isNotEmpty ? statuses.first.item.isAvailable : true;
   }
 
   void _toggleGroupExpand(int gid) {
     setState(() => _groupExpanded[gid] = !(_groupExpanded[gid] ?? true));
-  }
-
-  void _toggleOption(Map<String, dynamic> group, Map<String, dynamic> option) {
-    if (!_itemActive) return;
-    if (!_isOptionActive(option['is_active'])) return;
-
-    final gid = (group['id'] as num).toInt();
-    final oid = (option['id'] as num).toInt();
-    final type = (group['type'] ?? 'select').toString();
-
-    setState(() {
-      if (type == 'select') {
-        final already = _selectedOptionForGroup[gid] == oid;
-        final required = (group['is_required'] ?? 0).toString() == '1' || _toBool(group['is_required']);
-        if (already && !required) {
-          _selectedOptionForGroup.remove(gid);
-        } else {
-          _selectedOptionForGroup[gid] = oid;
-        }
-      } else {
-        final set = _selectedOptionSets.putIfAbsent(gid, () => <int>{});
-        if (set.contains(oid)) {
-          set.remove(oid);
-          if (set.isEmpty) _selectedOptionSets.remove(gid);
-        } else {
-          set.add(oid);
-        }
-      }
-    });
   }
 
   List<Map<String, dynamic>> _buildGroupsFromStatuses() {
@@ -188,7 +157,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => AddOptionSheet(
-        onSelect: _toggleOption,
+        onSelect: (_, __) {},
         itemId: widget.itemId,
         shopId: widget.shopId,
         existingOptionIds: existingOptionIds,
@@ -217,123 +186,234 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
     final groups = _buildGroupsFromStatuses();
     
     final hasData = statuses.isNotEmpty;
-    final itemName = hasData ? statuses.first.item.name : 'Loading...';
+    final itemName = hasData ? statuses.first.item.name : '...';
     final itemDesc = hasData ? statuses.first.item.description : '';
     final imageUrl = hasData ? statuses.first.item.imageUrl : '';
+    final isItemAvailable = hasData ? statuses.first.item.isAvailable : false;
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: _bgGrey,
-        appBar: AppBar(backgroundColor: _bgGrey, elevation: 0),
-        body: Center(child: CircularProgressIndicator(color: _freshMintGreen)),
+        backgroundColor: _bgWhite,
+        body: Center(child: CircularProgressIndicator(color: _primaryGreen)),
       );
     }
 
     return Scaffold(
-      backgroundColor: _bgGrey,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddOptionSheet,
-        backgroundColor: _espressoBrown,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("Add Option", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
-      body: CustomScrollView(
-        slivers: [
-          // 1. Immersive Header
-          SliverAppBar(
-            expandedHeight: 280.0,
-            pinned: true,
-            backgroundColor: _bgGrey,
-            elevation: 0,
-            leading: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), shape: BoxShape.circle),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.black),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  (imageUrl.isNotEmpty)
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(color: Colors.grey[300], child: const Icon(Icons.image_not_supported)),
-                        )
-                      : Container(color: Colors.grey[300], child: const Icon(Icons.image)),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.black26, Colors.transparent, Colors.black87],
-                        stops: const [0.0, 0.5, 1.0],
-                      ),
-                    ),
+      backgroundColor: _bgWhite,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // 1. IMMERSIVE HEADER IMAGE
+              SliverAppBar(
+                expandedHeight: 300.0,
+                pinned: true,
+                stretch: true,
+                backgroundColor: _espressoBrown,
+                elevation: 0,
+                leading: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    shape: BoxShape.circle,
                   ),
-                  Positioned(
-                    bottom: 20,
-                    left: 20,
-                    right: 20,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          itemName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.black),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                flexibleSpace: FlexibleSpaceBar(
+                  stretchModes: const [StretchMode.zoomBackground],
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      (imageUrl.isNotEmpty)
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: Colors.grey[200], child: Icon(Icons.image, color: Colors.grey[400])),
+                            )
+                          : Container(color: Colors.grey[200], child: Icon(Icons.image, color: Colors.grey[400])),
+                      Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.black26, Colors.transparent, Colors.black12],
+                            stops: [0.0, 0.5, 1.0],
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // 2. PRODUCT INFO (Curved Container)
+              SliverToBoxAdapter(
+                child: Container(
+                  transform: Matrix4.translationValues(0.0, -30.0, 0.0),
+                  decoration: BoxDecoration(
+                    color: _bgWhite,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Drag Handle
+                        Center(
+                          child: Container(
+                            width: 40, height: 4,
+                            margin: const EdgeInsets.only(bottom: 20, top: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        
+                        // Title
+                        Text(
+                          itemName,
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _espressoBrown, height: 1.1),
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        // Availability Pill
+                        _buildStatusPill(isItemAvailable),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Description
                         if (itemDesc.isNotEmpty)
                           Text(
                             itemDesc,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white70, fontSize: 14),
+                            style: TextStyle(color: Colors.grey[600], fontSize: 15, height: 1.5),
                           ),
+                        
+                        const SizedBox(height: 24),
+                        const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                        const SizedBox(height: 24),
+
+                        const Text(
+                          "Options & Modifiers",
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
                       ],
                     ),
-                  )
+                  ),
+                ),
+              ),
+
+              // 3. OPTION GROUPS
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final g = groups[index];
+                    return Container(
+                      color: _bgWhite, // Continues the white bg
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: InlineOptionGroup(
+                          group: Map<String, dynamic>.from(g),
+                          itemActive: isItemAvailable,
+                          groupExpanded: _groupExpanded,
+                          isToggling: _isToggling,
+                          onToggleGroupExpand: _toggleGroupExpand,
+                          onToggleOptionActive: _handleToggleOptionActive,
+                          toCents: _toCents,
+                          fmt: _fmt,
+                          isOptionActive: _isOptionActive,
+                          toBool: _toBool,
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: groups.length,
+                ),
+              ),
+
+              // Padding for Bottom Bar
+              const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+            ],
+          ),
+
+          // 4. STICKY BOTTOM BAR
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -5)),
+                ],
+              ),
+              child: Row(
+                children: [
+                   Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Total Groups", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      Text(
+                        "${groups.length}",
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _espressoBrown),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _showAddOptionSheet,
+                      icon: const Icon(Icons.add_rounded, color: Colors.white),
+                      label: const Text("Add Option", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          // 2. Groups List
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 80),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final g = groups[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: InlineOptionGroup(
-                      group: Map<String, dynamic>.from(g),
-                      itemActive: statuses.isNotEmpty ? statuses.first.item.isAvailable : true,
-                      selectedOptionForGroup: _selectedOptionForGroup,
-                      selectedOptionSets: _selectedOptionSets,
-                      groupExpanded: _groupExpanded,
-                      isToggling: _isToggling,
-                      onToggleGroupExpand: _toggleGroupExpand,
-                      onToggleOption: _toggleOption,
-                      onToggleOptionActive: _handleToggleOptionActive,
-                      toCents: _toCents,
-                      fmt: _fmt,
-                      isOptionActive: _isOptionActive,
-                      toBool: _toBool,
-                    ),
-                  );
-                },
-                childCount: groups.length,
-              ),
+  Widget _buildStatusPill(bool isAvailable) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isAvailable ? _primaryGreen.withOpacity(0.1) : Colors.red.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 8, color: isAvailable ? _primaryGreen : Colors.red),
+          const SizedBox(width: 6),
+          Text(
+            isAvailable ? "Available" : "Unavailable",
+            style: TextStyle(
+              color: isAvailable ? _primaryGreen : Colors.red,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
             ),
           ),
         ],

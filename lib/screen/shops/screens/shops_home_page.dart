@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screen/shops/screens/shops_categories_page.dart';
+import 'package:frontend/screen/shops/screens/categories_by_shop.dart';
 import '../../../response/shops_response/shop_response.dart';
 import '../../../server/shops_server/shop_service.dart';
 import '../widgets/shop_card_widgets.dart'; // OwnerShopsCard

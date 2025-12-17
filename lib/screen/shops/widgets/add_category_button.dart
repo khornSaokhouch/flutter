@@ -6,7 +6,7 @@ class AddCategoryButton extends StatelessWidget {
   final Color accentColor;
 
   // Theme Colors
-  final Color _espressoBrown = const Color(0xFF4B2C20);
+  final Color _greenColor = const Color(0xFF4E8D7C); // ✅ Green
 
   const AddCategoryButton({
     super.key,
@@ -23,7 +23,7 @@ class AddCategoryButton extends StatelessWidget {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: (isOpen ? Colors.grey : _espressoBrown).withOpacity(0.2),
+            color: (isOpen ? Colors.grey : _greenColor).withOpacity(0.25),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -46,7 +46,7 @@ class AddCategoryButton extends StatelessWidget {
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isOpen ? Colors.grey[600] : _espressoBrown,
+          backgroundColor: isOpen ? Colors.grey[600] : _greenColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

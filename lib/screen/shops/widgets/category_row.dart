@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// Adjust import to where your model is located
 import '../../../models/shops_models/shop_categories_models.dart';
 
 class CategoryRow extends StatefulWidget {
@@ -7,6 +8,9 @@ class CategoryRow extends StatefulWidget {
   final Color accentColor;
   final VoidCallback? onTap;
   final Future<void> Function(int categoryId, bool newStatus)? onStatusChanged;
+  
+  // Kept this parameter to prevent errors in your main file, 
+  // even though the button is gone.
   final void Function(String action)? onMenuSelected;
 
   const CategoryRow({
@@ -27,11 +31,12 @@ class _CategoryRowState extends State<CategoryRow> {
   bool _isToggling = false;
 
   // Logic: 1 = Active, 0 = Inactive
-  bool get _canOpen => (widget.item.status == 1) && ((widget.item.pivot?.status ?? 1) == 1);
+  bool get _canOpen =>
+      (widget.item.status == 1) && ((widget.item.pivot?.status ?? 1) == 1);
 
   // Theme Colors
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
-  final Color _espressoBrown = const Color(0xFF4B2C20);
+  // final Color _espressoBrown = const Color(0xFF4B2C20); // Unused
 
   @override
   Widget build(BuildContext context) {
@@ -91,14 +96,18 @@ class _CategoryRowState extends State<CategoryRow> {
                         borderRadius: BorderRadius.circular(12),
                         child: ColorFiltered(
                           // Gray out image if inactive
-                          colorFilter: isActive 
-                              ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
-                              : const ColorFilter.mode(Colors.grey, BlendMode.saturation),
+                          colorFilter: isActive
+                              ? const ColorFilter.mode(
+                                  Colors.transparent, BlendMode.multiply)
+                              : const ColorFilter.mode(
+                                  Colors.grey, BlendMode.saturation),
                           child: (widget.item.imageCategoryUrl.isNotEmpty)
                               ? Image.network(
                                   widget.item.imageCategoryUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Icon(Icons.category, color: _freshMintGreen),
+                                  errorBuilder: (_, __, ___) => Icon(
+                                      Icons.category,
+                                      color: _freshMintGreen),
                                 )
                               : Icon(Icons.category, color: _freshMintGreen),
                         ),
@@ -113,12 +122,16 @@ class _CategoryRowState extends State<CategoryRow> {
                           height: 20,
                           decoration: BoxDecoration(
                             color: Colors.black54,
-                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                            borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(12)),
                           ),
                           alignment: Alignment.center,
                           child: const Text(
                             "OFF",
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       )
@@ -143,7 +156,7 @@ class _CategoryRowState extends State<CategoryRow> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      
+
                       // Details Chips
                       Wrap(
                         spacing: 8,
@@ -156,80 +169,47 @@ class _CategoryRowState extends State<CategoryRow> {
                   ),
                 ),
 
-                // 3. Actions Section (Switch + Menu)
-                Column(
-                  children: [
-                    // Switch
-                    SizedBox(
-                      height: 30,
-                      child: _isToggling
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: widget.accentColor,
-                              ),
-                            )
-                          : Transform.scale(
-                              scale: 0.8,
-                              child: Switch(
-                                value: isActive,
-                                activeColor: _freshMintGreen,
-                                activeTrackColor: _freshMintGreen.withOpacity(0.2),
-                                inactiveThumbColor: Colors.white,
-                                inactiveTrackColor: Colors.grey[300],
-                                onChanged: (val) async {
-                                  if (widget.onStatusChanged == null) return;
-                                  setState(() => _isToggling = true);
-                                  try {
-                                    await widget.onStatusChanged!(widget.item.id, val);
-                                  } catch (e) {
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Update failed: $e')),
-                                    );
-                                  } finally {
-                                    if (mounted) setState(() => _isToggling = false);
-                                  }
-                                },
-                              ),
-                            ),
-                    ),
-                    // Menu
-                    SizedBox(
-                      height: 30,
-                      child: PopupMenuButton<String>(
-                        icon: Icon(Icons.more_horiz, color: Colors.grey[400]),
-                        padding: EdgeInsets.zero,
-                        onSelected: (value) {
-                          if (widget.onMenuSelected != null) widget.onMenuSelected!(value);
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, size: 18, color: Colors.black54),
-                                SizedBox(width: 8),
-                                Text('Edit Name'),
-                              ],
-                            ),
+                // 3. Actions Section (Switch Only)
+                // Removed the Column and PopupMenuButton
+                SizedBox(
+                  height: 30,
+                  child: _isToggling
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: widget.accentColor,
                           ),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('Remove', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
+                        )
+                      : Transform.scale(
+                          scale: 0.8,
+                          child: Switch(
+                            value: isActive,
+                            activeColor: _freshMintGreen,
+                            activeTrackColor:
+                                _freshMintGreen.withOpacity(0.2),
+                            inactiveThumbColor: Colors.white,
+                            inactiveTrackColor: Colors.grey[300],
+                            onChanged: (val) async {
+                              if (widget.onStatusChanged == null) return;
+                              setState(() => _isToggling = true);
+                              try {
+                                await widget.onStatusChanged!(
+                                    widget.item.id, val);
+                              } catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('Update failed: $e')),
+                                );
+                              } finally {
+                                if (mounted)
+                                  setState(() => _isToggling = false);
+                              }
+                            },
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
+                        ),
                 ),
               ],
             ),
@@ -245,7 +225,8 @@ class _CategoryRowState extends State<CategoryRow> {
       decoration: BoxDecoration(
         color: isActive ? Colors.grey[100] : Colors.grey[50],
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: isActive ? Colors.grey[300]! : Colors.grey[200]!),
+        border: Border.all(
+            color: isActive ? Colors.grey[300]! : Colors.grey[200]!),
       ),
       child: Text(
         label,
