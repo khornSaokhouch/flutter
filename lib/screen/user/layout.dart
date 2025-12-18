@@ -5,7 +5,7 @@ import '../account/account_page.dart';
 import 'coffeeAppHome.dart';
 import 'scan_pay_screen.dart';
 import '../../routes/footer_nav_routes.dart';
-import '../history/history_screen.dart';
+import 'store_screen/history_screen.dart';
 
 class Layout extends StatefulWidget {
   final int userId;

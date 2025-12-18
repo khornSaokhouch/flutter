@@ -1,18 +1,5 @@
 import 'package:flutter/material.dart';
 
-class ShopOpenStatus {
-  final bool isOpen;
-  final String? opensAt;
-  ShopOpenStatus({required this.isOpen, this.opensAt});
-}
-
-ShopOpenStatus evaluateShopOpenStatus(String? open, String? close) {
-  if (open == null || close == null) {
-    return ShopOpenStatus(isOpen: true);
-  }
-  return ShopOpenStatus(isOpen: true, opensAt: open);
-}
-
 class StatusBadge extends StatelessWidget {
   final bool isOpen;
   const StatusBadge({super.key, required this.isOpen});
@@ -24,6 +11,7 @@ class StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: isOpen ? Colors.green : Colors.red,
         borderRadius: BorderRadius.circular(8),
+        boxShadow: const [], // ✅ explicitly no shadow
       ),
       child: Text(
         isOpen ? "Open" : "Closed",

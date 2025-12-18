@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import '../../../models/Item_OptionGroup.dart';
 import '../../../server/item_service.dart';
 import '../../home_screen.dart';
-import '../checkout/checkout_screen.dart';
 import './order_screen.dart';
+import '../../../core/widgets/loading/logo_loading.dart';
+
 
 
 class GuestDetailItem extends StatefulWidget {
@@ -112,12 +113,25 @@ class _DetailItemState extends State<GuestDetailItem> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator(color: _freshMintGreen)),
-      );
-    }
+  if (loading) {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LogoLoading(), // your existing loading widget
+          const SizedBox(height: 16),
+          const Text(
+            'Fetching item info...',
+            style: TextStyle(fontSize: 16, color: Colors.black54),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 
     if (groups.isEmpty) {
       return const Scaffold(
