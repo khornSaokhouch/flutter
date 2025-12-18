@@ -76,28 +76,44 @@ class AuthService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/firebase-login'),
-        headers: ApiConfig.headers,
-        body: jsonEncode({'id_token': idToken}),
+        headers: {
+          ...ApiConfig.headers,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'id_token': idToken,
+        }),
       );
 
+      // ✅ DEBUG LOGS
+      print('Firebase login status: ${response.statusCode}');
+      print('Firebase login response: ${response.body}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = jsonDecode(response.body);
         final prefs = await SharedPreferences.getInstance();
 
-        if (data['token'] != null) await prefs.setString('token', data['token']);
+        if (data['token'] != null) {
+          await prefs.setString('token', data['token']);
+        }
+
         if (data['needs_phone'] == true && data['tempToken'] != null) {
           await prefs.setString('tempToken', data['tempToken']);
         }
 
         return UserModel.fromJson(data);
-      } else {
-        return null;
       }
-    } catch (e) {
+
+      print('❌ Firebase login failed');
+      return null;
+    } catch (e, stack) {
+      print('🔥 Firebase login error: $e');
+      print(stack);
       return null;
     }
   }
+
 
 
 
@@ -173,27 +189,42 @@ class AuthService {
     }
   }
 
-  static Future<UserModel?> appleLogin(String idToken, {String? phone}) async {
+  static Future<UserModel?> appleLogin(
+      String idToken, {
+        String? phone,
+      }) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/firebase/apple-login'),
-        headers: ApiConfig.headers,
-        body: jsonEncode({'token': idToken, 'phone': phone}),
+        headers: {
+          ...ApiConfig.headers,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'token': idToken,
+          if (phone != null) 'phone': phone,
+        }),
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final prefs = await SharedPreferences.getInstance();
 
-        if (data['token'] != null) await prefs.setString('token', data['token']);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        final prefs = await SharedPreferences.getInstance();
+        if (data['token'] != null) {
+          await prefs.setString('token', data['token']);
+        }
+
         return UserModel.fromJson(data);
-      } else {
-        return null;
       }
+
+      return null;
     } catch (e) {
+
       return null;
     }
   }
+
 
 
 
