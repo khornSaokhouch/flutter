@@ -30,6 +30,15 @@
 				<string>com.googleusercontent.apps.1043515983877-7ai2eljhepol58vkep9hgi5gb2244cfb</string>
 			</array>
 		</dict>
+        <!-- ABA Deep Link -->
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>yourapp</string>
+            </array>
+        </dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
@@ -79,14 +88,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-    <key>CFBundleURLTypes</key>
     <array>
-        <dict>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>yourapp</string>
-            </array>
-        </dict>
+        <string>abamobilebank</string>
     </array>
 
 </dict>

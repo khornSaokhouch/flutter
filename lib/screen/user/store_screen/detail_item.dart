@@ -541,7 +541,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                         ),
                       ),
                       // MaterialPageRoute(
-                      //   builder: (_) => const CheckoutScreen(),
+                      //   builder: (_) =>  CartScreen(shopId: widget.shopId),
                       // ),
 
                     );
