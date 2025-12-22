@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../../server/item_service.dart';
 
+import '../../../core/widgets/loading/logo_loading.dart';
+
 class ShopsProductsPage extends StatefulWidget {
   final int shopId;
   const ShopsProductsPage({super.key, required this.shopId});
@@ -234,24 +236,46 @@ class _ShopsProductsPageState extends State<ShopsProductsPage> {
         child: const Icon(Icons.add, color: Colors.white),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : (_error != null)
-          ? Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red)))
-          : _items.isEmpty
-          ? Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.inventory_2_outlined, size: 60, color: Colors.grey[300]),
+    ? Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const LogoLoading(size: 60), // branded loader
             const SizedBox(height: 12),
-            const Text('No items')
-          ]))
-          : RefreshIndicator(
-        onRefresh: _loadItems,
-        child: ListView.builder(
-          padding: const EdgeInsets.only(top: 12, bottom: 24),
-          itemCount: _items.length,
-          itemBuilder: (context, i) => _buildItemRow(_items[i], i),
+            Text(
+              'Loading products...',
+              style: TextStyle(
+                color: _freshMintGreen,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-      ),
+      )
+    : (_error != null)
+        ? Center(
+            child: Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+          )
+        : _items.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.inventory_2_outlined, size: 60, color: Colors.grey[300]),
+                    const SizedBox(height: 12),
+                    const Text('No items'),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadItems,
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(top: 12, bottom: 24),
+                  itemCount: _items.length,
+                  itemBuilder: (context, i) => _buildItemRow(_items[i], i),
+                ),
+              ),
     );
   }
 }
