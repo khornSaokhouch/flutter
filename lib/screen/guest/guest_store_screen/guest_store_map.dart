@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../../models/shop.dart'; // Adjust path
-import 'guest_menu_Items_list_screen.dart'; // Adjust path
+import '../../../models/shop.dart';
+import 'guest_menu_Items_list_screen.dart';
 
 class GuestStoreMapPage extends StatefulWidget {
   final List<Shop> shops;
@@ -17,35 +17,51 @@ class GuestStoreMapPage extends StatefulWidget {
 
 class _GuestStoreMapPageState extends State<GuestStoreMapPage> {
   late GoogleMapController mapController;
-  Shop? selectedShop;
+  late PageController _pageController; // Controller for the horizontal scroll
+  int _currentIndex = 0;
   Set<Marker> _markers = {};
 
-  final Color _primaryYellow = const Color(0xFFFFC107); // The yellow in the image
+  final Color _primaryYellow = const Color(0xFFFFC107);
 
   @override
   void initState() {
     super.initState();
-    // Default the selected shop to the first one in the list
-    if (widget.shops.isNotEmpty) {
-      selectedShop = widget.shops.first;
-    }
+    _pageController = PageController(viewportFraction: 0.9); // Shows a preview of next card
     _buildMarkers();
   }
 
   void _buildMarkers() {
+    _markers = widget.shops.map((shop) {
+      int index = widget.shops.indexOf(shop);
+      return Marker(
+        markerId: MarkerId(shop.id.toString()),
+        position: LatLng(shop.latitude ?? 0, shop.longitude ?? 0),
+        onTap: () {
+          // When marker is tapped, scroll the PageView to the correct card
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        },
+      );
+    }).toSet();
+  }
+
+  // Move the map camera when a user swipes to a new card
+  void _onPageChanged(int index) {
     setState(() {
-      _markers = widget.shops.map((shop) {
-        return Marker(
-          markerId: MarkerId(shop.id.toString()),
-          position: LatLng(shop.latitude ?? 0, shop.longitude ?? 0),
-          onTap: () {
-            setState(() {
-              selectedShop = shop;
-            });
-          },
-        );
-      }).toSet();
+      _currentIndex = index;
     });
+    final shop = widget.shops[index];
+    mapController.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: LatLng(shop.latitude ?? 0, shop.longitude ?? 0),
+          zoom: 15,
+        ),
+      ),
+    );
   }
 
   @override
@@ -57,8 +73,8 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> {
           GoogleMap(
             initialCameraPosition: CameraPosition(
               target: LatLng(
-                selectedShop?.latitude ?? widget.initialPosition?.latitude ?? 0,
-                selectedShop?.longitude ?? widget.initialPosition?.longitude ?? 0,
+                widget.shops.isNotEmpty ? widget.shops[0].latitude! : 0,
+                widget.shops.isNotEmpty ? widget.shops[0].longitude! : 0,
               ),
               zoom: 15,
             ),
@@ -68,30 +84,38 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> {
             myLocationButtonEnabled: false,
           ),
 
-          // 2. CUSTOM TOP BAR
+          // 2. TOP NAVIGATION BAR (CANCEL / SEARCH / LIST)
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top, left: 16, right: 16, bottom: 10),
-              color: Colors.white,
+              padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 10,
+                  left: 16,
+                  right: 16,
+                  bottom: 15),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2)],
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("Cancel", style: TextStyle(color: _primaryYellow, fontSize: 16)),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Text("Cancel",
+                        style: TextStyle(color: _primaryYellow, fontSize: 16, fontWeight: FontWeight.w500)),
                   ),
                   const Text(
                     "SELECT STORE",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
                   ),
                   Row(
                     children: [
-                      Icon(Icons.search, color: _primaryYellow),
+                      Icon(Icons.search, color: _primaryYellow, size: 28),
                       const SizedBox(width: 15),
-                      Icon(Icons.list, color: _primaryYellow),
+                      Icon(Icons.list, color: _primaryYellow, size: 28),
                     ],
                   )
                 ],
@@ -99,54 +123,75 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> {
             ),
           ),
 
-          // 3. BOTTOM UI AREA
+          // 3. BOTTOM UI (MY LOCATION + HORIZONTAL CARDS + SELECT BUTTON)
           Positioned(
-            bottom: 20,
-            left: 16,
-            right: 16,
+            bottom: 30,
+            left: 0,
+            right: 0,
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // My Location Button
-                FloatingActionButton(
-                  mini: true,
-                  backgroundColor: Colors.white,
-                  onPressed: () {
-                    if (widget.initialPosition != null) {
-                      mapController.animateCamera(CameraUpdate.newLatLng(
-                        LatLng(widget.initialPosition!.latitude, widget.initialPosition!.longitude),
-                      ));
-                    }
-                  },
-                  child: const Icon(Icons.my_location, color: Colors.black54),
+                // Location Button (aligned to right)
+                Padding(
+                  padding: const EdgeInsets.only(right: 16, bottom: 10),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FloatingActionButton(
+                      mini: true,
+                      backgroundColor: Colors.white,
+                      onPressed: () {
+                        if (widget.initialPosition != null) {
+                          mapController.animateCamera(CameraUpdate.newLatLng(
+                            LatLng(widget.initialPosition!.latitude, widget.initialPosition!.longitude),
+                          ));
+                        }
+                      },
+                      child: const Icon(Icons.my_location, color: Colors.black87),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 10),
 
-                // SHOP DETAIL CARD
-                if (selectedShop != null) _buildShopCard(selectedShop!),
-
-                const SizedBox(height: 15),
-
-                // SELECT STORE BUTTON
+                // HORIZONTAL SCROLLING SHOP CARDS
                 SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => GuestMenuScreen(shopId: selectedShop!.id)),
+                  height: 135, // Adjust height
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: widget.shops.length,
+                    onPageChanged: _onPageChanged,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: _buildShopCard(widget.shops[index]),
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryYellow,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      "SELECT STORE",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // SELECT STORE BUTTON
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final currentShop = widget.shops[_currentIndex];
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => GuestMenuScreen(shopId: currentShop.id)),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryYellow,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        "SELECT STORE",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                      ),
                     ),
                   ),
                 ),
@@ -164,7 +209,13 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          )
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,53 +224,77 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              width: 100,
-              height: 100,
+              width: 90,
+              height: 90,
               color: Colors.grey[200],
-              child: shop.imageUrl != null 
+              child: (shop.imageUrl != null && shop.imageUrl!.isNotEmpty)
                   ? Image.network(shop.imageUrl!, fit: BoxFit.cover)
-                  : const Icon(Icons.store),
+                  : const Icon(Icons.store, color: Colors.grey),
             ),
           ),
           const SizedBox(width: 12),
-          // Info
+          // Shop Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            shop.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ),
+                        Text(
+                          "${shop.distanceInKm?.toStringAsFixed(2)} km",
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            shop.location ?? "",
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, color: Colors.grey, height: 1.2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(shop.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(5)),
-                      child: Text("${shop.distanceInKm?.toStringAsFixed(2)} km", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${shop.openTime} - ${shop.closeTime}",
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const Text(
+                      "View >",
+                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(shop.location ?? "", maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text("${shop.openTime} - ${shop.closeTime}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Text("View >", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13)),
-                )
               ],
             ),
           ),
