@@ -55,4 +55,29 @@ class AbaAofService {
 
     return AbaQrResponse.fromJson(jsonDecode(response.body));
   }
+
+  // ---------------------------
+  // Check Payment Status
+  // ---------------------------
+  static Future<String> checkPaymentStatus({
+    required String tranId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/payments/aba/status')
+        .replace(queryParameters: {
+      'tran_id': tranId,
+    });
+
+    final response = await http.get(uri);
+
+    print(response.body);
+
+
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to check status');
+    }
+
+    final data = jsonDecode(response.body);
+    return data['status']; // initiated | pending | paid | failed
+  }
 }

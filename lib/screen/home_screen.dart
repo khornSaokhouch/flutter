@@ -13,6 +13,7 @@ import '../../core/utils/utils.dart';
 import '../../server/auth_service.dart';
 import '../core/utils/auth_utils.dart';
 // import 'auth/VerifyPhonePage.dart';
+import '../server/push_service.dart';
 import 'auth/sign_up_screen.dart';
 
 class LoginBottomSheet extends StatefulWidget {
@@ -61,6 +62,12 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
         await prefs.setString('role', user.role ?? 'customer');
         if (userModel.rememberToken != null) {
           await prefs.setString('remember_token', userModel.rememberToken!);
+
+          await PushService.init(
+            accessToken: userModel.token!,
+            userId: userModel.user!.id!,
+          );
+
         }
         if (mounted) {
           AuthUtils.navigateByRole(context, user);
@@ -76,25 +83,33 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
     }
   }
 
-  // ---------------- Google Login ----------------
   Future<void> _signInWithGoogle() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
+
     try {
-      final googleSignIn = Platform.isIOS || Platform.isMacOS
+      final googleSignIn = (Platform.isIOS || Platform.isMacOS)
           ? GoogleSignIn(
-             clientId: dotenv.env['GOOGLE_CLIENT_ID'],
-              scopes: ['email'],
-            )
-          : GoogleSignIn(scopes: ['email']);
+        clientId: dotenv.env['GOOGLE_CLIENT_ID'],
+        scopes: const ['email'],
+      )
+          : GoogleSignIn(scopes: const ['email']);
 
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        showMessage(context, 'Google Sign-In cancelled.', color: Colors.orange);
+        if (!mounted) return;
+        showMessage(
+          context,
+          'Google Sign-In cancelled.',
+          color: Colors.orange,
+        );
         return;
       }
 
       final googleAuth = await googleUser.authentication;
-      if (googleAuth.idToken == null) {
+      final googleIdToken = googleAuth.idToken;
+      if (googleIdToken == null) {
+        if (!mounted) return;
         showMessage(
           context,
           'No idToken from Google (check iOS clientId / Firebase config).',
@@ -105,62 +120,72 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
 
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+        idToken: googleIdToken,
       );
 
-      final userCredential = await _auth.signInWithCredential(credential);
-      final idToken = await userCredential.user?.getIdToken();
-      if (idToken == null) {
-        showMessage(context, 'Could not get Firebase ID token.', color: Colors.red);
+      final userCredential =
+      await _auth.signInWithCredential(credential);
+
+      final firebaseIdToken =
+      await userCredential.user?.getIdToken();
+
+      if (firebaseIdToken == null) {
+        if (!mounted) return;
+        showMessage(
+          context,
+          'Could not get Firebase ID token.',
+          color: Colors.red,
+        );
         return;
       }
 
-      final userModel = await AuthService.firebaseLogin(idToken);
-      if (userModel != null && mounted) {
-         Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (_) => Layout(userId: userModel.user!.id!),
-          ),
-              (route) => false, // Remove all previous routes → no back button
-        );
+      final userModel =
+      await AuthService.firebaseLogin(firebaseIdToken);
 
-      } else {
-        showMessage(context, 'Backend Google login failed.', color: Colors.red);
+      if (!mounted || userModel == null) {
+        showMessage(
+          context,
+          'Backend Google login failed.',
+          color: Colors.red,
+        );
+        return;
       }
-      // Keeps your commented code as requested
-      // if (userModel != null && mounted) {
-      //   if (userModel.needsPhone == true && userModel.tempToken != null) {
-      //     Navigator.pushReplacement(
-      //       context,
-      //       MaterialPageRoute(
-      //         builder: (_) => VerifyPhonePage(tempToken: userModel.tempToken!),
-      //       ),
-      //     );
-      //   } else {
-      //     final prefs = await SharedPreferences.getInstance();
-      //     if (userModel.token != null) {
-      //       await prefs.setString('token', userModel.token!);
-      //     }
-      //
-      //     Navigator.pushReplacement(
-      //       context,
-      //       MaterialPageRoute(
-      //         builder: (_) => Layout(userId: userModel.user!.id!),
-      //       ),
-      //     );
-      //   }
-      // } else {
-      //   showMessage(context, 'Backend Google login failed.', color: Colors.red);
-      // }
-    } catch (e) {
-      showMessage(context, 'Google Sign-In failed: $e', color: Colors.red);
+
+      // 🔔 INIT PUSH (GOOGLE LOGIN)
+      final accessToken = userModel.token;
+      final userId = userModel.user?.id;
+
+      if (accessToken != null && userId != null) {
+        await PushService.init(
+          accessToken: accessToken,
+          userId: userId,
+        );
+      }
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Layout(userId: userId!),
+        ),
+            (_) => false,
+      );
+    } catch (e, s) {
+      debugPrintStack(stackTrace: s);
+      if (mounted) {
+        showMessage(
+          context,
+          'Google Sign-In failed: $e',
+          color: Colors.red,
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
-
-  // ---------------- Apple Login ----------------
   Future<void> _signInWithApple() async {
     if (!(Platform.isIOS || Platform.isMacOS)) return;
     if (!mounted) return;
@@ -168,71 +193,97 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
     setState(() => _isLoading = true);
 
     try {
+      final clientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
+      final redirectUri = dotenv.env['GOOGLE_WEB_REDIRECT_URI'];
+
+      if (clientId == null || redirectUri == null) {
+        throw Exception('Missing Apple Sign-In web configuration');
+      }
+
       final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
+        scopes: const [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
         webAuthenticationOptions: WebAuthenticationOptions(
-          clientId: dotenv.env['GOOGLE_WEB_CLIENT_ID']!,
-          redirectUri: Uri.parse(dotenv.env['GOOGLE_WEB_REDIRECT_URI']!),
+          clientId: clientId,
+          redirectUri: Uri.parse(redirectUri),
         ),
       );
 
-      final oauthCredential = OAuthProvider("apple.com").credential(
+      final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: appleCredential.identityToken,
         accessToken: appleCredential.authorizationCode,
       );
 
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(oauthCredential);
-      final idToken = await userCredential.user?.getIdToken();
-      if (idToken == null) throw Exception("Failed to get Firebase ID token");
+      final userCredential =
+      await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+
+      final firebaseIdToken =
+      await userCredential.user?.getIdToken();
+
+      if (firebaseIdToken == null) {
+        throw Exception('Failed to get Firebase ID token');
+      }
 
       // Keeps your commented code as requested
-      // final phoneNumber = await showDialog<String>(
-      //   context: context,
-      //   builder: (_) {
-      //     String? tempPhone;
-      //     return AlertDialog(
-      //       title: const Text('Enter your phone number'),
-      //       content: TextField(
-      //         keyboardType: TextInputType.phone,
-      //         decoration: const InputDecoration(hintText: 'Phone number'),
-      //         onChanged: (value) => tempPhone = value,
-      //       ),
-      //       actions: [
-      //         TextButton(
-      //           onPressed: () => Navigator.pop(context, tempPhone),
-      //           child: const Text('Submit'),
-      //         ),
-      //       ],
-      //     );
-      //   },
-      // );
+      // final phoneNumber = await showDialog<String>(...);
+      // final userModel = await AuthService.appleLogin(firebaseIdToken, phone: phoneNumber);
 
-      // final userModel = await AuthService.appleLogin(idToken, phone: phoneNumber);
-      final userModel = await AuthService.appleLogin(idToken);
-      var user = userModel?.user;
+      final userModel =
+      await AuthService.appleLogin(firebaseIdToken);
 
-      if (user != null && mounted) {
-        final prefs = await SharedPreferences.getInstance();
-        final role = user.role ?? 'user';
-        await prefs.setString('role', role);
-        if (userModel?.token != null) await prefs.setString('token', userModel!.token!);
-        if (userModel?.rememberToken != null) {
-          await prefs.setString('remember_token', userModel!.rememberToken!);
-        }
-        AuthUtils.navigateByRole(context, user);
-        showMessage(context, 'Apple login successful!', color: Colors.green);
-      } else if (mounted) {
-        showMessage(context, 'Apple login failed.', color: Colors.red);
+      if (!mounted || userModel?.user == null) {
+        showMessage(
+          context,
+          'Apple login failed.',
+          color: Colors.red,
+        );
+        return;
       }
-    } catch (e) {
-      if (mounted) showMessage(context, 'Apple Sign-In failed: $e', color: Colors.red);
+
+      final user = userModel!.user!;
+      final rememberToken = userModel.rememberToken;
+      final accessToken = userModel.token;
+      final userId = user.id;
+
+      if (rememberToken != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('remember_token', rememberToken);
+      }
+
+      // 🔔 INIT PUSH (APPLE LOGIN)
+      if (accessToken != null && userId != null) {
+        await PushService.init(
+          accessToken: accessToken,
+          userId: userId,
+        );
+      }
+
+      if (!mounted) return;
+
+      AuthUtils.navigateByRole(context, user);
+      showMessage(
+        context,
+        'Apple login successful!',
+        color: Colors.green,
+      );
+    } catch (e, s) {
+      debugPrintStack(stackTrace: s);
+      if (mounted) {
+        showMessage(
+          context,
+          'Apple Sign-In failed: $e',
+          color: Colors.red,
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
+
 
   // ---------------- Social Button ----------------
   Widget _socialButton(String iconPath, VoidCallback onPressed) {

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/user.dart';
 import '../../screen/shops/screens/shops_home_page.dart';
+import '../../screen/test/push_test_page.dart';
 import '../../screen/user/layout.dart';
 import '../../server/user_service.dart';
 import '../../screen/auth/login_screen.dart';
@@ -65,6 +66,11 @@ class AuthUtils {
         ),
             (route) => false, // remove all previous routes
       );
+      // Navigator.push(
+      //   context,
+      //   MaterialPageRoute(builder: (_) => const PushTestPage()),
+      // );
+
     }
 
   }

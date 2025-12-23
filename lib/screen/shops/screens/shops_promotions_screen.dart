@@ -198,7 +198,7 @@ Future<void> _toggleActive(int index, bool value) async {
   }
 
 Widget _buildBody() {
-  if (_loading && promotions.isEmpty)
+  if (_loading && promotions.isEmpty) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -216,6 +216,7 @@ Widget _buildBody() {
         ],
       ),
     );
+  }
 
   if (promotions.isEmpty) return _buildEmptyState();
 
