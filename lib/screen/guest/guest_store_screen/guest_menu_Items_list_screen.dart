@@ -12,6 +12,7 @@ import '../../user/store_screen/search_page_screen.dart';
 import '../guest_screen.dart';
 import '../guest_store_screen/select_store_page.dart';
 import '../guest_home_screen.dart';
+import '../../../core/widgets/loading/logo_loading.dart';
 
 class GuestMenuScreen extends StatefulWidget {
   final int shopId;
@@ -205,7 +206,22 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
       ),
       
       body: loading
-          ? Center(child: CircularProgressIndicator(color: _freshMintGreen))
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  LogoLoading(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading Menu...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : Column(
               children: [
                 // ===========================================
