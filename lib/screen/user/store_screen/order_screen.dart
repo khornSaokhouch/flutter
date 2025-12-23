@@ -992,62 +992,6 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // Future<bool> _handleKHQRPayment(int orderId) async {
-  //   const String currency = 'USD';
-  //
-  //   late Map<String, dynamic> resp;
-  //
-  //   // 1️⃣ Create ABA KHQR
-  //   try {
-  //     resp = await ABAPaymentService.requestAof(
-  //       orderId: orderId,
-  //       amount: _total, // ✅ REAL amount (double)
-  //       currency: currency,
-  //       userId: widget.userId ?? 0,
-  //     );
-  //   } catch (e) {
-  //     if (!context.mounted) return false;
-  //
-  //     await showDialog(
-  //       context: context,
-  //       builder: (_) => AlertDialog(
-  //         title: const Text("Payment Error"),
-  //         content: Text(e.toString()),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () => Navigator.pop(context),
-  //             child: const Text("OK"),
-  //           ),
-  //         ],
-  //       ),
-  //     );
-  //     return false;
-  //   }
-  //
-  //   // ✅ ABA official response keys
-  //   final String? qrImageBase64 = resp['qrImage'];
-  //   final String? deeplink = resp['abapay_deeplink'];
-  //
-  //   if (qrImageBase64 == null && deeplink == null) {
-  //     throw Exception("Failed to generate ABA QR");
-  //   }
-  //
-  //   if (!context.mounted) return false;
-  //
-  //   // 2️⃣ Show payment dialog
-  //   final paid = await showDialog<bool>(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (_) => ABAKHQRDialog(
-  //       orderId: orderId,
-  //       qrImageBase64: qrImageBase64,
-  //       deeplink: deeplink,
-  //       currency: currency,
-  //     ),
-  //   );
-  //
-  //   return paid == true;
-  // }
 
   Future<bool> _goToKHQRPage(int orderId) async {
     final int amountCents = _toCents(_total);
