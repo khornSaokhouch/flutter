@@ -170,9 +170,20 @@ class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
                 // Select Store Dropdown Look
                 InkWell(
                   onTap: () => _openSelectStoreSheet(context),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.06), // Soft shadow
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
                     child: Row(
                       children: [
                         Icon(Icons.storefront_rounded, color: _freshMintGreen, size: 22),
@@ -251,25 +262,32 @@ class _GuestNoStoreNearbyScreenState extends State<GuestNoStoreNearbyScreen> {
                   const SizedBox(height: 40),
 
                   // Main CTA Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: () => _openSelectStoreSheet(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _freshMintGreen, // Unit Color
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
+                  InkWell(
+                    onTap: () => _openSelectStoreSheet(context),
+                    borderRadius: BorderRadius.circular(30),
+                    child: Container(
+                      width: double.infinity,
+                      height: 55,
+                      decoration: BoxDecoration(
+                        color: _freshMintGreen,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _freshMintGreen.withOpacity(0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          )
+                        ],
                       ),
-                      child: const Text(
-                        'Select Store Manually',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
+                      child: const Center(
+                        child: Text(
+                          'Select Store Manually',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),

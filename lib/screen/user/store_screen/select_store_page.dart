@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/utils.dart';
 import '../../../models/shop.dart';
 import 'menu_items_list_screen.dart'; // adjust path if needed
 
@@ -74,8 +75,10 @@ class _SelectStorePageState extends State<SelectStorePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
+        backgroundColor: Colors.white,
         leading: Padding(
           padding: const EdgeInsets.only(left: 8.0),
           child: TextButton(
@@ -129,238 +132,189 @@ class _SelectStorePageState extends State<SelectStorePage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: ListView.builder(
-        itemCount: displayStores.length,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemBuilder: (context, index) {
-          final shop = displayStores[index];
-          return _buildStoreCard(shop);
-        },
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                final shop = displayStores[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: _buildStoreCard(shop),
+                );
+              },
+              childCount: displayStores.length,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStoreCard(Shop shop) {
-    final imageUrl = shop.imageUrl ?? '';
-    final distanceStr = shop.distanceInKm != null
-        ? shop.distanceInKm!.toStringAsFixed(2)
-        : '--';
-
-    // Evaluate open/closed using openTime / closeTime (if provided)
     final shopStatus = _evaluateShopOpenStatus(shop.openTime, shop.closeTime);
     final bool isOpen = shopStatus.isOpen;
-
     final opensText = shopStatus.opensAtFormatted ?? formatTime(shop.openTime);
-    final closesText =
-        shopStatus.closesAtFormatted ?? formatTime(shop.closeTime);
 
-    return Stack(
-      children: [
-        // --------------------------------------------------
-        // BASE CARD (dimmed when closed)
-        // --------------------------------------------------
-        Opacity(
-          opacity: isOpen ? 1.0 : 0.35, // dim card when closed
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06), // Soft shadow
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (isOpen) {
+              _openMenuScreen(widget.userId, shop.id);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('This shop is closed. Opens at $opensText'),
                 ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  if (isOpen) {
-                    _openMenuScreen(widget.userId, shop.id);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('This shop is closed. Opens at $opensText'),
-                      ),
-                    );
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
+              );
+            }
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                // 1. SHOP IMAGE (Large & Rounded)
+                Hero(
+                  tag: 'shop_${shop.name}', // Optional animation tag
+                  child: Container(
+                    width: 85,
+                    height: 85,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.grey[200],
+                      image: (shop.imageUrl != null && shop.imageUrl!.isNotEmpty)
+                          ? DecorationImage(
+                        image: NetworkImage(shop.imageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                          : null,
+                    ),
+                    child: (shop.imageUrl == null || shop.imageUrl!.isEmpty)
+                        ? const Icon(Icons.store_rounded, size: 30, color: Colors.grey)
+                        : null,
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // 2. SHOP INFO COLUMN
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // image
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: imageUrl.isNotEmpty
-                            ? Image.network(
-                          imageUrl,
-                          width: 90,
-                          height: 90,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                width: 90,
-                                height: 90,
-                                color: Colors.grey[200],
-                                child: const Icon(Icons.broken_image,
-                                    color: Colors.grey),
+                      // Status Badge (Open/Closed)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              shop.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
                               ),
-                        )
-                            : Container(
-                          width: 90,
-                          height: 90,
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.store_rounded,
-                              color: Colors.grey, size: 40),
-                        ),
+                            ),
+                          ),
+                          _buildStatusBadge(isOpen),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      // info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // name + distance
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    shop.name,
-                                    maxLines: 2,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.black87,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Text(
-                                  '$distanceStr km',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
+
+                      const SizedBox(height: 8),
+
+                      // Location Row
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined,
+                              size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              shop.location ?? 'No location info',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
                             ),
-                            const SizedBox(height: 6),
-                            // address
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(Icons.location_on,
-                                    size: 16, color: Colors.grey[600]),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    shop.location ?? 'Unknown address',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 13,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            // opening hours + status
-                            Row(
-                              children: [
-                                Icon(Icons.access_time,
-                                    size: 16, color: Colors.grey[600]),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    '$opensText - $closesText',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color:
-                                    isOpen ? Colors.green[50] : Colors.red[50],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    isOpen ? 'Open' : 'Closed',
-                                    style: TextStyle(
-                                      color: isOpen ? Colors.green : Colors.red,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const Icon(Icons.arrow_forward_ios,
-                          size: 14, color: Colors.grey),
+
+                      const SizedBox(height: 6),
+
+                      // Time Row
+                      Row(
+                        children: [
+                          Icon(Icons.access_time_rounded,
+                              size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            (shop.openTime != null && shop.closeTime != null)
+                                ? '${formatTimeToAmPm(context, shop.openTime)} - ${formatTimeToAmPm(context, shop.closeTime)}'
+                                : 'Hours unavailable',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+
+                        ],
+                      ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
-
-        // --------------------------------------------------
-        // FULL OVERLAY WHEN CLOSED - centered
-        // --------------------------------------------------
-        if (!isOpen)
-          Positioned.fill(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "CLOSED",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Opens at $opensText",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
+
+  // Helper Widget for the "Open/Closed" Pill
+  Widget _buildStatusBadge(bool isOpen) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isOpen
+            ? const Color(0xFFE8F5E9)  // Light Green bg
+            : const Color(0xFFFFEBEE), // Light Red bg
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        isOpen ? 'Open' : 'Closed',
+        style: TextStyle(
+          color: isOpen
+              ? const Color(0xFF2E7D32) // Dark Green text
+              : const Color(0xFFC62828), // Dark Red text
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
 
   /// ---------------------------
   /// OPEN/CLOSED TIME LOGIC

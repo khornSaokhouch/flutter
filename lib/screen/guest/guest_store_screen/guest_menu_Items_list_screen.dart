@@ -230,23 +230,37 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
                       InkWell(
                         onTap: () => _openSelectStoreSheet(context),
                         borderRadius: BorderRadius.circular(8),
-                        child: Row(
-                          children: [
-                            Icon(Icons.storefront_rounded, 
-                                 color: _freshMintGreen, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              shop?.name ?? 'Select Store',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: _espressoBrown,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.06), // Soft shadow
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(Icons.keyboard_arrow_down, 
-                                 color: _espressoBrown, size: 18),
-                          ],
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.storefront_rounded,
+                                   color: _freshMintGreen, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                shop?.name ?? 'Select Store',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: _espressoBrown,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(Icons.keyboard_arrow_down,
+                                   color: _espressoBrown, size: 18),
+                            ],
+                          ),
                         ),
                       ),
                       

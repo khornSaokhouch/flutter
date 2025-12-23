@@ -212,32 +212,29 @@ class _HomeScreenState extends State<HomeScreen>
                     horizontal: 16,
                     vertical: 6,
                   ),
-                  child: Opacity(
-                    opacity: isOpen ? 1 : 0.35,
-                    child: ShopCard(
-                      shop: shop,
-                      onTap: () {
-                        if (isOpen) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ShopDetailsScreen(
-                                shopId: shop.id,
-                                userId: userId,
-                              ),
+                  child: ShopCard(
+                    shop: shop,
+                    onTap: () {
+                      if (isOpen) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ShopDetailsScreen(
+                              shopId: shop.id,
+                              userId: userId,
                             ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Shop closed. Opens at $opensText',
-                              ),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Shop closed. Opens at $opensText',
                             ),
-                          );
-                        }
-                      },
-                    ),
+                          ),
+                        );
+                      }
+                    },
                   ),
                 );
               });
