@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
+// Note: Ensure these imports match your actual project structure
 import '../../../core/utils/utils.dart';
 import '../../../models/shop.dart';
 import '../../../server/shop_serviec.dart';
 import 'guest_menu_Items_list_screen.dart';
-import 'package:intl/intl.dart';
 import '../../../core/widgets/loading/logo_loading.dart';
+import './guest_store_map.dart';
 
 class GuestSelectStorePage extends StatefulWidget {
   const GuestSelectStorePage({super.key});
@@ -38,8 +40,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
       // 1️⃣ Get user location
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        // Just load shops without distance if location disabled, or handle error
-        // For now proceeding to allow logic to flow
+        // Handle logic if location is disabled
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
@@ -47,12 +48,10 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
         permission = await Geolocator.requestPermission();
       }
 
-      // Try get position
       try {
         userPosition = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high);
       } catch (e) {
-        // Handle timeout or error gracefully
         userPosition = null;
       }
 
@@ -67,10 +66,10 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
               shop.longitude != null &&
               userPosition != null) {
             shop.distanceInKm = Geolocator.distanceBetween(
-                userPosition!.latitude,
-                userPosition!.longitude,
-                shop.latitude!,
-                shop.longitude!) /
+                    userPosition!.latitude,
+                    userPosition!.longitude,
+                    shop.latitude!,
+                    shop.longitude!) /
                 1000;
           } else {
             shop.distanceInKm = 0.0;
@@ -79,7 +78,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
 
         // Sort by nearest
         fetchedShops.sort(
-              (a, b) => (a.distanceInKm ?? 0).compareTo(b.distanceInKm ?? 0),
+          (a, b) => (a.distanceInKm ?? 0).compareTo(b.distanceInKm ?? 0),
         );
 
         setState(() {
@@ -103,7 +102,6 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        // Custom Back Button text
         leadingWidth: 80,
         leading: TextButton.icon(
           onPressed: () => Navigator.of(context).pop(),
@@ -127,6 +125,22 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
           child: Container(color: Colors.grey.shade200, height: 1.0),
         ),
         actions: [
+          // 📍 GOOGLE MAP ICON (Added here)
+          IconButton(
+  icon: Icon(Icons.map_outlined, color: _freshMintGreen),
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GuestStoreMapPage(
+          shops: shops, 
+          initialPosition: userPosition,
+        ),
+      ),
+    );
+  },
+),
+          // 🔄 REFRESH BUTTON
           IconButton(
             icon: Icon(Icons.refresh, color: _freshMintGreen),
             onPressed: () => loadShops(),
@@ -135,43 +149,44 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
       ),
       body: loading
           ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            LogoLoading(
-              size: 80,
-              imagePath: 'assets/images/img_1.png',
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              "Locating nearby stores...",
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 16,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  LogoLoading(
+                    size: 80,
+                    imagePath: 'assets/images/img_1.png',
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    "Locating nearby stores...",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-      )
+            )
           : shops.isEmpty
-          ? _buildEmptyState()
-          : CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                final shop = shops[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: _buildStoreCard(shop),
-                );
-              },
-              childCount: shops.length,
-            ),
-          ),
-        ],
-      ),
+              ? _buildEmptyState()
+              : CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final shop = shops[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: _buildStoreCard(shop),
+                          );
+                        },
+                        childCount: shops.length,
+                      ),
+                    ),
+                  ],
+                ),
     );
   }
 
@@ -186,7 +201,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06), // Soft shadow
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -200,15 +215,13 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      GuestMenuScreen(shopId: shop.id),
+                  builder: (context) => GuestMenuScreen(shopId: shop.id),
                 ),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content:
-                  Text("This shop is closed. Opens at $opensText"),
+                  content: Text("This shop is closed. Opens at $opensText"),
                 ),
               );
             }
@@ -218,9 +231,9 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
             padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                // 1. SHOP IMAGE (Large & Rounded)
+                // 1. SHOP IMAGE
                 Hero(
-                  tag: 'shop_${shop.name}', // Optional animation tag
+                  tag: 'shop_${shop.id}',
                   child: Container(
                     width: 85,
                     height: 85,
@@ -229,13 +242,14 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                       color: Colors.grey[200],
                       image: (shop.imageUrl != null && shop.imageUrl!.isNotEmpty)
                           ? DecorationImage(
-                        image: NetworkImage(shop.imageUrl!),
-                        fit: BoxFit.cover,
-                      )
+                              image: NetworkImage(shop.imageUrl!),
+                              fit: BoxFit.cover,
+                            )
                           : null,
                     ),
                     child: (shop.imageUrl == null || shop.imageUrl!.isEmpty)
-                        ? const Icon(Icons.store_rounded, size: 30, color: Colors.grey)
+                        ? const Icon(Icons.store_rounded,
+                            size: 30, color: Colors.grey)
                         : null,
                   ),
                 ),
@@ -248,7 +262,6 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Status Badge (Open/Closed)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -267,10 +280,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                           _buildStatusBadge(isOpen),
                         ],
                       ),
-
                       const SizedBox(height: 8),
-
-                      // Location Row
                       Row(
                         children: [
                           Icon(Icons.location_on_outlined,
@@ -289,10 +299,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 6),
-
-                      // Time Row
                       Row(
                         children: [
                           Icon(Icons.access_time_rounded,
@@ -308,7 +315,6 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-
                         ],
                       ),
                     ],
@@ -322,17 +328,18 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
     );
   }
 
-
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.store_mall_directory_outlined, size: 60, color: Colors.grey[300]),
+          Icon(Icons.store_mall_directory_outlined,
+              size: 60, color: Colors.grey[300]),
           const SizedBox(height: 16),
           const Text(
             "No stores found nearby",
-            style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
@@ -345,22 +352,17 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
     );
   }
 
-  // Helper Widget for the "Open/Closed" Pill
   Widget _buildStatusBadge(bool isOpen) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isOpen
-            ? const Color(0xFFE8F5E9)  // Light Green bg
-            : const Color(0xFFFFEBEE), // Light Red bg
+        color: isOpen ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         isOpen ? 'Open' : 'Closed',
         style: TextStyle(
-          color: isOpen
-              ? const Color(0xFF2E7D32) // Dark Green text
-              : const Color(0xFFC62828), // Dark Red text
+          color: isOpen ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
           fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
@@ -368,23 +370,19 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
     );
   }
 
-
-  /// ---------------------------
-  /// OPEN/CLOSED TIME LOGIC
-  /// ---------------------------
-  /// Returns structured result about open/closed and formatted times.
-  _ShopOpenStatus _evaluateShopOpenStatus(String? openTimeStr, String? closeTimeStr) {
-    // If either is missing — fallback to shop.status (if you want), but here we treat as open.
+  _ShopOpenStatus _evaluateShopOpenStatus(
+      String? openTimeStr, String? closeTimeStr) {
     if ((openTimeStr == null || openTimeStr.trim().isEmpty) ||
         (closeTimeStr == null || closeTimeStr.trim().isEmpty)) {
-      // If you prefer to fallback to shop.status, adapt caller to pass that.
-      return _ShopOpenStatus(isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
+      return _ShopOpenStatus(
+          isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
     }
 
     final openSeconds = _parseTimeToSeconds(openTimeStr);
     final closeSeconds = _parseTimeToSeconds(closeTimeStr);
     if (openSeconds == null || closeSeconds == null) {
-      return _ShopOpenStatus(isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
+      return _ShopOpenStatus(
+          isOpen: true, opensAtFormatted: null, closesAtFormatted: null);
     }
 
     final now = DateTime.now();
@@ -392,24 +390,22 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
 
     bool isOpen;
     if (openSeconds < closeSeconds) {
-      // same-day window
       isOpen = (nowSeconds >= openSeconds && nowSeconds < closeSeconds);
     } else if (openSeconds > closeSeconds) {
-      // overnight window (e.g., open 22:00, close 04:00)
       isOpen = (nowSeconds >= openSeconds) || (nowSeconds < closeSeconds);
     } else {
-      // equal -> treat as open 24h
       isOpen = true;
     }
 
     final opensAtFormatted = _formatTimeString(openTimeStr);
     final closesAtFormatted = _formatTimeString(closeTimeStr);
 
-    return _ShopOpenStatus(isOpen: isOpen, opensAtFormatted: opensAtFormatted, closesAtFormatted: closesAtFormatted);
+    return _ShopOpenStatus(
+        isOpen: isOpen,
+        opensAtFormatted: opensAtFormatted,
+        closesAtFormatted: closesAtFormatted);
   }
 
-  /// Parse "HH:mm:ss" or "HH:mm" into seconds since midnight.
-  /// Returns null if parse fails.
   int? _parseTimeToSeconds(String? s) {
     if (s == null) return null;
     final trimmed = s.trim();
@@ -419,7 +415,9 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
       if (parts.length >= 2) {
         final h = int.tryParse(parts[0]) ?? 0;
         final m = int.tryParse(parts[1]) ?? 0;
-        final sec = (parts.length >= 3) ? int.tryParse(parts[2].split('.').first) ?? 0 : 0;
+        final sec = (parts.length >= 3)
+            ? int.tryParse(parts[2].split('.').first) ?? 0
+            : 0;
         if (h < 0 || h > 23 || m < 0 || m > 59 || sec < 0 || sec > 59) return null;
         return h * 3600 + m * 60 + sec;
       }
@@ -429,14 +427,13 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
     return null;
   }
 
-  /// Convert "HH:mm:ss" or "HH:mm" to a human friendly format, e.g. "1:29 AM"
   String? _formatTimeString(String? s) {
     final seconds = _parseTimeToSeconds(s);
     if (seconds == null) return null;
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
     final dt = DateTime(2000, 1, 1, h, m);
-    final formatter = DateFormat.jm(); // e.g. "1:29 AM"
+    final formatter = DateFormat.jm();
     return formatter.format(dt);
   }
 
@@ -445,10 +442,10 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
   }
 }
 
-/// Small value class for status
 class _ShopOpenStatus {
   final bool isOpen;
   final String? opensAtFormatted;
   final String? closesAtFormatted;
-  _ShopOpenStatus({required this.isOpen, this.opensAtFormatted, this.closesAtFormatted});
+  _ShopOpenStatus(
+      {required this.isOpen, this.opensAtFormatted, this.closesAtFormatted});
 }
