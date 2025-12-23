@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/item.dart';
 import '../../server/category_service.dart';
-import './guest_store_screen/guest_detail_item.dart';
+import '../../screen/user/store_screen/detail_item.dart';
 
 class CategoryItemsScreen extends StatefulWidget {
   final int categoryId;
