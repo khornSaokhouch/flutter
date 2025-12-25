@@ -1,12 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
 import '../../core/utils/auth_utils.dart';
+import '../../core/widgets/style_overlay_banner.dart';
 import '../../models/user.dart';
 import '../../server/user_service.dart';
+import '../../server/notification_service.dart';
 
 class ScanPayScreen extends StatefulWidget {
   final int userId;
-  const ScanPayScreen({Key? key, required this.userId}) : super(key: key);
+
+  const ScanPayScreen({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<ScanPayScreen> createState() => _ScanPayScreenState();
@@ -14,40 +23,95 @@ class ScanPayScreen extends StatefulWidget {
 
 class _ScanPayScreenState extends State<ScanPayScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late final TabController _tabController;
+
   User? user;
   bool isLoading = true;
 
-  // --- Theme Colors ---
+  // Theme colors
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
   final Color _espressoBrown = const Color(0xFF4B2C20);
   final Color _goldColor = const Color(0xFFFFD700);
+
+  // Top banner
+  OverlayEntry? _bannerEntry;
+  Timer? _bannerTimer;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    _initNotifications();
     _initPage();
   }
 
+  // ====================================================
+  // NOTIFICATIONS
+  // ====================================================
+  void _initNotifications() {
+    NotificationService().init(
+      onMessage: (title, body) {
+        if (!mounted) return;
+        _showTopBanner(title, body);
+      },
+    );
+  }
+
+  void _showTopBanner(String title, String body) {
+    _removeTopBanner();
+
+    _bannerEntry = OverlayEntry(
+      builder: (context) {
+        final topPadding = MediaQuery.of(context).padding.top;
+
+        return Positioned(
+          top: topPadding + 12,
+          left: 16,
+          right: 16,
+          child: TopBanner(
+            title: title,
+            body: body,
+            onClose: _removeTopBanner,
+          ),
+        );
+      },
+    );
+
+    final overlay = Overlay.of(context, rootOverlay: true);
+    if (overlay == null) return;
+
+    overlay.insert(_bannerEntry!);
+
+    _bannerTimer =
+        Timer(const Duration(seconds: 4), _removeTopBanner);
+  }
+
+  void _removeTopBanner() {
+    _bannerTimer?.cancel();
+    _bannerTimer = null;
+
+    _bannerEntry?.remove();
+    _bannerEntry = null;
+  }
+
+  // ====================================================
+  // PAGE INIT
+  // ====================================================
   Future<void> _initPage() async {
     try {
-      // 1. Check Auth & Get User
       user = await AuthUtils.checkAuthAndGetUser(
         context: context,
         userId: widget.userId,
       );
-      if (user == null) return; // redirected
+      if (user == null) return;
 
-      // 2. Fetch fresh user data (balance/points)
       final userModel = await UserService.getUserById(widget.userId);
-      if (userModel?.user != null && mounted) {
-        setState(() {
-          user = userModel!.user;
-        });
+      if (mounted && userModel?.user != null) {
+        setState(() => user = userModel!.user);
       }
     } catch (e) {
-      debugPrint('Error loading scan page: $e');
+      debugPrint('ScanPayScreen error: $e');
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -55,55 +119,52 @@ class _ScanPayScreenState extends State<ScanPayScreen>
 
   @override
   void dispose() {
+    _removeTopBanner();
+    NotificationService().dispose();
     _tabController.dispose();
     super.dispose();
   }
 
+  // ====================================================
+  // UI
+  // ====================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Clean white background
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
+        backgroundColor: Colors.white,
         centerTitle: true,
-        automaticallyImplyLeading: false,
         title: Text(
           'PAYMENT',
           style: TextStyle(
             color: _espressoBrown,
             fontWeight: FontWeight.w800,
-            letterSpacing: 1.0,
+            letterSpacing: 1,
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.history_rounded, color: _espressoBrown),
-            onPressed: () {},
-          ),
+          Icon(Icons.history_rounded, color: _espressoBrown),
+          const SizedBox(width: 12),
         ],
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator(color: _freshMintGreen))
+          ? Center(
+              child:
+                  CircularProgressIndicator(color: _freshMintGreen),
+            )
           : Column(
               children: [
-                const SizedBox(height: 10),
-                
-                // 1. Custom Tab Bar
+                const SizedBox(height: 12),
                 _buildCustomTabBar(),
-
                 const SizedBox(height: 20),
-
-                // 2. Tab Views
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
                     physics: const BouncingScrollPhysics(),
                     children: [
-                      // --- Tab 1: Scan & Pay ---
                       _buildScanAndPayTab(),
-
-                      // --- Tab 2: Rewards Only ---
                       _buildRewardsTab(),
                     ],
                   ),
@@ -114,14 +175,14 @@ class _ScanPayScreenState extends State<ScanPayScreen>
   }
 
   // ====================================================
-  // 1. CUSTOM TAB BAR
+  // TAB BAR
   // ====================================================
   Widget _buildCustomTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(25),
       ),
       child: TabBar(
@@ -129,18 +190,16 @@ class _ScanPayScreenState extends State<ScanPayScreen>
         indicator: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
               blurRadius: 4,
-              offset: const Offset(0, 2),
-            )
+              offset: Offset(0, 2),
+              color: Colors.black12,
+            ),
           ],
         ),
         labelColor: _espressoBrown,
-        unselectedLabelColor: Colors.grey[500],
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        overlayColor: MaterialStateProperty.all(Colors.transparent),
+        unselectedLabelColor: Colors.grey,
         tabs: const [
           Tab(text: 'Scan & Pay'),
           Tab(text: 'Rewards Only'),
@@ -150,31 +209,26 @@ class _ScanPayScreenState extends State<ScanPayScreen>
   }
 
   // ====================================================
-  // 2. SCAN & PAY TAB CONTENT
+  // SCAN & PAY TAB
   // ====================================================
   Widget _buildScanAndPayTab() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
         children: [
-          // 2.1 The Premium User Card
           _buildMembershipCard(),
-
           const SizedBox(height: 30),
-
-          // 2.2 Payment Methods / Top Up
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildActionButton(Icons.add_circle_outline, "Top Up", () {}),
-                _buildActionButton(Icons.credit_card, "Manage Card", () {}),
-                _buildActionButton(Icons.help_outline, "Help", () {}),
+                _buildActionButton(Icons.add_circle_outline, 'Top Up'),
+                _buildActionButton(Icons.credit_card, 'Manage Card'),
+                _buildActionButton(Icons.help_outline, 'Help'),
               ],
             ),
           ),
-          
           const SizedBox(height: 40),
         ],
       ),
@@ -182,16 +236,20 @@ class _ScanPayScreenState extends State<ScanPayScreen>
   }
 
   Widget _buildMembershipCard() {
-    final userName = user?.name?.split(' ').last.toUpperCase() ?? 'GUEST';
-    final userPhone = user?.phone ?? 'NO PHONE LINKED';
-    final userBalance = 0.0; // Replace with actual balance variable
-    final userPoints = 120; // Replace with actual points variable
+    final name =
+        user?.name?.split(' ').last.toUpperCase() ?? 'GUEST';
+    final phone = user?.phone ?? 'NO PHONE';
+    const balance = 0.0;
+    const points = 120;
 
     return Container(
-      width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: [_espressoBrown, _freshMintGreen],
+        ),
         boxShadow: [
           BoxShadow(
             color: _freshMintGreen.withOpacity(0.3),
@@ -199,138 +257,59 @@ class _ScanPayScreenState extends State<ScanPayScreen>
             offset: const Offset(0, 10),
           ),
         ],
-        gradient: LinearGradient(
-          colors: [_espressoBrown, _freshMintGreen],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
       ),
-      child: Stack(
+      child: Column(
         children: [
-          // Background Pattern (Optional)
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Icon(Icons.coffee_rounded, size: 150, color: Colors.white.withOpacity(0.05)),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                // Header: Avatar + Name + Points
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: CircleAvatar(
-                        radius: 24,
-                        backgroundImage: (user?.imageUrl != null && user!.imageUrl!.isNotEmpty)
-                            ? NetworkImage(user!.imageUrl!)
-                            : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "WELCOME BACK",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                              letterSpacing: 1.0,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            userName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Points Pill
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.star, color: _goldColor, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            "$userPoints pts",
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 30),
-
-                // Balance Section
-                Text(
-                  "CURRENT BALANCE",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 12,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                Text(
-                  "\$${userBalance.toStringAsFixed(2)}",
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundImage:
+                    (user?.imageUrl?.isNotEmpty ?? false)
+                        ? NetworkImage(user!.imageUrl!)
+                        : const AssetImage(
+                                'assets/images/default_avatar.png')
+                            as ImageProvider,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                  ),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18),
                 ),
-
-                const SizedBox(height: 30),
-
-                // QR Code Card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      QrImageView(
-                        data: '$userName|$userPhone',
-                        version: QrVersions.auto,
-                        size: 180,
-                        foregroundColor: Colors.black,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        "Scan to Pay or Earn Points",
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+              Row(
+                children: [
+                  Icon(Icons.star,
+                      color: _goldColor, size: 16),
+                  const SizedBox(width: 4),
+                  Text('$points pts',
+                      style: const TextStyle(color: Colors.white)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Text('CURRENT BALANCE',
+              style: TextStyle(color: Colors.white70)),
+          Text('\$${balance.toStringAsFixed(2)}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: QrImageView(
+              data: '$name|$phone',
+              size: 180,
             ),
           ),
         ],
@@ -338,80 +317,37 @@ class _ScanPayScreenState extends State<ScanPayScreen>
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: _freshMintGreen, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
+  Widget _buildActionButton(IconData icon, String label) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: _freshMintGreen),
+          const SizedBox(height: 8),
+          Text(label,
               style: TextStyle(
-                color: _espressoBrown,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
+                  color: _espressoBrown,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12)),
+        ],
       ),
     );
   }
 
   // ====================================================
-  // 3. REWARDS ONLY TAB CONTENT
+  // REWARDS TAB
   // ====================================================
   Widget _buildRewardsTab() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.stars_rounded, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            "Rewards QR Code",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: _espressoBrown,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "Use this code to earn points without paying.",
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 30),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                )
-              ],
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: QrImageView(
-              data: 'REWARDS_ONLY:${user?.id}',
-              version: QrVersions.auto,
-              size: 200,
-            ),
-          ),
-        ],
+      child: QrImageView(
+        data: 'REWARDS_ONLY:${user?.id}',
+        size: 200,
       ),
     );
   }

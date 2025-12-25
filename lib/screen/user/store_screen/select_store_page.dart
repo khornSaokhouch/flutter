@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/utils/utils.dart';
 import '../../../models/shop.dart';
 import 'menu_items_list_screen.dart'; // adjust path if needed
+import '../../../core/widgets/global_notification_banner.dart';
 
 class SelectStorePage extends StatefulWidget {
   final int userId;
@@ -64,12 +65,18 @@ class _SelectStorePageState extends State<SelectStorePage> {
   }
 
   void _openMenuScreen(int userId, int shopId) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MenuScreen(userId: userId, shopId: shopId),
+   Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (_) => GlobalNotificationBanner(
+      child: MenuScreen(
+        userId: userId,
+        shopId: shopId,
       ),
-    );
+    ),
+  ),
+);
+
   }
 
   @override

@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../models/order_model.dart';
 import '../../../server/order_service.dart';
 
 import 'order_detail_screen.dart';
+import '../../../server/notification_service.dart';
+import '../../../core/widgets/style_overlay_banner.dart';
 
 // --- Helper: Resolve Image URL ---
 String? _resolveImageUrl(String? url) {
@@ -34,11 +38,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<OrderModel> _orders = [];
   bool _isRefreshing = false;
 
+  OverlayEntry? _bannerEntry;
+  Timer? _bannerTimer;
+
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _initNotifications(); // ✅ start listening
   }
+
 
   Future<void> _loadOrders({bool fromRefresh = false}) async {
     if (fromRefresh) {
@@ -94,6 +103,66 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (order.orderItems.isEmpty) return 0;
     return order.orderItems.fold<int>(0, (prev, it) => prev + it.quantity);
   }
+
+    // ====================================================
+  // NOTIFICATIONS
+  // ====================================================
+void _initNotifications() {
+  NotificationService().init(
+    onMessage: (title, body) {
+      if (!mounted) return;
+      _showTopBanner(title, body);
+    },
+  );
+}
+
+  void _showTopBanner(String title, String body) {
+  _removeTopBanner();
+
+  _bannerEntry = OverlayEntry(
+    builder: (context) {
+      final topPadding = MediaQuery.of(context).padding.top;
+
+      return Positioned(
+        top: topPadding + 12,
+        left: 16,
+        right: 16,
+        child: TopBanner(
+          title: title,
+          body: body,
+          onClose: _removeTopBanner,
+        ),
+      );
+    },
+  );
+
+  final overlay = Overlay.of(context, rootOverlay: true);
+  if (overlay == null) return;
+
+  overlay.insert(_bannerEntry!);
+
+  _bannerTimer = Timer(
+    const Duration(seconds: 4),
+    _removeTopBanner,
+  );
+}
+
+
+  void _removeTopBanner() {
+    _bannerTimer?.cancel();
+    _bannerTimer = null;
+
+    _bannerEntry?.remove();
+    _bannerEntry = null;
+  }
+@override
+void dispose() {
+  _bannerTimer?.cancel();
+  _bannerEntry?.remove();
+  NotificationService().dispose(); // ✅ stop listening
+  super.dispose();
+}
+
 
   @override
   Widget build(BuildContext context) {
