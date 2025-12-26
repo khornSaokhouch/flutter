@@ -1,6 +1,8 @@
 // models_order.dart
 
-import 'package:frontend/models/shop.dart'; // <- uses your Shop model
+import 'package:frontend/models/shop.dart';
+import 'package:frontend/models/user.dart';
+
 
 /// ----------------------
 /// Utils for parsing
@@ -260,6 +262,8 @@ class OrderModel {
   String? placedat;
   List<OrderItemModel> orderItems;
   Shop? shop; // optional top-level shop parsed using your Shop model
+  User? user;
+
 
   OrderModel({
     this.id,
@@ -273,11 +277,13 @@ class OrderModel {
     this.placedat,
     required this.orderItems,
     this.shop,
+    this.user,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final itemsList = (json['order_items'] ?? json['orderItems']) as List<dynamic>?;
     final shopJson = (json['shop'] as Map<String, dynamic>?) ?? (json['store'] as Map<String, dynamic>?);
+    final userJson = json['user'] as Map<String, dynamic>?;
 
     return OrderModel(
       id: json['id'] == null ? null : _parseInt(json['id']),
@@ -291,6 +297,7 @@ class OrderModel {
       placedat: json['placedat'] ?? json['placed_at'],
       orderItems: (itemsList ?? []).map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>)).toList(),
       shop: shopJson == null ? null : Shop.fromJson(shopJson),
+      user: userJson == null ? null : User.fromJson(userJson),
     );
   }
 

@@ -290,7 +290,7 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
             color: _mint.withOpacity(0.1), shape: BoxShape.circle),
         child: Icon(Icons.receipt_long_outlined, color: _emerald),
       ),
-      title: Text("Customer #${order.userid}",
+       title: Text("Customer #${order.user?.name ?? 'Unknown'}",
           style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(
           "${order.orderItems.length} items • ${order.orderItems.map((e) => e.namesnapshot).join(', ')}",

@@ -40,9 +40,9 @@ class ItemRow extends StatelessWidget {
 
   /// Resolve unit price safely from multiple possible keys
   double _parseUnitPrice(Map<String, dynamic> item) {
-    if (item.containsKey('unitprice_cents')) {
+    if (item.containsKey('pricecents')) {
       return parseAmountToDollars(
-        item['unitprice_cents'],
+        item['pricecents'],
         inputIsCentsIfInt: true,
       );
     }

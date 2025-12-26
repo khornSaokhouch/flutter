@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:frontend/core/widgets/global_notification_banner.dart';
 import 'package:frontend/screen/shops/screens/shop_product_detai.dart';
 import 'package:frontend/screen/shops/screens/shops_orders_page.dart';
 import 'package:frontend/screen/shops/screens/shops_products_page.dart';
@@ -393,10 +394,12 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                                     if (owner.item != null) {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (_) => ShopProductDetailPage(
-                                            itemId: itemOwner.item!.id,
-                                            shopId: widget.shopId,
-                                          ),
+                                          builder: (_) => GlobalNotificationBanner(
+                                              child: ShopProductDetailPage(
+                                                itemId: itemOwner.item!.id,
+                                                shopId: widget.shopId,
+                                              ),
+                                          )
                                         ),
                                       );
                                     }

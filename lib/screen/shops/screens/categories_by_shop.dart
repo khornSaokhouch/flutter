@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/widgets/global_notification_banner.dart';
 // Adjust these imports based on your actual project structure
 import 'package:frontend/screen/shops/screens/products_by_category.dart';
 import 'package:frontend/screen/shops/screens/shops_orders_page.dart';
@@ -23,6 +24,8 @@ class ShopsCategoriesPage extends StatefulWidget {
   @override
   State<ShopsCategoriesPage> createState() => _ShopsCategoriesPageState();
 }
+
+
 
 class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
   final TextEditingController _searchController = TextEditingController();
@@ -488,11 +491,13 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) => CategoryProductsPage(
-                                        categoryId: item.id,
-                                        categoryName: item.name,
-                                        shopId: widget.shopId)));
-                          },
+                                    builder: (_) => GlobalNotificationBanner(
+                                        child:  CategoryProductsPage(
+                                            categoryId: item.id,
+                                            categoryName: item.name,
+                                            shopId: widget.shopId))
+                                    ));
+                                },
                           onStatusChanged: (categoryId, newStatus) async {
                             await _categoryShopController
                                 .updateCategoryStatusForShop(

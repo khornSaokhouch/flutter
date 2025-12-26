@@ -15,6 +15,16 @@ class PromotionCard extends StatelessWidget {
     required this.onCopyCode,
   });
 
+  // ✅ FORMAT VALUE (CENTS → UI)
+  String _formattedValue(PromotionModel promotion) {
+    if (promotion.type == "percent") {
+      return "${promotion.value}%";
+    }
+
+    // fixed → cents to dollars
+    return "\$${(promotion.value / 100).toStringAsFixed(2)}";
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isExpired = promotion.expiresAt?.isBefore(DateTime.now()) ?? false;
@@ -45,9 +55,14 @@ class PromotionCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    promotion.type == "percent" ? "${promotion.value.toInt()}%" : "\$${promotion.value.toInt()}",
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+                    _formattedValue(promotion),
+                    style: const TextStyle(
+                      color: Colors.white, // or remove if not needed
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18, // or 20 if you prefer
+                    ),
                   ),
+
                   const Text("OFF", style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
                 ],
               ),
