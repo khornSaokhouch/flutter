@@ -53,6 +53,13 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
             desiredAccuracy: LocationAccuracy.high);
       } catch (e) {
         userPosition = null;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Could not fetch location. Showing all stores."),
+            ),
+          );
+        }
       }
 
       // 2️⃣ Fetch shops from API

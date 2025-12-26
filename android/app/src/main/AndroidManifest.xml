@@ -12,9 +12,13 @@
         android:icon="@mipmap/ic_launcher">
 
          <!-- Google Maps API Key -->
-        <meta-data
+         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyA3Xswwb1wEGku7WeTTR6C5yuWecd-5-JM"/>
+
+        <meta-data
+            android:name="com.google.android.gms.maps.renderer"
+            android:value="latest" />
 
         <meta-data
             android:name="com.google.android.gms.auth.api.credentials.CREDENTIAL_PICKER_SHOW_CANCEL_BUTTON"
