@@ -81,7 +81,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     final String rawStatus = (data['status'] ?? 'placed').toString().toLowerCase();
     final String placedAtRaw =
     (data['placedat'] ?? data['placed_at'] ?? data['placedAt'] ?? '').toString();
-    print(data);
+    print(items);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -158,7 +158,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       const SizedBox(height: 24),
 
                       // Items
-                      ...items.map((item) => ItemRow(item: item, moneyFmt: _moneyFmt)).toList(),
+                      ...items.map((item) => ItemRow(item: item, moneyFmt: _moneyFmt)),
 
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 20),

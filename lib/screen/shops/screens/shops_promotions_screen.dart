@@ -28,6 +28,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
   String? _error;
   final Map<int, bool> _itemBusy = {};
 
+
   @override
   void initState() {
     super.initState();
@@ -46,42 +47,53 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
     }
   }
 
-Future<void> _toggleActive(int index, bool value) async {
+  Future<void> _toggleActive(int index, bool value) async {
     final p = promotions[index];
     final key = p.id;
     setState(() => _itemBusy[key] = true);
 
     try {
-      // Create the updated model manually without copyWith
+      // ✅ promo.value is cents (e.g. 125 => $1.25)
+      final int safeValue = p.value.round();
+
       final updated = PromotionModel(
         id: p.id,
         shopid: p.shopid,
         code: p.code,
         type: p.type,
-        value: p.value,
+        value: safeValue, // ✅ FIXED
         startsat: p.startsat,
         endsat: p.endsat,
-        isactive: value ? 1 : 0, // This is our change
+        isactive: value ? 1 : 0,
         usagelimit: p.usagelimit,
         createdAt: p.createdAt,
         updatedAt: DateTime.now().toIso8601String(),
         shop: p.shop,
       );
 
-      final serverUpdated = await _service.updatePromotion(p.id, updated);
+      final serverUpdated =
+      await _service.updatePromotion(p.id, updated);
+
       setState(() => promotions[index] = serverUpdated);
-      
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Promotion ${value ? "Enabled" : "Disabled"}'),
-        backgroundColor: _emerald,
-        behavior: SnackBarBehavior.floating,
-      ));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Promotion ${value ? "Enabled" : "Disabled"}',
+          ),
+          backgroundColor: _emerald,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     } finally {
       setState(() => _itemBusy.remove(key));
     }
   }
+
   Future<void> _confirmAndDelete(int index) async {
     final p = promotions[index];
     final confirmed = await showDialog<bool>(
