@@ -1,5 +1,4 @@
 // shop_utils.dart
-import 'package:flutter/material.dart';
 import '../../core/utils/utils.dart'; // assumes parseTimeToSeconds, formatTimeString exist here
 
 class _ShopOpenStatus {

@@ -89,7 +89,7 @@ class PromotionModel {
   }
 
   /// Value as double (safe)
-  double get valueDouble => value is num ? (value as num).toDouble() : double.tryParse(value.toString()) ?? 0.0;
+  double get valueDouble => (value).toDouble();
 
   /// The promotion expiry as UTC DateTime if endsat is parseable, else null.
   DateTime? get expiresAt {

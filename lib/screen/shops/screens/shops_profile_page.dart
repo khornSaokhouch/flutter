@@ -269,7 +269,7 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
               _buildMenuTile(Icons.bar_chart_rounded, "Advanced Reports",
                   "View sales & trends", () {
                 Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => ReportsPage()));
+                    context, MaterialPageRoute(builder: (_) => ReportsPage(shopId: widget.shopId,)));
               }),
 
               _buildSectionTitle("Account & Support"),

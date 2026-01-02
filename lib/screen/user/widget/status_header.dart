@@ -44,7 +44,7 @@ class StatusHeader extends StatelessWidget {
               height: 140,
               width: 140,
               decoration: BoxDecoration(color: Colors.transparent, shape: BoxShape.circle, boxShadow: [
-                BoxShadow(color: freshMintGreen.withOpacity(0.2), blurRadius: 30, spreadRadius: 5),
+                BoxShadow(color: freshMintGreen.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5),
               ]),
               child: ClipOval(
                 child: Padding(

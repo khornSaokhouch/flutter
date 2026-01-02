@@ -65,9 +65,6 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
 
   bool _isOptionActive(dynamic v) => _toBool(v);
 
-  bool get _itemActive {
-    return statuses.isNotEmpty ? statuses.first.item.isAvailable : true;
-  }
 
   void _toggleGroupExpand(int gid) {
     setState(() => _groupExpanded[gid] = !(_groupExpanded[gid] ?? true));
@@ -88,7 +85,6 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
     for (final s in statuses) {
       final og = s.optionGroup;
       final o = s.option;
-      if (og == null || o == null) continue;
 
       final gid = og.id;
       final oid = o.id;
@@ -97,7 +93,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
         return {
           'id': gid,
           'name': og.name,
-          'type': og.type ?? 'select',
+          'type': og.type,
           'is_required': og.isRequired ? 1 : 0,
           'options': <Map<String, dynamic>>[],
         };
@@ -110,7 +106,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
         'name': o.name,
         'icon': o.icon_url,
         'is_active': shopStatusInt,
-        'price_adjust_cents': o.priceAdjustCents ?? '0',
+        'price_adjust_cents': o.priceAdjustCents,
         'icon_url': o.icon_url,
         'status_id': s.id,
       };
@@ -215,7 +211,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
                 leading: Container(
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(

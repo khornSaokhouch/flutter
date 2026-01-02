@@ -29,7 +29,7 @@ class OrderService {
     headers['Content-Type'] = 'application/json';
 
     // Helper to serialize option groups to backend shape
-    List<Map<String, dynamic>> _serializeOptionGroups(List<OptionGroupModel>? groups) {
+    List<Map<String, dynamic>> serializeOptionGroups(List<OptionGroupModel>? groups) {
       if (groups == null) return [];
       return groups.map((g) => {
         'group_id': g.groupId,
@@ -40,15 +40,15 @@ class OrderService {
     }
 
     // Build items exactly as Laravel expects
-    final items = (order.orderItems ?? []).map((it) {
+    final items = (order.orderItems).map((it) {
       return {
         'itemid': it.itemid,
         'unitprice_cents': it.unitpriceCents,
         'quantity': it.quantity,
-        if ((it.namesnapshot ?? '').isNotEmpty) 'namesnapshot': it.namesnapshot,
+        if ((it.namesnapshot).isNotEmpty) 'namesnapshot': it.namesnapshot,
         if ((it.notes ?? '').isNotEmpty) 'notes': it.notes,
         // include option_groups only when not empty
-        if ((it.optionGroups ?? []).isNotEmpty) 'option_groups': _serializeOptionGroups(it.optionGroups),
+        if ((it.optionGroups).isNotEmpty) 'option_groups': serializeOptionGroups(it.optionGroups),
       };
     }).toList();
 

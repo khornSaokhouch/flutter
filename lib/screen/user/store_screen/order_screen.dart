@@ -1,22 +1,18 @@
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide PaymentMethod;
+import 'package:frontend/screen/user/widget/payment_method_selector.dart'; // This file now provides the PaymentMethod enum
 
 // Adjust these imports to match your project structure:
 import '../../../models/order_model.dart';
 import '../../../models/promotion_model.dart';
 import '../../../server/order_service.dart';
-import '../../../server/payment_service.dart'; // Should expose StripeService.createPaymentIntent
+import '../../../server/payment_service.dart';
 import '../../../server/promotion_service.dart';
 import '../checkout/payment/khqr_payment.dart';
-import './order_success_screen.dart'; // Make sure this file exists
+import './order_success_screen.dart';
 
-enum PaymentMethod {
-  stripe,
-  khqr,
-  bankTransfer,
-}
+// REMOVED: enum PaymentMethod { ... }  <-- This was causing the conflict
 
 class PromotionNotFoundException implements Exception {
   final String? message;
@@ -52,43 +48,34 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  // This now correctly uses the enum from payment_method_selector.dart
   PaymentMethod _selectedPayment = PaymentMethod.stripe;
 
-  // --- Theme Colors ---
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
   final Color _espressoBrown = const Color(0xFF4B2C20);
   final Color _bgGrey = const Color(0xFFF9FAFB);
 
-  // Internal state
   final List<Map<String, dynamic>> _cartItems = [];
   double _subtotalLocal = 0.0;
   bool _isPlacingOrder = false;
   bool _isPaying = false;
 
-  // Inputs
   final TextEditingController _promoController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
   final FocusNode _noteFocusNode = FocusNode();
 
-  // Promo State
   String? _promoCode;
   bool _isPromoApplied = false;
   double _discountAmount = 0.0;
   bool _isApplying = false;
 
-  // Totals
   double get _discountedSubtotal =>
       (_subtotalLocal - _discountAmount).clamp(0.0, double.infinity);
   double get _total => _discountedSubtotal;
 
-
-
-
-
   @override
   void initState() {
     super.initState();
-
     final incomingPrice = (widget.subtotal > 0 && widget.quantity > 0)
         ? (widget.subtotal / widget.quantity)
         : 0.0;
@@ -117,7 +104,6 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // ---------- Helpers ----------
-
   String _genId() => DateTime.now().microsecondsSinceEpoch.toString();
 
   double _parseDouble(dynamic v) {
@@ -202,31 +188,19 @@ class _CartScreenState extends State<CartScreen> {
   void _recalculateSubtotal() => setState(_recalculateSubtotalInternal);
 
   // ---------- Promo logic ----------
-
   Future<void> _applyPromo() async {
     final code = _promoController.text.trim();
     if (code.isEmpty) return;
-
     setState(() => _isApplying = true);
-
     try {
       final promotion = await PromotionService().getPromotionByCode(code);
       if (promotion == null) throw PromotionNotFoundException();
-
       final adapter = promotion.toAdapter();
-      if (adapter.shopId != widget.shopId) {
-        throw PromotionNotFoundException("Invalid shop.");
-      }
-
+      if (adapter.shopId != widget.shopId) throw PromotionNotFoundException("Invalid shop.");
       final computed = _computeDiscountForAdapter(adapter, _subtotalLocal);
-
       if (computed <= 0) {
         _clearPromoUI();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(adapter.message ?? 'Promo not applicable.')),
-          );
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(adapter.message ?? 'Promo not applicable.')));
       } else {
         if (mounted) {
           setState(() {
@@ -234,27 +208,16 @@ class _CartScreenState extends State<CartScreen> {
             _isPromoApplied = true;
             _discountAmount = computed;
           });
-          // Close dialog and return success
           Navigator.of(context).pop(true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(adapter.message ?? 'Promo applied')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(adapter.message ?? 'Promo applied')));
         }
       }
     } on PromotionNotFoundException catch (e) {
       _clearPromoUI();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } catch (e) {
       _clearPromoUI();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
     } finally {
       if (mounted) setState(() => _isApplying = false);
     }
@@ -270,37 +233,23 @@ class _CartScreenState extends State<CartScreen> {
 
   double _computeDiscountForAdapter(PromotionAdapter promo, double subtotalDollars) {
     final int subtotalCents = (subtotalDollars * 100).round();
-
     int discountCents = 0;
-
     switch (promo.type) {
       case PromotionType.percentage:
-      // promo.value is percentage (e.g. 15 => 15%)
         final double percent = promo.value;
         discountCents = ((subtotalCents * percent) / 100.0).round();
         break;
-
       case PromotionType.fixed:
-      // promo.value is cents (e.g. 125 => $1.25). Round to int to be safe.
         discountCents = promo.value.round();
         break;
-
       case PromotionType.unknown:
-      discountCents = 0;
+        discountCents = 0;
     }
-
-    // clamp
     discountCents = discountCents.clamp(0, subtotalCents);
-
     return discountCents / 100.0;
   }
 
-  // ---------- Payment (Stripe PaymentSheet) ----------
-
-
   int _toCents(double amount) => (amount * 100).round();
-
-  /// Returns true if payment succeeded, false otherwise.
 
   // ---------- Order Logic ----------
   OrderModel _buildOrderFromCart() {
@@ -315,20 +264,11 @@ class _CartScreenState extends State<CartScreen> {
       if (mods is List) {
         for (final m in mods) {
           if (m is Map) {
-            final groupId =
-            _parseInt(m['group_id'] ?? m['groupId'], fallback: 0);
-            final optionId =
-            _parseInt(m['option_id'] ?? m['optionId'], fallback: 0);
-            final groupName =
-            (m['group_name'] ?? m['group'] ?? m['groupName'] ?? '')
-                .toString();
-            final selectedOption =
-            (m['selected_option'] ?? m['selected'] ?? m['option'] ?? '')
-                .toString();
-            if (groupId != 0 ||
-                optionId != 0 ||
-                groupName.isNotEmpty ||
-                selectedOption.isNotEmpty) {
+            final groupId = _parseInt(m['group_id'] ?? m['groupId'], fallback: 0);
+            final optionId = _parseInt(m['option_id'] ?? m['optionId'], fallback: 0);
+            final groupName = (m['group_name'] ?? m['group'] ?? m['groupName'] ?? '').toString();
+            final selectedOption = (m['selected_option'] ?? m['selected'] ?? m['option'] ?? '').toString();
+            if (groupId != 0 || optionId != 0 || groupName.isNotEmpty || selectedOption.isNotEmpty) {
               optionGroups.add(OptionGroupModel(
                 groupId: groupId,
                 optionId: optionId,
@@ -341,8 +281,6 @@ class _CartScreenState extends State<CartScreen> {
       }
       final price = _parseDouble(it['price']);
       final qty = _parseInt(it['qty']);
-
-      // safer id parsing
       final rawId = it['id'];
       final parsedId = (rawId is int) ? rawId : int.tryParse(rawId?.toString() ?? '') ;
 
@@ -370,116 +308,63 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  /// Full flow:
-  /// 1) Run Stripe PaymentSheet (client only)
-  /// 2) If payment succeeds, create the order on the server
   Future<void> _createOrder() async {
     if (_isPlacingOrder || _cartItems.isEmpty) return;
-
     setState(() => _isPlacingOrder = true);
-
     try {
-
-
-      // 2) Build order now that payment is successful
-      final draftOrder = _buildOrderFromCart()
-        ..status = 'pending_payment';
-
-      final createdOrder = await OrderService()
-          .createOrder(draftOrder, promocode: _promoCode);
-
+      final draftOrder = _buildOrderFromCart()..status = 'pending_payment';
+      final createdOrder = await OrderService().createOrder(draftOrder, promocode: _promoCode);
       final orderId = createdOrder.id;
-
-      // Create order via your service
 
       final paymentSucceeded = await _processPayment(orderId!);
 
-
       if (!paymentSucceeded) {
-        // Payment canceled or failed -> do not create order
         setState(() => _isPlacingOrder = false);
         return;
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Order placed successfully!'),
-            backgroundColor: _freshMintGreen,
-          ),
-        );
-
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Order placed successfully!'), backgroundColor: _freshMintGreen));
         Map<String, dynamic> orderData = createdOrder.toJson();
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OrderSuccessScreen(orderData: orderData),
-          ),
-        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => OrderSuccessScreen(orderData: orderData)));
       }
     } catch (err) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Order failed: $err'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Order failed: $err'), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _isPlacingOrder = false);
     }
   }
+
   Future<bool> _handlePaymentSheetPayment(int orderId) async {
     setState(() => _isPaying = true);
-
     try {
       final int amountCents = _toCents(_total);
-
-      // call your backend via PaymentService / StripeService
       final resp = await StripeService.createPaymentIntent(
         amount: amountCents,
-        currency: 'usd', // change as needed
+        currency: 'usd',
         orderId : orderId,
         userId :widget.userId,
-
       );
-
       final clientSecret = resp['client_secret'] ?? resp['clientSecret'];
       final publishableKey = resp['publishableKey'] ?? resp['publishable_key'];
-
       if (publishableKey != null && publishableKey is String && publishableKey.isNotEmpty) {
         Stripe.publishableKey = publishableKey;
         await Stripe.instance.applySettings();
       }
-
-      if (clientSecret == null) {
-        throw Exception('Payment intent returned no client_secret.');
-      }
+      if (clientSecret == null) throw Exception('Payment intent returned no client_secret.');
 
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
           merchantDisplayName: 'Your Shop',
-          // Configure applePay/googlePay if supported on backend
         ),
       );
-
       await Stripe.instance.presentPaymentSheet();
       return true;
     } on StripeException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: ${e.error.localizedMessage ?? e.error.message}')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment failed: ${e.error.localizedMessage ?? e.error.message}')));
       return false;
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment error: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment error: $e')));
       return false;
     } finally {
       if (mounted) setState(() => _isPaying = false);
@@ -490,17 +375,12 @@ class _CartScreenState extends State<CartScreen> {
     switch (_selectedPayment) {
       case PaymentMethod.stripe:
         return await _handlePaymentSheetPayment(orderId);
-
       case PaymentMethod.khqr:
         return await _goToKHQRPage(orderId);
-
       case PaymentMethod.bankTransfer:
         return await _handleBankTransfer(orderId);
     }
   }
-
-
-  // ---------- UI Widgets ----------
 
   @override
   Widget build(BuildContext context) {
@@ -510,33 +390,14 @@ class _CartScreenState extends State<CartScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Checkout",
-          style: TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
-        ),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
+        title: const Text("Checkout", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
       ),
-      // Wrap the body with GestureDetector so tapping outside TextField closes keyboard
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () => FocusScope.of(context).unfocus(),
         child: _cartItems.isEmpty
-            ? Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.shopping_cart_outlined,
-                  size: 60, color: Colors.grey[300]),
-              const SizedBox(height: 16),
-              const Text("Cart is empty",
-                  style: TextStyle(color: Colors.grey, fontSize: 16)),
-            ],
-          ),
-        )
+            ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey[300]), const SizedBox(height: 16), const Text("Cart is empty", style: TextStyle(color: Colors.grey, fontSize: 16))]))
             : Column(
           children: [
             Expanded(
@@ -545,131 +406,64 @@ class _CartScreenState extends State<CartScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Order Details Header
                     _buildSectionHeader("Order Details"),
                     const SizedBox(height: 12),
-
-                    // 2. List of Items (Card Style)
                     Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4))
-                        ],
-                      ),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))]),
                       padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: _cartItems
-                            .map((item) => _buildDetailItem(item))
-                            .toList(),
-                      ),
+                      child: Column(children: _cartItems.map((item) => _buildDetailItem(item)).toList()),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // 3. Notes Section
-                    const Text("Notes",
-                        style: TextStyle(
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w600)),
+                    const Text("Notes", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: TextField(
-                        controller: _noteController,
-                        focusNode: _noteFocusNode,
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          hintText: "E.g. Less sugar, allergies...",
-                          hintStyle: TextStyle(color: Colors.grey),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(16),
-                        ),
-                        style:
-                        const TextStyle(fontWeight: FontWeight.w500),
-                      ),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
+                      child: TextField(controller: _noteController, focusNode: _noteFocusNode, maxLines: 2, decoration: const InputDecoration(hintText: "E.g. Less sugar, allergies...", hintStyle: TextStyle(color: Colors.grey), border: InputBorder.none, contentPadding: EdgeInsets.all(16)), style: const TextStyle(fontWeight: FontWeight.w500)),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // 4. Order Discount
                     _buildSectionHeader("Order Discount"),
                     const SizedBox(height: 12),
                     _buildClickableTile(
                       icon: Icons.confirmation_number_outlined,
-                      title: _isPromoApplied
-                          ? "Code: $_promoCode"
-                          : "Use Voucher",
-                      subtitle: _isPromoApplied
-                          ? "Discount Applied"
-                          : "Save orders with promos",
-                      trailing: _isPromoApplied
-                          ? Text("-\$${_discountAmount.toStringAsFixed(2)}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red))
-                          : const Icon(Icons.arrow_forward_ios,
-                          size: 14, color: Colors.grey),
+                      title: _isPromoApplied ? "Code: $_promoCode" : "Use Voucher",
+                      subtitle: _isPromoApplied ? "Discount Applied" : "Save orders with promos",
+                      trailing: _isPromoApplied ? Text("-\$${_discountAmount.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)) : const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
                       onTap: () => _showPromoDialog(),
                     ),
-
                     const SizedBox(height: 24),
                     _buildSectionHeader("Payment Method"),
                     const SizedBox(height: 12),
-                    _buildPaymentMethodSelector(),
+
+                    // REFACTORED WIDGET CALL
+                    PaymentMethodSelector(
+                      selectedMethod: _selectedPayment,
+                      onChanged: (PaymentMethod method) {
+                        setState(() => _selectedPayment = method);
+                      },
+                    ),
+
                     const SizedBox(height: 24),
-                    // 5. Payment Details
                     _buildSectionHeader("Payment Details"),
                     const SizedBox(height: 12),
-
-
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                       child: Column(
                         children: [
                           _buildSummaryRow("Subtotal", _subtotalLocal),
-                          if (_isPromoApplied) ...[
-                            const SizedBox(height: 8),
-                            _buildSummaryRow(
-                                "Discount", -_discountAmount,
-                                isRed: true),
-                          ],
-                          const Padding(
-                              padding:
-                              EdgeInsets.symmetric(vertical: 16),
-                              child: Divider(height: 1)),
+                          if (_isPromoApplied) ...[const SizedBox(height: 8), _buildSummaryRow("Discount", -_discountAmount, isRed: true)],
+                          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(height: 1)),
                           Row(
-                            mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text("Total Payment",
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey[700])),
-                              Text("\$${_total.toStringAsFixed(2)}",
-                                  style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                      color: _espressoBrown)),
+                              Text("Total Payment", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+                              Text("\$${_total.toStringAsFixed(2)}", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _espressoBrown)),
                             ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 100), // Bottom padding
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
@@ -677,59 +471,23 @@ class _CartScreenState extends State<CartScreen> {
           ],
         ),
       ),
-
-      // 6. Place Order Button
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            )
-          ],
-        ),
+        decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
         child: SizedBox(
           height: 55,
           child: ElevatedButton(
-            onPressed:
-            (_cartItems.isEmpty || _isPlacingOrder || _isPaying) ? null : _createOrder,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _freshMintGreen,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            ),
-            child: (_isPlacingOrder || _isPaying)
-                ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-            )
-                : const Text(
-              "Place Order",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            onPressed: (_cartItems.isEmpty || _isPlacingOrder || _isPaying) ? null : _createOrder,
+            style: ElevatedButton.styleFrom(backgroundColor: _freshMintGreen, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+            child: (_isPlacingOrder || _isPaying) ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text("Place Order", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
       ),
     );
   }
 
-  // =========================================================
-  // SUB-WIDGETS
-  // =========================================================
-
   Widget _buildSectionHeader(String title) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-      ],
-    );
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold))]);
   }
 
   Widget _buildDetailItem(Map<String, dynamic> item) {
@@ -737,113 +495,37 @@ class _CartScreenState extends State<CartScreen> {
     final qty = item['qty'];
     final basePrice = _parseDouble(item['price']);
     List<dynamic> modifiers = item['modifiers'] ?? [];
-
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: 60,
-              height: 60,
-              color: Colors.grey[100],
-              child: Image.network(
-                item['image'] ?? '',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.coffee, color: Colors.grey),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("${qty}x $name",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)),
-                    const Icon(Icons.edit_outlined, size: 16, color: Colors.green),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                // Base Price Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Base Price",
-                        style: TextStyle(fontSize: 13, color: Colors.black87)),
-                    Text("\$${basePrice.toStringAsFixed(2)}",
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-
-                // Modifiers Rows
-                ...modifiers.map((mod) {
-                  String modName = "";
-                  if (mod is Map) {
-                    modName = (mod['selected_option'] ?? mod['option'] ?? '').toString();
-                  }
-                  if (modName.isEmpty) return const SizedBox.shrink();
-
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(modName, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                      ],
-                    ),
-                  );
-                }).toList(),
-
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Subtotal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    Text("\$${(basePrice * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        ClipRRect(borderRadius: BorderRadius.circular(8), child: Container(width: 60, height: 60, color: Colors.grey[100], child: Image.network(item['image'] ?? '', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.coffee, color: Colors.grey)))),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("${qty}x $name", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)), const Icon(Icons.edit_outlined, size: 16, color: Colors.green)]),
+            const SizedBox(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Base Price", style: TextStyle(fontSize: 13, color: Colors.black87)), Text("\$${basePrice.toStringAsFixed(2)}", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))]),
+            ...modifiers.map((mod) {
+              String modName = (mod is Map) ? (mod['selected_option'] ?? mod['option'] ?? '').toString() : "";
+              if (modName.isEmpty) return const SizedBox.shrink();
+              return Padding(padding: const EdgeInsets.only(top: 4.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(modName, style: const TextStyle(fontSize: 13, color: Colors.grey))]));
+            }).toList(),
+            const SizedBox(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Subtotal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)), Text("\$${(basePrice * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))]),
+          ]),
+        ),
+      ]),
     );
   }
 
-  Widget _buildClickableTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Widget trailing,
-    VoidCallback? onTap,
-  }) {
+  Widget _buildClickableTile({required IconData icon, required String title, required String subtitle, required Widget trailing, VoidCallback? onTap}) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.shade200)),
-          child: Icon(icon, size: 20, color: Colors.black87),
-        ),
-        title: Text(title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade200)), child: Icon(icon, size: 20, color: Colors.black87)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         trailing: trailing,
       ),
@@ -851,185 +533,43 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildSummaryRow(String label, double amount, {bool isRed = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 15, color: Colors.grey)),
-        Text(
-          "${amount < 0 ? '-' : ''}\$${amount.abs().toStringAsFixed(2)}",
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isRed ? Colors.red : Colors.black),
-        ),
-      ],
-    );
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(fontSize: 15, color: Colors.grey)), Text("${amount < 0 ? '-' : ''}\$${amount.abs().toStringAsFixed(2)}", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isRed ? Colors.red : Colors.black))]);
   }
 
   void _showPromoDialog() async {
     final applied = await showDialog<bool>(
       context: context,
       builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-          child: StatefulBuilder(
-            // use StatefulBuilder so we can show apply spinner inside dialog without rebuilding whole screen
-            builder: (contextDialog, setStateDialog) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Enter Voucher",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _promoController,
-                    decoration: InputDecoration(
-                      hintText: "Promo Code",
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      prefixIcon: Icon(Icons.card_giftcard, color: _freshMintGreen),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(contextDialog, false),
-                        child: const Text("Cancel"),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: _isApplying
-                            ? null
-                            : () async {
-                          // call _applyPromo and wait for it to pop(dialog, true) on success
-                          await _applyPromo();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _freshMintGreen,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        ),
-                        child: _isApplying
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Text("Apply", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  )
-                ],
-              );
-            },
-          ),
+          child: StatefulBuilder(builder: (contextDialog, setStateDialog) {
+            return Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text("Enter Voucher", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const SizedBox(height: 20),
+              TextField(controller: _promoController, decoration: InputDecoration(hintText: "Promo Code", filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), prefixIcon: Icon(Icons.card_giftcard, color: _freshMintGreen))),
+              const SizedBox(height: 20),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                TextButton(onPressed: () => Navigator.pop(contextDialog, false), child: const Text("Cancel")),
+                const SizedBox(width: 10),
+                ElevatedButton(onPressed: _isApplying ? null : () async => await _applyPromo(), style: ElevatedButton.styleFrom(backgroundColor: _freshMintGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)), child: _isApplying ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text("Apply", style: TextStyle(fontWeight: FontWeight.bold))),
+              ])
+            ]);
+          }),
         ),
       ),
     );
-
-    // 'applied' can be true/false/null; we don't strictly need to do more here since _applyPromo already mutates state,
-    // but if you want to refresh UI or analytics you can do it here based on 'applied'.
-    if (applied == true) {
-      _recalculateSubtotal();
-    }
+    if (applied == true) _recalculateSubtotal();
   }
-
-  Widget _buildPaymentMethodSelector() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          _paymentTile(
-            title: "Credit / Debit Card",
-            subtitle: "Visa, MasterCard",
-            value: PaymentMethod.stripe,
-            icon: Icons.credit_card,
-          ),
-          _paymentTile(
-            title: "KHQR",
-            subtitle: "ABA, Acleda, Wing",
-            value: PaymentMethod.khqr,
-            icon: Icons.qr_code,
-          ),
-          _paymentTile(
-            title: "Bank Transfer",
-            subtitle: "Pay via bank slip",
-            value: PaymentMethod.bankTransfer,
-            icon: Icons.account_balance,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _paymentTile({
-    required String title,
-    required String subtitle,
-    required PaymentMethod value,
-    required IconData icon,
-  }) {
-    return RadioListTile<PaymentMethod>(
-      value: value,
-      groupValue: _selectedPayment,
-      onChanged: (v) => setState(() => _selectedPayment = v!),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle),
-      secondary: Icon(icon),
-    );
-  }
-
 
   Future<bool> _goToKHQRPage(int orderId) async {
     final int amountCents = _toCents(_total);
-    final paid = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AbaPaymentScreen(
-          amount: amountCents.toDouble() /100,
-          orderId: orderId, // your order id
-          userId: widget.userId,
-        ),
-      ),
-    );
-
+    final paid = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => AbaPaymentScreen(amount: amountCents.toDouble() / 100, orderId: orderId, userId: widget.userId)));
     return paid == true;
   }
 
   Future<bool> _handleBankTransfer(int orderId) async {
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Bank Transfer"),
-        content: const Text(
-          "Please transfer to:\n\nABA Bank\nAccount: 123-456-789\n\nThen contact support.",
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Done"),
-          ),
-        ],
-      ),
-    );
-
-    return true; // pending verification
+    await showDialog(context: context, builder: (_) => AlertDialog(title: const Text("Bank Transfer"), content: const Text("Please transfer to:\n\nABA Bank\nAccount: 123-456-789\n\nThen contact support."), actions: [ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text("Done"))]));
+    return true;
   }
-
-
 }
-
-

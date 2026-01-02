@@ -205,7 +205,8 @@ class AuthService {
           if (phone != null) 'phone': phone,
         }),
       );
-
+   print('Apple login status: ${response.statusCode}');
+      print('Apple login response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

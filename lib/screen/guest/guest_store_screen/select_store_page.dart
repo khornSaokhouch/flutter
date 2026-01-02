@@ -25,7 +25,6 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
 
   // --- Theme Colors ---
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
-  final Color _bgGrey = const Color(0xFFF9FAFB);
 
   @override
   void initState() {

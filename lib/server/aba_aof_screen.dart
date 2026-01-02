@@ -14,7 +14,6 @@ class AbaAofService {
       url,
       headers: ApiConfig.headers,
     );
-    print(response.body);
 
     if (response.statusCode != 200) {
       throw Exception(
@@ -68,10 +67,6 @@ class AbaAofService {
     });
 
     final response = await http.get(uri);
-
-    print(response.body);
-
-
 
     if (response.statusCode != 200) {
       throw Exception('Failed to check status');

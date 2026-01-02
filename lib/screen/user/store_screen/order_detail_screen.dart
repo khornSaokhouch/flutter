@@ -7,7 +7,6 @@ import '../widget/item_row.dart';
 import '../widget/status_header.dart';
 import '../widget/timeline_sheet.dart';
 
-
 class OrderDetailScreen extends StatefulWidget {
   final Map<String, dynamic> orderData;
 
@@ -67,11 +66,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
         .toString();
     final String displayShopName = shopName.isNotEmpty ? shopName : 'Store #$shopId';
 
-    (data['notes'] ?? data['note'] ?? '').toString();
-
     final double subtotal = data.containsKey('subtotal')
         ? _parseAmount(data['subtotal'], centsIfInt: false)
         : _parseAmount(data['subtotalcents'] ?? data['subtotal_cents']);
+
+    final double discount = data.containsKey('discount')
+        ? _parseAmount(data['discount'], centsIfInt: false)
+        : _parseAmount(data['discountcents'] ?? data['discount_cents']);
+
     final double total = data.containsKey('total')
         ? _parseAmount(data['total'], centsIfInt: false)
         : _parseAmount(data['totalcents'] ?? data['total_cents']);
@@ -81,7 +83,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     final String rawStatus = (data['status'] ?? 'placed').toString().toLowerCase();
     final String placedAtRaw =
     (data['placedat'] ?? data['placed_at'] ?? data['placedAt'] ?? '').toString();
-    print(items);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -115,7 +117,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               children: [
                 const SizedBox(height: 20),
 
-                // Status header (from separate widget)
+                // Status header
                 StatusHeader(
                   status: rawStatus,
                   freshMintGreen: _freshMintGreen,
@@ -165,8 +167,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                         child: Divider(thickness: 1, height: 1),
                       ),
 
-                      // Totals
+                      // Totals Section
                       _priceRow("Subtotal", subtotal),
+
+                      // Discount Row (Only shows if discount > 0)
+                      if (discount > 0) ...[
+                        const SizedBox(height: 10),
+                        _priceRow("Discount", discount, isDiscount: true),
+                      ],
+
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -187,7 +196,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))]),
+        decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))]),
         child: SafeArea(
           child: ElevatedButton(
             onPressed: () => _showTrackingSheet(context, rawStatus),
@@ -197,7 +206,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
               elevation: 4,
-              shadowColor: _freshMintGreen.withOpacity(0.4),
+              shadowColor: _freshMintGreen.withValues(alpha: 0.4),
             ),
             child: const Text("Track Order Status", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
@@ -218,12 +227,26 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     );
   }
 
-  Widget _priceRow(String label, double amount) {
+  Widget _priceRow(String label, double amount, {bool isDiscount = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w500, fontSize: 15)),
-        Text(_moneyFmt.format(amount), style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w500, fontSize: 15)),
+        Text(
+            label,
+            style: TextStyle(
+                color: isDiscount ? Colors.red : Colors.grey[800],
+                fontWeight: FontWeight.w500,
+                fontSize: 15
+            )
+        ),
+        Text(
+            "${isDiscount ? '-' : ''}${_moneyFmt.format(amount.abs())}",
+            style: TextStyle(
+                color: isDiscount ? Colors.red : Colors.grey[800],
+                fontWeight: FontWeight.w500,
+                fontSize: 15
+            )
+        ),
       ],
     );
   }

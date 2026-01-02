@@ -14,9 +14,8 @@ class PushTestService {
     );
 
     if (response.statusCode == 200) {
-      print('✅ Push test sent');
+
     } else {
-      print('❌ Push test failed: ${response.statusCode} ${response.body}');
     }
   }
 

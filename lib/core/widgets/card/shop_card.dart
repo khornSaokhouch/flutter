@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../models/shop.dart';
-import '../../utils/message_utils.dart';
 import '../../utils/utils.dart'; // Keep your import
 
 class ShopCard extends StatelessWidget {

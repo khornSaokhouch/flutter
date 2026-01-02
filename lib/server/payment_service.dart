@@ -76,7 +76,7 @@ class StripeService {
       // If the server returns HTML or other non-json, include it in the error message
       String responsePreview = resp.body;
       if (responsePreview.length > 1000) {
-        responsePreview = responsePreview.substring(0, 1000) + '...';
+        responsePreview = '${responsePreview.substring(0, 1000)}...';
       }
 
       throw Exception('Failed to create payment intent: ${resp.statusCode} - $responsePreview');

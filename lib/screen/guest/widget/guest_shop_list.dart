@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/screen/guest/widget/shop_status.dart'
-    hide evaluateShopOpenStatus;
+import 'package:frontend/screen/guest/widget/shop_status.dart';
 
 import '../../../core/utils/shop_utils.dart';
 import '../../../core/widgets/card/shop_card.dart';

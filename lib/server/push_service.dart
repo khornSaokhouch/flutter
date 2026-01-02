@@ -68,9 +68,7 @@ class PushService {
     );
 
     if (response.statusCode != 200) {
-      print('❌ Push register failed: ${response.body}');
     } else {
-      print('✅ Push token registered');
     }
   }
 
@@ -80,7 +78,6 @@ class PushService {
 
     if (data['type'] == 'payment') {
       final orderId = data['order_id'];
-      print('➡️ Open order: $orderId');
 
       // navigatorKey.currentState
       //     ?.pushNamed('/orders/$orderId');

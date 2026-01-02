@@ -46,7 +46,6 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
   List<CategoryModel> _filteredCategories = [];
   bool _isAddingCategory = false;
 
-  int _rowsPerPage = 10;
 
   final Color _freshMintGreen = const Color(0xFF4E8D7C);
   final Color _espressoBrown = const Color(0xFF4B2C20);
