@@ -10,7 +10,7 @@ import '../../../models/menu_item.dart';
 import '../../../models/shop.dart';
 import '../../../routes/footer_nav_routes.dart';
 import '../../../server/item_service.dart';
-import '../../../server/shop_serviec.dart';
+import '../../../server/shop_service.dart';
 import '../layout.dart';
 import 'select_store_page.dart';
 

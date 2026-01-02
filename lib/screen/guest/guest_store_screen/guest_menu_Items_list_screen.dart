@@ -5,7 +5,7 @@ import '../../../models/menu_item.dart'; // Ensure this maps to your UI needs
 import '../../../models/shop.dart';
 import '../../../models/item_model.dart'; // The file containing your new models
 import '../../../routes/footer_nav_routes.dart';
-import '../../../server/shop_serviec.dart';
+import '../../../server/shop_service.dart';
 import '../../../server/item_service.dart';
 import '../../login_botton_sheet.dart';
 import '../../user/store_screen/search_page_screen.dart';

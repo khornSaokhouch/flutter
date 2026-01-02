@@ -5,7 +5,7 @@ import 'package:geolocator/geolocator.dart';
 // --- Imports (Adjust paths as needed) ---
 // Ensure formatTimeToAmPm is here
 import '../../models/shop.dart';
-import '../../server/shop_serviec.dart';
+import '../../server/shop_service.dart';
 import '../user/store_screen/menu_Items_list_screen.dart';
 import '../../core/widgets/loading/logo_loading.dart'; 
 

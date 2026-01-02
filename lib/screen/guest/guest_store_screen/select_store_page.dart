@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 // Note: Ensure these imports match your actual project structure
 import '../../../core/utils/utils.dart';
 import '../../../models/shop.dart';
-import '../../../server/shop_serviec.dart';
+import '../../../server/shop_service.dart';
 import 'guest_menu_Items_list_screen.dart';
 import '../../../core/widgets/loading/logo_loading.dart';
 import './guest_store_map.dart';
