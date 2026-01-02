@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../../core/widgets/store/pickup_delivery_toggle.dart';
 import '../../../models/shop.dart';
-import '../../../server/shop_serviec.dart';
+import '../../../server/shop_service.dart';
 import 'select_store_page.dart';
 
 class NoStoreNearbyScreen extends StatefulWidget {

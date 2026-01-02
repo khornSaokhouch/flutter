@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/shops/screens/customers_page.dart';
+import 'package:frontend/screen/shops/screens/edit_info_page.dart';
+import 'package:frontend/screen/shops/screens/products_page.dart';
+import 'package:frontend/screen/shops/screens/reviews_page.dart';
 
 class MyShopPage extends StatelessWidget {
-  const MyShopPage({super.key});
+  final int shopId;
+  const MyShopPage({super.key, required this.shopId});
 
   // --- Premium Emerald Theme Palette ---
   final Color _deepGreen = const Color(0xFF1B4332);
@@ -118,10 +123,18 @@ class MyShopPage extends StatelessWidget {
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 children: [
-                  _buildQuickAction(Icons.inventory_2_outlined, "Products"),
-                  _buildQuickAction(Icons.group_outlined, "Customers"),
-                  _buildQuickAction(Icons.star_outline_rounded, "Reviews"),
-                  _buildQuickAction(Icons.edit_note_rounded, "Edit Info"),
+                  _buildQuickAction(Icons.inventory_2_outlined, "Products", () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProductsPage()));
+                  }),
+                  _buildQuickAction(Icons.group_outlined, "Customers", () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => CustomersPage()));
+                  }),
+                  _buildQuickAction(Icons.star_outline_rounded, "Reviews", () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => ReviewsPage()));
+                  }),
+                  _buildQuickAction(Icons.edit_note_rounded, "Edit Info", () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => EditInfoPage(shopId: shopId,)));
+                  }),
                 ],
               ),
             ),
@@ -213,28 +226,32 @@ class MyShopPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickAction(IconData icon, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 3)),
-            ],
+  Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 3)),
+              ],
+            ),
+            child: Icon(icon, color: _emerald, size: 24),
           ),
-          child: Icon(icon, color: _emerald, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _deepGreen.withOpacity(0.8)),
-          textAlign: TextAlign.center,
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _deepGreen.withOpacity(0.8)),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 

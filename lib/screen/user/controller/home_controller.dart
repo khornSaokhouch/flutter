@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/auth_utils.dart';
 import '../../../models/shop.dart';
 import '../../../models/user.dart';
-import '../../../server/shop_serviec.dart';
+import '../../../server/shop_service.dart';
 
 
 class HomeController {

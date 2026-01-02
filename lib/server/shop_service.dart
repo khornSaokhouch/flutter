@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_endpoints.dart';
 import '../models/shop.dart';
 
@@ -62,6 +63,40 @@ class ShopService {
       return shopsResponse.data;
     } else {
       throw Exception("Failed to load nearby shops");
+    }
+  }
+
+  static Future<Shop?> updateShop(int shopId, Map<String, dynamic> data) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/shops/$shopId');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      // Handle not being logged in
+      return null;
+    }
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(data),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final shopData = jsonData['data'];
+        return Shop.fromJson(shopData);
+      } else {
+        // Handle error
+        return null;
+      }
+    } catch (e) {
+      // Handle exception
+      return null;
     }
   }
 

@@ -9,7 +9,7 @@ import 'package:frontend/screen/guest/widget/navbar.dart';
 import '../../models/shop.dart';
 
 import '../../core/widgets/loading/logo_loading.dart';
-import '../../server/shop_serviec.dart';
+import '../../server/shop_service.dart';
 
 
 class GuestScreen extends StatefulWidget {

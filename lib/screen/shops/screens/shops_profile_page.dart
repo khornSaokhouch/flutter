@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../models/order_model.dart';
 import '../../../models/shop.dart';
 import '../../../server/order_service.dart';
-import '../../../server/shop_serviec.dart';
+import '../../../server/shop_service.dart';
 import '../../guest/guest_screen.dart';
 import 'my_shop_page_screen.dart';
 
@@ -259,10 +259,10 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
           SliverList(
             delegate: SliverChildListDelegate([
               _buildSectionTitle("Operations"),
-              _buildMenuTile(Icons.storefront_rounded, "Shop Settings",
+              _buildMenuTile(Icons.storefront_rounded, "Shop Profile",
                   "Edit info, location, & hours", () {
                 Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => MyShopPage()));
+                    context, MaterialPageRoute(builder: (_) => MyShopPage(shopId: widget.shopId,)));
               }),
               _buildMenuTile(Icons.badge_outlined, "Staff Management",
                   "Manage employee access", () {}),
