@@ -156,6 +156,7 @@ class OrderItemModel {
   final ItemModel? item; // nested item (optional)
   final Shop? shop; // nested shop (optional) - uses your Shop model
 
+
   OrderItemModel({
     this.id,
     this.orderid,

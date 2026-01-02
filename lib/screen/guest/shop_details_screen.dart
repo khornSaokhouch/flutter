@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
 // --- Imports (Adjust paths as needed) ---
-import '../../core/utils/utils.dart'; // Ensure formatTimeToAmPm is here
+// Ensure formatTimeToAmPm is here
 import '../../models/shop.dart';
 import '../../server/shop_serviec.dart';
 import '../user/store_screen/menu_Items_list_screen.dart';
@@ -29,7 +29,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
   // User location
   Position? _userPosition;
   double? _distanceKm;
-  String? _locationError;
 
   // Theme Colors
   final Color _bgWhite = const Color(0xFFFFFFFF);
@@ -47,7 +46,6 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     _determinePosition().then((pos) {
       setState(() => _userPosition = pos);
     }).catchError((e) {
-      setState(() => _locationError = e.toString());
     });
   }
 

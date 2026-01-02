@@ -57,7 +57,6 @@ class UserService {
         await prefs.setString('jwt_token', data['token']);
         return true;
       } else {
-        print('Login failed: ${response.body}');
         return false;
       }
     } catch (e) {
@@ -81,7 +80,7 @@ class UserService {
       );
 
       if (response.statusCode == 200) {
-        final res = await prefs.remove('token');
+        await prefs.remove('token');
         return true;
       } else {
 

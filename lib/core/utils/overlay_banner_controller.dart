@@ -18,7 +18,6 @@ class OverlayBannerController {
       if (context == null) return;
 
       final overlay = Overlay.of(context, rootOverlay: true);
-      if (overlay == null) return;
 
       _entry = OverlayEntry(
         builder: (_) => Positioned(

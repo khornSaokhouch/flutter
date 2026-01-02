@@ -23,7 +23,6 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
   final Color _softBg = const Color(0xFFF7F9F8);
 
   bool _isLoading = true;
-  String? _error;
   List<OrderModel> _orders = [];
   final Map<int, bool> _orderBusy = {};
   final OrderService _orderService = OrderService();
@@ -47,14 +46,11 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
   Future<void> _loadOrders() async {
     setState(() {
       _isLoading = true;
-      _error = null;
     });
     try {
       final orders =
           await OrderService.fetchAllOrdersForShop(shopid: widget.shopId);
       setState(() => _orders = orders);
-    } catch (e) {
-      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -96,6 +92,7 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
 
             // ---- money (cents) ----
             'subtotalcents': order.subtotalcents,
+            'discountcents': order.discountcents,
             'totalcents': order.totalcents,
 
             // ---- shop ----
@@ -103,21 +100,26 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
             'shop_name': order.shop?.name,
 
             // ---- items ----
-            'items': order.orderItems
-                .map((e) => {
-                      'name': e.namesnapshot,
-                      'pricecents': e.unitpriceCents, // ✅ FIXED
-                      'quantity': e.quantity,
-                      'notes': e.notes,
-                      'option_groups':
-                          e.optionGroups.map((g) => g.toJson()).toList(),
-                    })
-                .toList(),
+            'items': order.orderItems.map((e) {
+              final imageUrl = e.item?.imageUrl ?? '';
+
+              return {
+                'name': e.namesnapshot,
+                'pricecents': e.unitpriceCents,
+                'quantity': e.quantity,
+                'notes': e.notes,
+                'image_url': imageUrl,
+
+                'option_groups':
+                e.optionGroups.map((g) => g.toJson()).toList(),
+              };
+            }).toList(),
           },
         ),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -208,7 +210,7 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -243,13 +245,14 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
 
   Widget _buildCardHeader(OrderModel order) {
     Color statusColor = _emerald;
-    if (order.status == 'pending' || order.status == 'paid')
+    if (order.status == 'pending' || order.status == 'paid') {
       statusColor = Colors.orange;
+    }
     if (order.status == 'cancelled') statusColor = Colors.redAccent;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: _softBg.withOpacity(0.5)),
+      decoration: BoxDecoration(color: _softBg.withValues(alpha: 0.5)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -262,9 +265,9 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: statusColor.withOpacity(0.2)),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.2)),
                 ),
                 child: Text(order.status.toUpperCase(),
                     style: TextStyle(
@@ -287,7 +290,7 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-            color: _mint.withOpacity(0.1), shape: BoxShape.circle),
+            color: _mint.withValues(alpha: 0.1), shape: BoxShape.circle),
         child: Icon(Icons.receipt_long_outlined, color: _emerald),
       ),
        title: Text("Customer #${order.user?.name ?? 'Unknown'}",
@@ -378,7 +381,7 @@ class _ShopsOrdersPageState extends State<ShopsOrdersPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.eco_outlined, size: 60, color: _mint.withOpacity(0.2)),
+          Icon(Icons.eco_outlined, size: 60, color: _mint.withValues(alpha: 0.2)),
           const SizedBox(height: 12),
           const Text("No orders found in this section",
               style: TextStyle(color: Colors.grey)),

@@ -420,7 +420,7 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
                 final optionsText = (item.optionGroups.isNotEmpty)
                     ? item.optionGroups
                     .map((g) => g.selectedOption)
-                    .where((s) => s != null && s.isNotEmpty)
+                    .where((s) => s.isNotEmpty)
                     .join(', ')
                     : '';
                 return {

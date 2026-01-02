@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../models/aba_qr_response.dart';
 import '../../../../server/aba_aof_screen.dart';
 import '../../../../server/local_notification_service.dart';
+import '../../store_screen/order_success_screen.dart';
 import 'payment_failed_page.dart';
 import 'payment_success_page.dart';
 
@@ -137,23 +138,31 @@ class _AbaPaymentScreenState extends State<AbaPaymentScreen> {
 
     _statusTimer?.cancel();
 
-    // ✅ Local notification ONLY on iOS Simulator
     if (status == 'paid' && Platform.isIOS && !Platform.isMacOS) {
       await LocalNotificationService.showPaymentSuccess();
     }
 
     if (!mounted) return;
 
+    final Map<String, dynamic> orderData = {
+      'id': widget.orderId,
+      'status': status == 'paid' ? 'Paid' : 'Failed',
+      'placed_at': DateTime.now().toIso8601String(),
+      'subtotal': widget.amount,
+      'discount': 0,
+      'total': widget.amount,
+      'payment_method': 'ABA',
+      'transaction_id': qr?.tranId,
+    };
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => PaymentSuccessPage(
-          orderId: qr?.tranId,
-          userId: widget.userId ?? 0,
-        ),
+        builder: (_) => OrderSuccessScreen(orderData: orderData),
       ),
     );
   }
+
 
   // =========================
   // Open ABA App

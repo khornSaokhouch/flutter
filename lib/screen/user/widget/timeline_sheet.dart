@@ -63,7 +63,7 @@ Widget _buildTimelineStep({
                 color: isCompleted ? freshMintGreen : Colors.white,
                 shape: BoxShape.circle,
                 border: isCompleted ? null : Border.all(color: Colors.grey[300]!, width: 2),
-                boxShadow: isActive ? [BoxShadow(color: freshMintGreen.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                boxShadow: isActive ? [BoxShadow(color: freshMintGreen.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2))] : [],
               ),
               child: isCompleted ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
             ),

@@ -14,7 +14,7 @@ Map<String, dynamic> buildOrderDataMap({
     final imageUrl = item.item?.imageUrl ?? '';
     final optionsText = (item.optionGroups)
         .map((g) => g.selectedOption)
-        .where((s) => s != null && s.isNotEmpty)
+        .where((s) => s.isNotEmpty)
         .join(', ');
 
     final int lineTotalCents = (item.unitpriceCents) * (item.quantity);

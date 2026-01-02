@@ -25,7 +25,6 @@ class LoginBottomSheet extends StatefulWidget {
 
 class _LoginBottomSheetState extends State<LoginBottomSheet> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 

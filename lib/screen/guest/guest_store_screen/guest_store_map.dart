@@ -20,7 +20,6 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> with TickerProvid
   int _currentIndex = 0;
 
   final Color _primaryGreen = const Color(0xFF2E7D32);
-  final Color _accentGreen = const Color(0xFF4CAF50);
   final Color _surfaceWhite = const Color(0xFFF8F9FA);
 
   @override
