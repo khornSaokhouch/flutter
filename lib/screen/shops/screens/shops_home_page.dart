@@ -4,6 +4,9 @@ import 'package:frontend/core/widgets/global_notification_banner.dart';
 import 'package:frontend/screen/shops/screens/categories_by_shop.dart';
 import '../../../response/shops_response/shop_response.dart';
 import '../../../server/shops_server/shop_service.dart';
+import '../widgets/shop_drawer.dart';
+ // ✅ Import the new drawer file
+
 
 // --- LOGO LOADING WIDGET ---
 class LogoLoading extends StatefulWidget {
@@ -81,41 +84,11 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
     return Scaffold(
       backgroundColor: bgGrey,
       
-      // ✅ 1. FIXED: Added the Drawer property
-      drawer: Drawer(
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: textDark),
-              accountName: const Text(
-                "Manager Hub",
-                style: TextStyle(
-                  color: Colors.white, 
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              accountEmail: Text("User ID: ${widget.userId}",
-              style: TextStyle(
-                  color: Colors.white, 
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              currentAccountPicture: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.person)),
-            ),
-            ListTile(leading: const Icon(Icons.home), title: const Text("Home"), onTap: () => Navigator.pop(context)),
-            const Divider(),
-            ..._allShops.map((shop) => ListTile(
-              leading: const Icon(Icons.store),
-              title: Text(shop.name),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateToShop(shop.id);
-              },
-            )).toList(),
-          ],
-        ),
+      // ✅ Using the extracted ShopDrawer widget
+      drawer: ShopDrawer(
+        userId: widget.userId,
+        shops: _allShops,
+        onShopTap: _navigateToShop,
       ),
 
       appBar: AppBar(
@@ -123,7 +96,6 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
         elevation: 0,
         centerTitle: true,
         title: Text("My Shops", style: TextStyle(color: textDark, fontWeight: FontWeight.bold)),
-        // ✅ 2. FIXED: Wrapped IconButton in a Builder to correctly open the drawer
         leading: Builder(
           builder: (context) => IconButton(
             icon: Icon(Icons.menu, color: textDark),
@@ -131,19 +103,15 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
           ),
         ),
         actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.grey[200],
-            child: const Icon(
-              Icons.person,
-              color: Colors.green, // ✅ green icon
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.grey[200],
+              child: const Icon(Icons.person, color: Colors.green),
             ),
           ),
-        ),
-      ],
-
+        ],
       ),
 
       body: RefreshIndicator(
@@ -154,7 +122,6 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- OVERVIEW SECTION ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -163,7 +130,6 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
                 ],
               ),
               
-
               const SizedBox(height: 24),
 
               // --- SEARCH BAR ---
@@ -172,7 +138,7 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.green.withValues(alpha: .05), blurRadius: 10, offset: const Offset(0, 5))],
+                  boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -218,30 +184,17 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, String subtitle, IconData icon, {bool isGreen = true}) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))]),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [Icon(icon, size: 14, color: Colors.grey), const SizedBox(width: 6), Text(title, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey))]),
-            const SizedBox(height: 8),
-            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textDark)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: TextStyle(fontSize: 10, color: isGreen ? successGreen : Colors.grey, fontWeight: isGreen ? FontWeight.bold : FontWeight.normal)),
-          ],
-        ),
-      ),
-    );
-  }
+  // --- LOCATION CARD FETCHING FROM API ---
+  Widget _buildLocationCard(dynamic shop) {
+    bool isOpen = true; 
 
-  Widget _buildLocationCard(shop) {
-    bool isOpen = true;
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(16), 
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))]
+      ),
       child: Column(
         children: [
           Stack(
@@ -252,7 +205,17 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
                     ? Image.network(shop.imageUrl!, height: 160, width: double.infinity, fit: BoxFit.cover)
                     : Container(height: 160, color: Colors.grey[300], child: const Icon(Icons.store, size: 50)),
               ),
-              Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withOpacity(0.7)])))),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter, 
+                      end: Alignment.bottomCenter, 
+                      colors: [Colors.transparent, Colors.black.withOpacity(0.8)]
+                    )
+                  )
+                )
+              ),
               Positioned(
                 top: 12, right: 12,
                 child: Container(
@@ -261,14 +224,41 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
                   child: Text(isOpen ? "Open" : "Closed", style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ),
-              Positioned(bottom: 12, left: 16, child: Text(shop.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+              Positioned(
+                bottom: 12, 
+                left: 16, 
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(shop.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, color: Colors.white70, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          shop.location ?? "No location provided", 
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           InkWell(
             onTap: () => _navigateToShop(shop.id),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text("Manage Shop", style: TextStyle(color: coffeeAccent, fontWeight: FontWeight.bold)), const SizedBox(width: 4), Icon(Icons.arrow_forward_rounded, size: 16, color: coffeeAccent)]),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center, 
+                children: [
+                  Text("Manage Shop", style: TextStyle(color: coffeeAccent, fontWeight: FontWeight.bold)), 
+                  const SizedBox(width: 4), 
+                  Icon(Icons.arrow_forward_rounded, size: 16, color: coffeeAccent)
+                ]
+              ),
             ),
           ),
         ],

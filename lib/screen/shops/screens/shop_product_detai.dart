@@ -280,10 +280,29 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
                         
                         // Title
                         Text(
-                          itemName,
-                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _espressoBrown, height: 1.1),
+                        itemName,
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: _espressoBrown,
+                          height: 1.1,
                         ),
-                        const SizedBox(height: 12),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // // Description under name
+                      if (itemDesc.isNotEmpty)
+                        Text(
+                          itemDesc,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.grey[700],
+                            height: 1.4,
+                          ),
+                        ),
+
+                      const SizedBox(height: 12),
                         
                         // Availability Pill
                         _buildStatusPill(isItemAvailable),
