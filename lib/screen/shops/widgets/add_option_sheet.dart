@@ -27,8 +27,10 @@ class AddOptionSheet extends StatefulWidget {
 class _AddOptionSheetState extends State<AddOptionSheet> {
   late Future<ShopOptions> futureItem;
   bool _isSubmitting = false;
+  
+  // Track selected options: Map<optionId, {group, option}>
+  final Map<int, Map<String, dynamic>> _selectedOptions = {};
 
-  // Theme
   final Color _primaryGreen = const Color(0xFF4E8D7C);
   final Color _darkText = const Color(0xFF1A1A1A);
 
@@ -38,10 +40,8 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
     futureItem = ShopItemOptionStatusService.getItemDetails(widget.itemId);
   }
 
-  bool isOptionActive(dynamic v) {
-    if (v == null) return false;
-    return v == 1 || v == true;
-  }
+  // --- LOGIC HELPERS ---
+  bool isOptionActive(dynamic v) => v == 1 || v == true;
 
   int toCents(dynamic v) {
     if (v == null) return 0;
@@ -51,42 +51,75 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
     return 0;
   }
 
-  String fmt(int cents) {
-    return "\$${(cents / 100).toStringAsFixed(2)}";
+  String fmt(int cents) => "\$${(cents / 100).toStringAsFixed(2)}";
+
+  void _toggleOptionSelection(OptionGroup g, OptionItem o) {
+    setState(() {
+      final optionId = o.id ?? 0;
+      if (_selectedOptions.containsKey(optionId)) {
+        _selectedOptions.remove(optionId);
+      } else {
+        _selectedOptions[optionId] = {'group': g, 'option': o};
+      }
+    });
   }
 
-  Future<bool> _onOptionSelected(OptionGroup g, OptionItem o) async {
+  void _selectAllOptions(List<OptionGroup> groups) {
+    int selectableCount = _countAllSelectableOptions(groups);
+    setState(() {
+      if (_selectedOptions.length == selectableCount) {
+        _selectedOptions.clear(); // Deselect all
+      } else {
+        for (final g in groups) {
+          for (final o in g.options ?? []) {
+            final id = o.id ?? 0;
+            if (!widget.existingOptionIds.contains(id) && o.name != null && o.name!.isNotEmpty) {
+              _selectedOptions[id] = {'group': g, 'option': o};
+            }
+          }
+        }
+      }
+    });
+  }
+
+  int _countAllSelectableOptions(List<OptionGroup> groups) {
+    int count = 0;
+    for (final g in groups) {
+      for (final o in g.options ?? []) {
+        final id = o.id ?? 0;
+        if (!widget.existingOptionIds.contains(id) && o.name != null && o.name!.isNotEmpty) count++;
+      }
+    }
+    return count;
+  }
+
+  Future<void> _addAllSelectedOptions() async {
+    if (_selectedOptions.isEmpty) return;
+    setState(() => _isSubmitting = true);
+    int successCount = 0;
+
     try {
-      setState(() => _isSubmitting = true);
-
-      await ShopItemOptionStatusService.createStatus(
-        shopId: widget.shopId,
-        itemId: widget.itemId,
-        itemOptionGroupId: o.itemOptionGroupId ?? (g.id ?? 0),
-        itemOptionId: o.id ?? 0,
-        status: true,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Option successfully added'),
-            backgroundColor: _primaryGreen,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      for (final entry in _selectedOptions.values) {
+        final g = entry['group'] as OptionGroup;
+        final o = entry['option'] as OptionItem;
+        try {
+          await ShopItemOptionStatusService.createStatus(
+            shopId: widget.shopId,
+            itemId: widget.itemId,
+            itemOptionGroupId: o.itemOptionGroupId ?? (g.id ?? 0),
+            itemOptionId: o.id ?? 0,
+            status: true,
+          );
+          widget.onSelect(g.toJson(), o.toJson());
+          successCount++;
+        } catch (e) {
+          debugPrint('Error: $e');
+        }
       }
-
-      widget.onSelect(g.toJson(), o.toJson());
-      widget.onDone?.call();
-
-      return true;
-    } catch (e) {
-      debugPrint('Error creating status: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      if (mounted && successCount > 0) {
+        widget.onDone?.call();
+        Navigator.pop(context, true);
       }
-      return false;
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -98,7 +131,7 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: FutureBuilder<ShopOptions>(
         future: futureItem,
@@ -107,154 +140,159 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
             return Center(child: CircularProgressIndicator(color: _primaryGreen));
           }
 
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.red)));
-          }
+          final groups = snapshot.data?.optionGroups ?? [];
+          final totalSelectable = _countAllSelectableOptions(groups);
+          final isAllSelected = _selectedOptions.length == totalSelectable && totalSelectable > 0;
 
-          final item = snapshot.data!;
-          final groups = item.optionGroups ?? [];
-
-          return Column(
+          return Stack(
             children: [
-              const SizedBox(height: 12),
-              // Drag Handle
-              Container(width: 48, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-              
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                child: Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+                  
+                  // --- HEADER WITH SELECT ALL AT TOP RIGHT ---
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 15, 8, 10),
+                    child: Row(
                       children: [
-                        Text("Add Options", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _darkText)),
-                        const SizedBox(height: 4),
-                        const Text("Enable options for this product", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                      ],
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      icon: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
-                        child: const Icon(Icons.close, size: 20),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: Colors.grey[200]),
-
-              // Content
-              Flexible(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  itemCount: groups.length,
-                  itemBuilder: (context, index) {
-                    final g = groups[index];
-                    final options = g.options ?? [];
-                    final visibleOptions = options.where((o) {
-                      final id = o.id ?? 0;
-                      final hasName = o.name != null && o.name!.trim().isNotEmpty;
-                      return !widget.existingOptionIds.contains(id) && hasName;
-                    }).toList();
-
-                    if (visibleOptions.isEmpty) return const SizedBox.shrink();
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8),
-                          child: Row(
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(width: 4, height: 16, decoration: BoxDecoration(color: _primaryGreen, borderRadius: BorderRadius.circular(2))),
-                              const SizedBox(width: 8),
+                              Text("Add Options", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _darkText)),
                               Text(
-                                g.name ?? 'Group',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _darkText),
+                                _selectedOptions.isEmpty ? "Pick one or more" : "${_selectedOptions.length} items selected",
+                                style: TextStyle(color: _selectedOptions.isEmpty ? Colors.grey : _primaryGreen, fontSize: 13, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
                         ),
-                        ...visibleOptions.map((o) {
-                          final isActive = isOptionActive(o.isActive);
-                          final priceAdj = toCents(o.priceAdjustCents);
-                          final priceLabel = priceAdj == 0 ? '' : '+${fmt(priceAdj)}';
-                          final imageUrl = o.iconUrl;
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))
-                              ],
-                              border: Border.all(color: Colors.grey.shade200),
+                        if (totalSelectable > 0)
+                          TextButton.icon(
+                            onPressed: () => _selectAllOptions(groups),
+                            icon: Icon(isAllSelected ? Icons.deselect : Icons.select_all, size: 18, color: _primaryGreen),
+                            label: Text(
+                              isAllSelected ? "None" : "All",
+                              style: TextStyle(color: _primaryGreen, fontWeight: FontWeight.w800),
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
-                              child: ListTile(
-                                enabled: isActive && !_isSubmitting,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                leading: Container(
-                                  width: 48, 
-                                  height: 48,
-                                  decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
-                                  child: (imageUrl != null && imageUrl.isNotEmpty)
-                                      ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(12),
-                                          child: Image.network(
-                                            imageUrl,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 20, color: Colors.grey[400]),
-                                          ),
-                                        )
-                                      : Icon(Icons.local_offer_rounded, size: 24, color: _primaryGreen.withOpacity(0.5)),
-                                ),
-                                title: Text(o.name ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                                subtitle: priceLabel.isNotEmpty 
-                                  ? Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(color: _primaryGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                            child: Text(priceLabel, style: TextStyle(color: _primaryGreen, fontWeight: FontWeight.bold, fontSize: 12)),
-                                          ),
-                                        ],
-                                      ),
-                                    ) 
-                                  : null,
-                                trailing: ElevatedButton(
-                                  onPressed: (isActive && !_isSubmitting)
-                                      ? () async {
-                                          final ok = await _onOptionSelected(g, o);
-                                          if (mounted) Navigator.pop(context, ok);
-                                        }
-                                      : null,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _primaryGreen,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                  child: const Text("Add"),
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
+                          ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close, color: Colors.black54),
+                        ),
                       ],
-                    );
-                  },
+                    ),
+                  ),
+                  const Divider(height: 1),
+
+                  // --- LIST ---
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
+                      itemCount: groups.length,
+                      itemBuilder: (context, index) {
+                        final g = groups[index];
+                        final visibleOptions = (g.options ?? []).where((o) {
+                          final id = o.id ?? 0;
+                          return !widget.existingOptionIds.contains(id) && o.name != null && o.name!.isNotEmpty;
+                        }).toList();
+
+                        if (visibleOptions.isEmpty) return const SizedBox.shrink();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 24, bottom: 12, left: 4),
+                              child: Text(g.name?.toUpperCase() ?? 'GROUP', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Colors.grey, letterSpacing: 1.5)),
+                            ),
+                            ...visibleOptions.map((o) {
+                              final optionId = o.id ?? 0;
+                              final isSelected = _selectedOptions.containsKey(optionId);
+                              final priceAdj = toCents(o.priceAdjustCents);
+
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? _primaryGreen.withOpacity(0.06) : Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: isSelected ? _primaryGreen : Colors.grey[200]!, width: 2),
+                                ),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: !_isSubmitting ? () => _toggleOptionSelection(g, o) : null,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 48, height: 48,
+                                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
+                                          child: (o.iconUrl != null && o.iconUrl!.isNotEmpty)
+                                              ? ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(o.iconUrl!, fit: BoxFit.cover))
+                                              : Icon(Icons.local_cafe_outlined, color: _primaryGreen.withOpacity(0.4)), // ✅ Fixed Icon
+                                        ),
+                                        const SizedBox(width: 15),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(o.name ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                              const SizedBox(height: 2),
+                                              Text(priceAdj == 0 ? "Standard" : "+ ${fmt(priceAdj)}", style: TextStyle(color: _primaryGreen, fontSize: 13, fontWeight: FontWeight.w600)),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          width: 26, height: 26,
+                                          decoration: BoxDecoration(
+                                            color: isSelected ? _primaryGreen : Colors.white,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: isSelected ? _primaryGreen : Colors.grey[300]!, width: 2),
+                                          ),
+                                          child: isSelected ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              // --- STICKY FOOTER ---
+              Positioned(
+                bottom: 0, left: 0, right: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(25, 20, 25, 40),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 15, offset: const Offset(0, -5))],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting || _selectedOptions.isEmpty ? null : _addAllSelectedOptions,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryGreen,
+                      disabledBackgroundColor: Colors.grey[300],
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      elevation: 0,
+                    ),
+                    child: _isSubmitting 
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                      : Text(
+                          _selectedOptions.isEmpty ? "Select to Add" : "Confirm ${_selectedOptions.length} Selections",
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                        ),
+                  ),
                 ),
               ),
             ],
