@@ -124,7 +124,7 @@ class MyShopPage extends StatelessWidget {
                 crossAxisSpacing: 10,
                 children: [
                   _buildQuickAction(Icons.inventory_2_outlined, "Products", () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProductsPage()));
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProductsPage(shopId: shopId)));
                   }),
                   _buildQuickAction(Icons.group_outlined, "Customers", () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => CustomersPage()));
@@ -146,73 +146,7 @@ class MyShopPage extends StatelessWidget {
             ),
             const SizedBox(height: 15),
 
-            // --- Popular Products Header ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Popular Products",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _deepGreen),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text("View All", style: TextStyle(color: _emerald, fontWeight: FontWeight.bold)),
-                  )
-                ],
-              ),
-            ),
 
-            // --- Product List ---
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: 4,
-              itemBuilder: (context, index) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
-                    ],
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(12),
-                    leading: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: _softBg,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.image_outlined, color: _emerald.withOpacity(0.5)),
-                    ),
-                    title: Text(
-                      "Premium Gadget #${index + 1}",
-                      style: TextStyle(fontWeight: FontWeight.w800, color: _deepGreen),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        children: [
-                          _buildSmallBadge("Stock: 24", Colors.blueGrey),
-                          const SizedBox(width: 8),
-                          _buildSmallBadge("Sales: 120", _mint),
-                        ],
-                      ),
-                    ),
-                    trailing: Text(
-                      "\$49.99",
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: _emerald),
-                    ),
-                  ),
-                );
-              },
-            ),
             const SizedBox(height: 100), // Space for Floating Button
           ],
         ),
