@@ -7,7 +7,7 @@ import '../../../models/item_model.dart'; // The file containing your new models
 import '../../../routes/footer_nav_routes.dart';
 import '../../../server/shop_service.dart';
 import '../../../server/item_service.dart';
-import '../../login_botton_sheet.dart';
+import '../../auth/login_bottom_sheet.dart';
 import '../../user/store_screen/search_page_screen.dart';
 import '../guest_screen.dart';
 import '../guest_store_screen/select_store_page.dart';
@@ -129,10 +129,7 @@ class _GuestMenuScreen extends State<GuestMenuScreen> {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (BuildContext context) {
-          return Material(
-            type: MaterialType.transparency,
-            child: LoginBottomSheet(),
-          );
+          return const LoginBottomSheet();
         },
       );
     }
