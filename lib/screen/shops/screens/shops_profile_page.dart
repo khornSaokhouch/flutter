@@ -137,74 +137,53 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
       backgroundColor: _softBg,
       body: CustomScrollView(
         slivers: [
-          // Banner AppBar
+          // Banner AppBar without background image
           SliverAppBar(
             backgroundColor: _deepGreen,
-            expandedHeight: 260,
+            expandedHeight: 180,
             pinned: true,
             automaticallyImplyLeading: false,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // High-end Background Image
-                  Image.network(
-                    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop",
-                    fit: BoxFit.cover,
-                  ),
-                  // Gradient Tint for visibility
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _deepGreen.withOpacity(0.9),
-                          _emerald.withOpacity(0.4)
-                        ],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                  // Shop Info
-                  FutureBuilder<Shop?>(
-                    future: _shopFuture,
-                    builder: (context, snap) {
-                      final shop = snap.data;
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 40),
-                          Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                                color: Colors.white30, shape: BoxShape.circle),
-                            child: CircleAvatar(
-                              radius: 45,
-                              backgroundColor: Colors.white,
-                              backgroundImage: (shop?.imageUrl != null &&
-                                      shop!.imageUrl!.isNotEmpty)
-                                  ? NetworkImage(shop.imageUrl!)
-                                  : const NetworkImage(
-                                      "https://via.placeholder.com/150"),
-                            ),
+              background: FutureBuilder<Shop?>(
+                future: _shopFuture,
+                builder: (context, snap) {
+                  final shop = snap.data;
+                  return Container(
+                    color: _deepGreen, // solid background
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 40),
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                              color: Colors.white30, shape: BoxShape.circle),
+                          child: CircleAvatar(
+                            radius: 45,
+                            backgroundColor: Colors.white,
+                            backgroundImage: (shop?.imageUrl != null &&
+                                    shop!.imageUrl!.isNotEmpty)
+                                ? NetworkImage(shop.imageUrl!)
+                                : const NetworkImage(
+                                    "https://via.placeholder.com/150"),
                           ),
-                          const SizedBox(height: 12),
-                          Text(shop?.name ?? "Shop Owner",
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900)),
-                          Text(shop?.location ?? "Primary Shop Account",
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500)),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(shop?.name ?? "Shop Owner",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900)),
+                        Text(shop?.location ?? "Primary Shop Account",
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -212,15 +191,14 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
           // FIXED STATS DASHBOARD (CENTERED)
           SliverToBoxAdapter(
             child: Container(
-              margin: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 16), // add vertical margin
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: _deepGreen.withOpacity(0.08),
+                    color: _deepGreen.withValues(alpha: 0.08),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -233,19 +211,19 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
                       Icons.insights_rounded,
                       _formatMoney(_todaySalesCents),
                       "Today's Revenue",
-                      iconBgColor: _deepGreen.withOpacity(0.1),
+                      iconBgColor: _deepGreen.withValues(alpha: 0.1),
                     ),
                   ),
                   Container(
                       height: 60,
                       width: 1,
-                      color: Colors.grey.withOpacity(0.15)),
+                      color: Colors.grey.withValues(alpha: 0.15)),
                   Expanded(
                     child: _buildStatItem(
                       Icons.auto_graph_rounded,
                       _totalOrders.toString(),
                       "Total Orders",
-                      iconBgColor: _deepGreen.withOpacity(0.1),
+                      iconBgColor: _deepGreen.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -260,14 +238,18 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
               _buildMenuTile(Icons.storefront_rounded, "Shop Profile",
                   "Edit info, location, & hours", () {
                 Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => EditInfoPage(shopId: widget.shopId,)));
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => EditInfoPage(shopId: widget.shopId,)));
               }),
               _buildMenuTile(Icons.badge_outlined, "Staff Management",
                   "Manage employee access", () {}),
               _buildMenuTile(Icons.bar_chart_rounded, "Advanced Reports",
                   "View sales & trends", () {
                 Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => ReportsPage(shopId: widget.shopId,)));
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => ReportsPage(shopId: widget.shopId,)));
               }),
 
               _buildSectionTitle("Account & Support"),
@@ -303,7 +285,7 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
                           letterSpacing: 1.1)),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.redAccent.withOpacity(0.08),
+                    backgroundColor: Colors.redAccent.withValues(alpha: 0.08),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
@@ -324,15 +306,14 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.all(16), // larger icon padding
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: iconBgColor,
             shape: BoxShape.circle,
           ),
-          child:
-              Icon(icon, color: _deepGreen, size: 28), // slightly bigger icon
+          child: Icon(icon, color: _deepGreen, size: 28),
         ),
-        const SizedBox(height: 16), // more spacing
+        const SizedBox(height: 16),
         Text(
           value,
           style: const TextStyle(
