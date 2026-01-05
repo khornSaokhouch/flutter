@@ -26,7 +26,7 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   // --- nav / selection
-  int _selectedIndex = 2;
+  final int _selectedIndex = 2;
   String? _selectedCategoryId;
 
   // --- toggle / loading / data

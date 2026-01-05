@@ -66,11 +66,10 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                   style: const TextStyle(color: Colors.grey),
                 ),
 
-              if (widget.userId != null)
-                Text(
-                  'User ID: ${widget.userId}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
+              Text(
+                'User ID: ${widget.userId}',
+                style: const TextStyle(color: Colors.grey),
+              ),
 
               const SizedBox(height: 40),
 

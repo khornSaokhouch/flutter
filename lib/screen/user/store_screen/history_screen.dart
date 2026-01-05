@@ -84,7 +84,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   // --- Filter Logic: ONLY Completed ---
   List<OrderModel> get _completedOrders {
     return _orders.where((o) {
-      final status = (o.status ?? '').toLowerCase();
+      final status = (o.status).toLowerCase();
       // Strictly checking for completed statuses
       return status.contains('ready') ||
           status.contains('completed') ||
@@ -137,7 +137,6 @@ void _initNotifications() {
   );
 
   final overlay = Overlay.of(context, rootOverlay: true);
-  if (overlay == null) return;
 
   overlay.insert(_bannerEntry!);
 

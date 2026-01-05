@@ -28,7 +28,6 @@ class _SelectStorePageState extends State<SelectStorePage> {
   Position? userPosition;
 
   // theme color used in cards
-  final Color _freshMintGreen = const Color(0xFF4E8D7C);
 
   @override
   void initState() {
@@ -170,7 +169,7 @@ class _SelectStorePageState extends State<SelectStorePage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06), // Soft shadow
+            color: Colors.black.withValues(alpha: 0.06), // Soft shadow
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),

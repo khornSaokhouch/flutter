@@ -79,7 +79,6 @@ class _ScanPayScreenState extends State<ScanPayScreen>
     );
 
     final overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) return;
 
     overlay.insert(_bannerEntry!);
 

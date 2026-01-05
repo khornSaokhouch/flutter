@@ -37,7 +37,7 @@ class _ProductRowState extends State<ProductRow> {
     // Image resolution
     String? imageUrl;
     try {
-      if (item?.imageUrl != null && item!.imageUrl.isNotEmpty) imageUrl = item!.imageUrl;
+      if (item?.imageUrl != null && item!.imageUrl.isNotEmpty) imageUrl = item.imageUrl;
     } catch (_) {}
 
     // Price resolution
@@ -60,7 +60,7 @@ class _ProductRowState extends State<ProductRow> {
     // Standard interpretation: inactive=1 is INACTIVE. inactive=0 is ACTIVE.
     // Based on user snippet `final bool isActive = (inactiveVal == 1);` -> This implies 1 is Active in your specific DB.
     // I will respect that specific line from your provided code.
-    final int inactiveVal = itemOwner.inactive ?? 0;
+    final int inactiveVal = itemOwner.inactive;
     final bool isActive = (inactiveVal == 1);
 
     return Container(

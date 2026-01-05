@@ -151,7 +151,6 @@ class _ShopsProductsPageState extends State<ShopsProductsPage> {
   }
 
   Widget _buildItemRow(Map<String, dynamic> item, int index) {
-    final id = item['id'] as int?;
     final ownerId = item['ownerId'] as int?;
     final name = (item['name'] ?? 'Unnamed').toString();
     final category = (item['category'] ?? '').toString();

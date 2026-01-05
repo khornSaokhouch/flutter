@@ -23,7 +23,6 @@ class _SearchPageState extends State<SearchPage> {
 
   // Modern Green Palette
   final Color _primaryGreen = const Color(0xFF2E7D32);
-  final Color _accentGreen = const Color(0xFF4CAF50);
   final Color _bgGrey = const Color(0xFFF8F9FA);
 
   @override
@@ -177,7 +176,7 @@ class _SearchPageState extends State<SearchPage> {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -242,7 +241,7 @@ class _SearchPageState extends State<SearchPage> {
               margin: const EdgeInsets.only(right: 16),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _primaryGreen.withOpacity(0.1),
+                color: _primaryGreen.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.add_rounded, color: _primaryGreen, size: 24),

@@ -194,7 +194,6 @@ class _CartScreenState extends State<CartScreen> {
     setState(() => _isApplying = true);
     try {
       final promotion = await PromotionService().getPromotionByCode(code);
-      if (promotion == null) throw PromotionNotFoundException();
       final adapter = promotion.toAdapter();
       if (adapter.shopId != widget.shopId) throw PromotionNotFoundException("Invalid shop.");
       final computed = _computeDiscountForAdapter(adapter, _subtotalLocal);
@@ -409,7 +408,7 @@ class _CartScreenState extends State<CartScreen> {
                     _buildSectionHeader("Order Details"),
                     const SizedBox(height: 12),
                     Container(
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))]),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]),
                       padding: const EdgeInsets.all(16),
                       child: Column(children: _cartItems.map((item) => _buildDetailItem(item)).toList()),
                     ),
@@ -473,7 +472,7 @@ class _CartScreenState extends State<CartScreen> {
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+        decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))]),
         child: SizedBox(
           height: 55,
           child: ElevatedButton(
@@ -509,7 +508,7 @@ class _CartScreenState extends State<CartScreen> {
               String modName = (mod is Map) ? (mod['selected_option'] ?? mod['option'] ?? '').toString() : "";
               if (modName.isEmpty) return const SizedBox.shrink();
               return Padding(padding: const EdgeInsets.only(top: 4.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(modName, style: const TextStyle(fontSize: 13, color: Colors.grey))]));
-            }).toList(),
+            }),
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Subtotal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)), Text("\$${(basePrice * qty).toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))]),
           ]),

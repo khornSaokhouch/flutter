@@ -77,7 +77,7 @@ class PromotionService {
     final headers = await _defaultHeaders();
 
     // normalize type for backend
-    final rawType = (promotion.type ?? '').toLowerCase();
+    final rawType = (promotion.type).toLowerCase();
     final backendType = (rawType == 'fixed' || rawType == 'fixedamount' || rawType == 'fixed_amount')
         ? 'fixedamount'
         : 'percent';
