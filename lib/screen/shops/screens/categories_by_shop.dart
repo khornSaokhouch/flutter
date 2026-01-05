@@ -322,60 +322,65 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                             color: Colors.white,
                             border: Border(
                                 top: BorderSide(color: Colors.grey.shade100))),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: (_selectedCategoryToAdd == null ||
-                                    _isAddingCategory)
-                                ? null
-                                : () async {
-                                    modalSetState(
-                                        () => _isAddingCategory = true);
-                                    try {
-                                      await _categoryShopController
-                                          .attachCategoryToShop(
-                                              shopId: widget.shopId,
-                                              categoryId:
-                                                  _selectedCategoryToAdd!);
-                                      await _loadCategories();
-                                      await _loadAvailableCategories();
-                                      if (!mounted) return;
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(SnackBar(
-                                              content:
-                                                  const Text('Category added!'),
-                                              backgroundColor: _freshMintGreen,
-                                              behavior:
-                                                  SnackBarBehavior.floating));
-                                    } catch (e) {
-                                      // error handling
-                                    } finally {
-                                      if (mounted)
-                                        modalSetState(
-                                            () => _isAddingCategory = false);
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: _espressoBrown,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                elevation: 0),
-                            child: _isAddingCategory
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2))
-                                : const Text("Confirm Selection",
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16)),
-                          ),
-                        ),
-                      )
+                      child: SizedBox(
+  width: double.infinity,
+  height: 50,
+  child: ElevatedButton(
+    onPressed: (_selectedCategoryToAdd == null || _isAddingCategory)
+        ? null
+        : () async {
+            modalSetState(() => _isAddingCategory = true);
+            try {
+              await _categoryShopController.attachCategoryToShop(
+                shopId: widget.shopId,
+                categoryId: _selectedCategoryToAdd!,
+              );
+              await _loadCategories();
+              await _loadAvailableCategories();
+              if (!mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Category added!'),
+                  backgroundColor: _freshMintGreen,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } finally {
+              if (mounted) {
+                modalSetState(() => _isAddingCategory = false);
+              }
+            }
+          },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: _freshMintGreen, // ✅ GREEN BUTTON
+      foregroundColor: Colors.white,
+      disabledBackgroundColor: _freshMintGreen.withOpacity(0.4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 0,
+    ),
+    child: _isAddingCategory
+        ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              color: Colors.white, // ✅ CLEAN ON GREEN
+              strokeWidth: 2,
+            ),
+          )
+        : const Text(
+            "Confirm Selection",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.white, // ✅ WHITE ON GREEN
+            ),
+          ),
+  ),
+),
+                      ),
                     ],
                   ),
                 );

@@ -5,34 +5,7 @@ import 'package:frontend/screen/shops/screens/categories_by_shop.dart';
 import '../../../response/shops_response/shop_response.dart';
 import '../../../server/shops_server/shop_service.dart';
 import '../widgets/shop_drawer.dart';
- // ✅ Import the new drawer file
-
-
-// --- LOGO LOADING WIDGET ---
-class LogoLoading extends StatefulWidget {
-  final double size;
-  final String imagePath;
-  const LogoLoading({super.key, this.size = 50.0, this.imagePath = 'assets/images/img_1.png'});
-  @override
-  State<LogoLoading> createState() => _LogoLoadingState();
-}
-
-class _LogoLoadingState extends State<LogoLoading> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 1000), vsync: this)..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.8, end: 1.1).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-  @override
-  void dispose() { _controller.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: ScaleTransition(scale: _animation, child: SizedBox(width: widget.size, height: widget.size, child: Image.asset(widget.imagePath, fit: BoxFit.contain))));
-  }
-}
+import '../../../core/widgets/loading/logo_loading.dart'; // Import your component
 
 class ShopsHomePage extends StatefulWidget {
   final String userId;
@@ -48,10 +21,10 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
   List<dynamic> _filteredShops = [];
   final TextEditingController _searchController = TextEditingController();
 
-  final Color bgGrey = const Color(0xFFF8F9FA);
-  final Color textDark = const Color(0xFF1A1C1E);
-  final Color coffeeAccent = const Color(0xFFD97706);
-  final Color successGreen = const Color(0xFF10B981);
+  // Modern Forest Green Palette
+  final Color primaryGreen = const Color(0xFF1B5E20); 
+  final Color accentGreen = const Color(0xFF4CAF50);
+  final Color bgGrey = const Color(0xFFF0F4F1);
 
   @override
   void initState() {
@@ -68,205 +41,267 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
     return response;
   }
 
-  void _onSearch(String query) {
-    setState(() {
-      _filteredShops = _allShops.where((shop) => shop.name.toLowerCase().contains(query.toLowerCase())).toList();
-    });
-  }
-
-  Future<void> _reloadShops() async {
-    _searchController.clear();
-    setState(() { _futureShops = _loadShops(); });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bgGrey,
-      
-      // ✅ Using the extracted ShopDrawer widget
       drawer: ShopDrawer(
         userId: widget.userId,
         shops: _allShops,
         onShopTap: _navigateToShop,
       ),
+      body: FutureBuilder<ShopResponse>(
+        future: _futureShops,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return _buildLoadingState();
+          }
 
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: Text("My Shops", style: TextStyle(color: textDark, fontWeight: FontWeight.bold)),
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: textDark),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.grey[200],
-              child: const Icon(Icons.person, color: Colors.green),
-            ),
-          ),
-        ],
-      ),
-
-      body: RefreshIndicator(
-        onRefresh: _reloadShops,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Overview", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textDark)),
-                  Text("Updated just now", style: TextStyle(fontSize: 12, color: coffeeAccent)),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-
-              // --- SEARCH BAR ---
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _onSearch,
-                  decoration: const InputDecoration(icon: Icon(Icons.search), hintText: "Search shop by name...", border: InputBorder.none),
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              _buildAppBar(),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildWelcomeBanner(),
+                      const SizedBox(height: 25),
+                      _buildSearchField(),
+                      const SizedBox(height: 30),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Active Location", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF2E3E33))),
+                          Text("${_filteredShops.length} Shops", style: TextStyle(color: accentGreen, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                    ],
+                  ),
                 ),
               ),
-
-              const SizedBox(height: 32),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Your Locations", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textDark)),
-                  Text("View Map", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: coffeeAccent)),
-                ],
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildModernShopCard(_filteredShops[index]),
+                    childCount: _filteredShops.length,
+                  ),
+                ),
               ),
-
-              const SizedBox(height: 16),
-
-              // --- SHOP LIST ---
-              FutureBuilder<ShopResponse>(
-                future: _futureShops,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(padding: EdgeInsets.only(top: 50), child: LogoLoading(size: 80));
-                  }
-                  if (_filteredShops.isEmpty) {
-                    return const Center(child: Padding(padding: EdgeInsets.only(top: 40), child: Text("No shops found")));
-                  }
-                  return Column(children: _filteredShops.map((shop) => _buildLocationCard(shop)).toList());
-                },
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
-          ),
-        ),
+          );
+        },
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: textDark,
-        onPressed: () {},
-        child: const Icon(Icons.add, color: Colors.white),
+      
+    );
+  }
+
+  // --- NEW CUSTOM LOADING UI ---
+  Widget _buildLoadingState() {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          LogoLoading(size: 100), // YOUR PULSING LOGO
+          const SizedBox(height: 30),
+          const _LoadingTextUpdater(), // Moving text updates
+        ],
       ),
     );
   }
 
-  // --- LOCATION CARD FETCHING FROM API ---
-  Widget _buildLocationCard(dynamic shop) {
-    bool isOpen = true; 
+Widget _buildAppBar() {
+  return SliverAppBar(
+    expandedHeight: 0,
+    floating: true,
+    backgroundColor: Colors.white,
+    elevation: 0,
+    centerTitle: true,
+    title: const Text(
+      "MANAGER HUB",
+      style: TextStyle(
+        color: Colors.black,
+        fontWeight: FontWeight.w900,
+        fontSize: 14,
+        letterSpacing: 2,
+      ),
+    ),
+    leading: Builder(
+      builder: (context) => IconButton(
+        icon: const Icon(Icons.menu_rounded, color: Colors.black), // ✅ FIX
+        onPressed: () => Scaffold.of(context).openDrawer(),
+      ),
+    ),
+    actions: [
+      IconButton(
+        onPressed: () {},
+        icon: const Icon(
+          Icons.notifications_none_rounded,
+          color: Colors.black,
+        ),
+      ),
+    ],
+  );
+}
 
+
+  Widget _buildWelcomeBanner() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      width: double.infinity,
+      padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(16), 
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))]
+        gradient: LinearGradient(colors: [primaryGreen, const Color(0xFF0A2F10)]),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [BoxShadow(color: primaryGreen.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
+          const Text("Active Status", style: TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 5),
+          const Text("Hello, Chief Manager", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 15),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(12)),
+            child: const Text("All systems operational", style: TextStyle(color: Colors.white, fontSize: 11)),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15)],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() {
+          _filteredShops = _allShops.where((s) => s.name.toLowerCase().contains(val.toLowerCase())).toList();
+        }),
+        decoration: InputDecoration(
+          hintText: "Search branch...",
+          prefixIcon: Icon(Icons.search, color: accentGreen),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernShopCard(dynamic shop) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: InkWell(
+        onTap: () => _navigateToShop(shop.id),
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
+          ),
+          child: Column(
             children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: shop.imageUrl != null && shop.imageUrl!.isNotEmpty
-                    ? Image.network(shop.imageUrl!, height: 160, width: double.infinity, fit: BoxFit.cover)
-                    : Container(height: 160, color: Colors.grey[300], child: const Icon(Icons.store, size: 50)),
-              ),
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter, 
-                      end: Alignment.bottomCenter, 
-                      colors: [Colors.transparent, Colors.black.withOpacity(0.8)]
-                    )
-                  )
-                )
-              ),
-              Positioned(
-                top: 12, right: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: (isOpen ? Colors.green : Colors.grey).withOpacity(0.9), borderRadius: BorderRadius.circular(20)),
-                  child: Text(isOpen ? "Open" : "Closed", style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              Positioned(
-                bottom: 12, 
-                left: 16, 
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(shop.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, color: Colors.white70, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          shop.location ?? "No location provided", 
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                      ],
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                    child: shop.imageUrl != null && shop.imageUrl!.isNotEmpty
+                        ? Image.network(shop.imageUrl!, height: 200, width: double.infinity, fit: BoxFit.cover)
+                        : Container(height: 200, color: Colors.grey[200], child: const Icon(Icons.storefront_rounded, size: 50)),
+                  ),
+                  Positioned(
+                    top: 20, left: 20,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+                      child: const Row(
+                        children: [
+                          CircleAvatar(radius: 3, backgroundColor: Colors.green),
+                          SizedBox(width: 6),
+                          Text("ONLINE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(shop.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF2E3E33))),
+                          const SizedBox(height: 5),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on, size: 14, color: Colors.grey[400]),
+                              const SizedBox(width: 5),
+                              Text(shop.location ?? "Global Branch", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 50, width: 50,
+                      decoration: BoxDecoration(color: bgGrey, shape: BoxShape.circle),
+                      child: Icon(Icons.arrow_forward_ios_rounded, size: 18, color: primaryGreen),
+                    )
                   ],
                 ),
-              ),
+              )
             ],
           ),
-          InkWell(
-            onTap: () => _navigateToShop(shop.id),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center, 
-                children: [
-                  Text("Manage Shop", style: TextStyle(color: coffeeAccent, fontWeight: FontWeight.bold)), 
-                  const SizedBox(width: 4), 
-                  Icon(Icons.arrow_forward_rounded, size: 16, color: coffeeAccent)
-                ]
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   void _navigateToShop(int shopId) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => GlobalNotificationBanner(child: ShopsCategoriesPage(shopId: shopId))));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => 
+      GlobalNotificationBanner(child: ShopsCategoriesPage(shopId: shopId))));
+  }
+}
+
+// --- DYNAMIC LOADING TEXT COMPONENT ---
+class _LoadingTextUpdater extends StatefulWidget {
+  const _LoadingTextUpdater();
+  @override
+  State<_LoadingTextUpdater> createState() => _LoadingTextUpdaterState();
+}
+
+class _LoadingTextUpdaterState extends State<_LoadingTextUpdater> {
+  int _idx = 0;
+  late Timer _timer;
+  final List<String> _msgs = ["Brewing data...", "Grinding fresh info...", "Steam-cleaning UI...", "Pouring shop lists...", "Almost served!"];
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 2), (t) => setState(() => _idx = (_idx + 1) % _msgs.length));
+  }
+  @override
+  void dispose() { _timer.cancel(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      child: Text(_msgs[_idx], key: ValueKey(_msgs[_idx]), style: TextStyle(color: Colors.grey[500], fontSize: 14, fontStyle: FontStyle.italic)),
+    );
   }
 }

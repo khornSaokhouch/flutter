@@ -37,7 +37,7 @@ class AddCategoryButton extends StatelessWidget {
           size: 20,
         ),
         label: Text(
-          isOpen ? "Cancel" : "Add New Category",
+          isOpen ? "Cancel" : "Add Category",
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
