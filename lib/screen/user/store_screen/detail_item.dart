@@ -102,7 +102,7 @@ class _DetailItemState extends State<GuestDetailItem> {
 
     selectedOptions.forEach((key, option) {
       if (option != null) {
-        optionsPrice += option.priceAdjust;
+        optionsPrice += option.priceAdjust / 100;
       }
     });
 
@@ -318,7 +318,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                     padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _espressoBrown.withOpacity(0.1),
+                      color: _espressoBrown.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -339,8 +339,8 @@ class _DetailItemState extends State<GuestDetailItem> {
             runSpacing: 12,
             children: group.options.map((option) {
               final isSelected = selectedOptions[group.id]?.id == option.id;
-              final priceAdjust = option.priceAdjust;
-              final priceText = priceAdjust > 0
+              final double priceAdjust = option.priceAdjust / 100;
+              final String priceText = priceAdjust > 0
                   ? "+ \$${priceAdjust.toStringAsFixed(2)}"
                   : "";
 
