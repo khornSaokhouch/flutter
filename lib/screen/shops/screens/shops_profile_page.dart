@@ -10,7 +10,7 @@ import '../../../models/shop.dart';
 import '../../../server/order_service.dart';
 import '../../../server/shop_service.dart';
 import '../../guest/guest_screen.dart';
-import 'my_shop_page_screen.dart';
+import 'edit_info_page.dart';
 
 class ShopsProfilePage extends StatefulWidget {
   final int shopId;
@@ -34,7 +34,6 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
   // Stats
   int _todaySalesCents = 0;
   int _totalOrders = 0;
-  int _todayOrdersCounted = 0;
 
   @override
   void initState() {
@@ -62,7 +61,7 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
     final DateTime targetDate = countDate ?? now;
     int totalOrders = _orders.length;
     int todaySales = 0;
-    int todayCountedOrders = 0;
+    var todayCountedOrders = 0;
     final dateFmt = DateFormat('yyyy-MM-dd HH:mm:ss');
 
     for (final o in _orders) {
@@ -90,7 +89,6 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
       setState(() {
         _totalOrders = totalOrders;
         _todaySalesCents = todaySales;
-        _todayOrdersCounted = todayCountedOrders;
       });
     }
   }
@@ -262,7 +260,7 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
               _buildMenuTile(Icons.storefront_rounded, "Shop Profile",
                   "Edit info, location, & hours", () {
                 Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => MyShopPage(shopId: widget.shopId,)));
+                    context, MaterialPageRoute(builder: (_) => EditInfoPage(shopId: widget.shopId,)));
               }),
               _buildMenuTile(Icons.badge_outlined, "Staff Management",
                   "Manage employee access", () {}),
