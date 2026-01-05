@@ -118,10 +118,10 @@ class _ShopsHomePageState extends State<ShopsHomePage> {
 
 Widget _buildAppBar() {
   return SliverAppBar(
-    expandedHeight: 0,
-    floating: true,
+    pinned: true, // ✅ FIXED HEADER
+    floating: false,
     backgroundColor: Colors.white,
-    elevation: 0,
+    elevation: 1,
     centerTitle: true,
     title: const Text(
       "MANAGER HUB",
@@ -134,7 +134,7 @@ Widget _buildAppBar() {
     ),
     leading: Builder(
       builder: (context) => IconButton(
-        icon: const Icon(Icons.menu_rounded, color: Colors.black), // ✅ FIX
+        icon: const Icon(Icons.menu_rounded, color: Colors.black),
         onPressed: () => Scaffold.of(context).openDrawer(),
       ),
     ),

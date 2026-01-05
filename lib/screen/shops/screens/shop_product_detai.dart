@@ -308,14 +308,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
                         _buildStatusPill(isItemAvailable),
                         
                         const SizedBox(height: 12),
-                        
-                        // Description
-                        if (itemDesc.isNotEmpty)
-                          Text(
-                            itemDesc,
-                            style: TextStyle(color: Colors.grey[600], fontSize: 15, height: 1.5),
-                          ),
-                        
+                   
                         const SizedBox(height: 24),
                         const Divider(height: 1, color: Color(0xFFEEEEEE)),
                         const SizedBox(height: 24),
