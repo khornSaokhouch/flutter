@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:frontend/models/shop.dart';
 import 'package:frontend/server/shop_service.dart';
+import 'package:frontend/response/shops_response/shop_response.dart';
+import '../../../server/shops_server/shop_service.dart';
 
 class EditInfoPage extends StatefulWidget {
   final int shopId;
@@ -12,15 +16,17 @@ class EditInfoPage extends StatefulWidget {
 
 class _EditInfoPageState extends State<EditInfoPage> {
   final _formKey = GlobalKey<FormState>();
+  File? _selectedImage; // To store the newly picked image file
+
   late TextEditingController _nameController;
   late TextEditingController _locationController;
-  late TextEditingController _imageUrlController;
   late TextEditingController _googleMapUrlController;
   late TextEditingController _openTimeController;
   late TextEditingController _closeTimeController;
 
   late Future<Shop?> _shopFuture;
   bool _initialized = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -33,7 +39,6 @@ class _EditInfoPageState extends State<EditInfoPage> {
     if (_initialized) {
       _nameController.dispose();
       _locationController.dispose();
-      _imageUrlController.dispose();
       _googleMapUrlController.dispose();
       _openTimeController.dispose();
       _closeTimeController.dispose();
@@ -41,28 +46,53 @@ class _EditInfoPageState extends State<EditInfoPage> {
     super.dispose();
   }
 
-  void _saveChanges() async {
-    if (_formKey.currentState!.validate()) {
-      final data = {
-        'name': _nameController.text,
-        'location': _locationController.text,
-        'image_url': _imageUrlController.text,
-        'google_map_url': _googleMapUrlController.text,
-        'open_time': _openTimeController.text,
-        'close_time': _closeTimeController.text,
-      };
+  // Pick image from gallery
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (pickedFile != null) {
+      setState(() => _selectedImage = File(pickedFile.path));
+    }
+  }
 
-      final updatedShop = await ShopService.updateShop(widget.shopId, data);
+  Future<void> _saveChanges() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      if (updatedShop != null) {
+    setState(() => _saving = true);
+
+    // Prepare text payload
+    final payload = {
+      'name': _nameController.text.trim(),
+      'location': _locationController.text.trim(),
+      'google_map_url': _googleMapUrlController.text.trim(),
+      'open_time': _openTimeController.text.trim(),
+      'close_time': _closeTimeController.text.trim(),
+    };
+
+    try {
+      // NOTE: Ensure your ShopsService.updateShop accepts a File? imageFile parameter
+      final ShopResponse response = await ShopsService.updateShop(
+        shopId: widget.shopId,
+        payload: payload,
+        imageFile: _selectedImage,
+      );
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Shop information updated successfully!')),
+          SnackBar(
+            content: Text(response.message ?? 'Shop updated successfully'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update shop information.')),
-        );
+        Navigator.pop(context); // Optional: return to previous page
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -72,155 +102,197 @@ class _EditInfoPageState extends State<EditInfoPage> {
       initialTime: TimeOfDay.now(),
     );
     if (picked != null) {
-      setState(() {
-        controller.text = picked.format(context);
-      });
+      // Format to HH:mm (24h) to match Laravel validation regex
+      final String formattedTime =
+          '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      controller.text = formattedTime;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Edit Shop Info'),
-        elevation: 1,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: IconButton(
-              icon: const Icon(Icons.save_alt_outlined),
-              onPressed: _saveChanges,
-              tooltip: 'Save Changes',
-            ),
-          ),
-        ],
+        title: const Text('Edit Shop Info', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: FutureBuilder<Shop?>(
         future: _shopFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text('Failed to load shop data: ${snapshot.error}', textAlign: TextAlign.center,),
-            ));
-          } else if (snapshot.hasData) {
-            final shop = snapshot.data!;
-            if (!_initialized) {
-              _nameController = TextEditingController(text: shop.name);
-              _locationController = TextEditingController(text: shop.location);
-              _imageUrlController = TextEditingController(text: shop.imageUrl);
-              _googleMapUrlController = TextEditingController(text: shop.googleMapUrl);
-              _openTimeController = TextEditingController(text: shop.openTime ?? '');
-              _closeTimeController = TextEditingController(text: shop.closeTime ?? '');
-              _initialized = true;
-            }
+          }
+          if (snapshot.hasError || !snapshot.hasData) {
+            return const Center(child: Text('Shop details not found.'));
+          }
 
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const Text("CORE INFORMATION", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Shop Name',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.storefront),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a shop name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _locationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Location',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.location_on_outlined),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a location';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      const Divider(),
-                      const SizedBox(height: 16),
-                      const Text("營業時間 (BUSINESS HOURS)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _openTimeController,
-                              decoration: const InputDecoration(
-                                labelText: 'Opening Time',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.access_time),
-                              ),
-                              readOnly: true,
-                              onTap: () => _selectTime(context, _openTimeController),
+          final shop = snapshot.data!;
+
+          if (!_initialized) {
+            _nameController = TextEditingController(text: shop.name);
+            _locationController = TextEditingController(text: shop.location);
+            _googleMapUrlController = TextEditingController(text: shop.googleMapUrl ?? '');
+            _openTimeController = TextEditingController(text: shop.openTime ?? '');
+            _closeTimeController = TextEditingController(text: shop.closeTime ?? '');
+            _initialized = true;
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+
+                  // --- IMAGE SELECTOR SECTION ---
+                  Center(
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 130,
+                          height: 130,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.blue.shade100, width: 4),
+                            image: DecorationImage(
+                              fit: BoxFit.cover,
+                              image: _selectedImage != null
+                                  ? FileImage(_selectedImage!) as ImageProvider
+                                  : NetworkImage(shop.imageUrl ?? 'https://via.placeholder.com/150'),
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _closeTimeController,
-                              decoration: const InputDecoration(
-                                labelText: 'Closing Time',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.timer_off_outlined),
-                              ),
-                              readOnly: true,
-                              onTap: () => _selectTime(context, _closeTimeController),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _pickImage,
+                            child: CircleAvatar(
+                              backgroundColor: Theme.of(context).primaryColor,
+                              radius: 20,
+                              child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      const Divider(),
-                      const SizedBox(height: 16),
-                      const Text("LINKS & MEDIA", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _imageUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Image URL',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.image_outlined),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+
+                  _buildSectionTitle('General Information'),
+                  _buildTextField(
+                    controller: _nameController,
+                    label: 'Shop Name',
+                    icon: Icons.storefront_outlined,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _locationController,
+                    label: 'Address / Location',
+                    icon: Icons.location_on_outlined,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _googleMapUrlController,
+                    label: 'Google Maps Link',
+                    icon: Icons.map_outlined,
+                  ),
+
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Business Hours'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTimeField(_openTimeController, 'Opening Time'),
                       ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _googleMapUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Google Map URL',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.map_outlined),
-                        ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTimeField(_closeTimeController, 'Closing Time'),
                       ),
                     ],
                   ),
-                ),
+
+                  const SizedBox(height: 40),
+
+                  // --- SAVE BUTTON ---
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: _saving ? null : _saveChanges,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 0,
+                      ),
+                      child: _saving
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                        'Save Changes',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                ],
               ),
-            );
-          } else {
-            return const Center(child: Text('Shop not found.'));
-          }
+            ),
+          );
         },
+      ),
+    );
+  }
+
+  // --- HELPER WIDGETS ---
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.1),
+      ),
+    );
+  }
+
+  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon}) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.blue.shade700),
+        filled: true,
+        fillColor: Colors.blue.shade50.withOpacity(0.3),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+      ),
+      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+    );
+  }
+
+  Widget _buildTimeField(TextEditingController controller, String label) {
+    return TextFormField(
+      controller: controller,
+      readOnly: true,
+      onTap: () => _selectTime(context, controller),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: const Icon(Icons.access_time_rounded),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }

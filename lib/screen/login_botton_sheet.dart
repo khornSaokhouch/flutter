@@ -192,8 +192,8 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
     setState(() => _isLoading = true);
 
     try {
-      final clientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
-      final redirectUri = dotenv.env['GOOGLE_WEB_REDIRECT_URI'];
+      final clientId = dotenv.env['APPLE_SERVICE_ID'];
+      final redirectUri = dotenv.env['APPLE_REDIRECT_URI'];
 
       if (clientId == null || redirectUri == null) {
         throw Exception('Missing Apple Sign-In web configuration');
