@@ -43,7 +43,6 @@ class PushService {
 
     // 📩 Foreground notification
     FirebaseMessaging.onMessage.listen((message) {
-      print('🔔 Foreground push: ${message.notification?.title}');
     });
 
     // 📲 App opened from notification
@@ -77,7 +76,6 @@ class PushService {
     final data = message.data;
 
     if (data['type'] == 'payment') {
-      final orderId = data['order_id'];
 
       // navigatorKey.currentState
       //     ?.pushNamed('/orders/$orderId');

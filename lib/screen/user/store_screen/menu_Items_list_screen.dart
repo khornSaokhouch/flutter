@@ -276,7 +276,7 @@ class _MenuScreenState extends State<MenuScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withValues(alpha: 0.03),
                   offset: const Offset(0, 4),
                   blurRadius: 10,
                 )
@@ -296,7 +296,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.06), // Soft shadow
+                          color: Colors.black.withValues(alpha: 0.06), // Soft shadow
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -449,7 +449,7 @@ class _MenuScreenState extends State<MenuScreen> {
               height: 50,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isSelected ? _freshMintGreen.withOpacity(0.1) : Colors.white,
+                color: isSelected ? _freshMintGreen.withValues(alpha: 0.1) : Colors.white,
                 shape: BoxShape.circle,
               ),
               child: ClipRRect(

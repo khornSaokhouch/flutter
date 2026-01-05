@@ -3,7 +3,7 @@ import '../auth/login_bottom_sheet.dart';
 import '../guest/guest_store_screen/guest_no_store_nearby_screen.dart';
 import 'guest_home_screen.dart';
 import '../../routes/footer_nav_routes.dart';
-// import '../history/history_screen.dart';
+
 
 class GuestLayout extends StatefulWidget {
   final int selectedIndex;
@@ -28,7 +28,6 @@ class _GuestLayoutState extends State<GuestLayout> {
     const GuestScreen(), // Home tab
     const SizedBox.shrink(), // Order - restricted
     const GuestNoStoreNearbyScreen(),
-    // const HistoryScreen(), // Rewards - restricted
     const SizedBox.shrink(), // Account - restricted
   ];
 

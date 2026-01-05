@@ -87,8 +87,6 @@ class AuthService {
       );
 
       // ✅ DEBUG LOGS
-      print('Firebase login status: ${response.statusCode}');
-      print('Firebase login response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -105,11 +103,8 @@ class AuthService {
         return UserModel.fromJson(data);
       }
 
-      print('❌ Firebase login failed');
       return null;
-    } catch (e, stack) {
-      print('🔥 Firebase login error: $e');
-      print(stack);
+    } catch (e) {
       return null;
     }
   }
@@ -205,8 +200,6 @@ class AuthService {
           if (phone != null) 'phone': phone,
         }),
       );
-   print('Apple login status: ${response.statusCode}');
-      print('Apple login response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
