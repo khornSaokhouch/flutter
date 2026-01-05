@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';// Your login bottom sheet
-import '../login_botton_sheet.dart';
+import '../auth/login_bottom_sheet.dart';
 import '../guest/guest_store_screen/guest_no_store_nearby_screen.dart';
 import 'guest_home_screen.dart';
 import '../../routes/footer_nav_routes.dart';
@@ -42,10 +42,7 @@ class _GuestLayoutState extends State<GuestLayout> {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (BuildContext context) {
-          return Material(
-            type: MaterialType.transparency,
-            child: LoginBottomSheet(), // Your login bottom sheet widget
-          );
+          return const LoginBottomSheet(); // Your login bottom sheet widget
         },
       );
     }

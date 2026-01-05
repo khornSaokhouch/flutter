@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../login_botton_sheet.dart';
+import '../../auth/utils.dart';
 
 
 class GuestBanner extends StatelessWidget {
