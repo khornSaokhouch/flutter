@@ -12,8 +12,6 @@ import '../../../../models/aba_qr_response.dart';
 import '../../../../server/aba_aof_screen.dart';
 import '../../../../server/local_notification_service.dart';
 import '../../store_screen/order_success_screen.dart';
-import 'payment_failed_page.dart';
-import 'payment_success_page.dart';
 
 class AbaPaymentScreen extends StatefulWidget {
   final double amount;

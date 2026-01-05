@@ -7,7 +7,7 @@ class PromoDialog extends StatelessWidget {
   final VoidCallback onApply;
   final Color freshMintGreen;
 
-  const PromoDialog({Key? key, required this.promoController, required this.isApplying, required this.onApply, required this.freshMintGreen}) : super(key: key);
+  const PromoDialog({super.key, required this.promoController, required this.isApplying, required this.onApply, required this.freshMintGreen});
 
   @override
   Widget build(BuildContext context) {

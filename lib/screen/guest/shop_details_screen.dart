@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:frontend/screen/guest/guest_store_screen/guest_menu_Items_list_screen.dart';
 import 'package:geolocator/geolocator.dart';
 
 // --- Imports (Adjust paths as needed) ---
@@ -169,12 +170,29 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                 shopDistance: shop.distanceInKm,
                 isOpen: isOpen,
                 onOrderPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => MenuScreen(userId: widget.userId ?? 0, shopId: shop.id)),
-                  );
+                  if (widget.userId == null) {
+                    // 👤 Guest user
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GuestMenuScreen(shopId: shop.id),
+                      ),
+                    );
+                  } else {
+                    // 🔐 Logged-in user
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MenuScreen(
+                          userId: widget.userId!,
+                          shopId: shop.id,
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
+
             ],
           );
         },

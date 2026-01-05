@@ -91,7 +91,7 @@ class ShopInfoDetails extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: _freshMintGreen.withOpacity(0.1),
+            color: _freshMintGreen.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: _freshMintGreen, size: 22),

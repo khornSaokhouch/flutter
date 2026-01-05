@@ -91,7 +91,7 @@ Widget _buildBigCard({
 }) {
   return Container(
     height: 140,
-    decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 5))]),
+    decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 5))]),
     child: ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: Stack(
@@ -99,8 +99,8 @@ Widget _buildBigCard({
           Positioned.fill(
             child: isActive ? Image.asset(imagePath, fit: BoxFit.cover) : ColorFiltered(colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.saturation), child: Image.asset(imagePath, fit: BoxFit.cover)),
           ),
-          Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.transparent, Colors.black.withOpacity(0.8)], stops: const [0.0, 0.5, 1.0])))),
-          if (!isActive) Positioned.fill(child: Container(color: Colors.black.withOpacity(0.3))),
+          Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.transparent, Colors.black.withValues(alpha: 0.8)], stops: const [0.0, 0.5, 1.0])))),
+          if (!isActive) Positioned.fill(child: Container(color: Colors.black.withValues(alpha: 0.3))),
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -128,7 +128,7 @@ Widget _buildBigCard({
 /// Nearby header (title + see all)
 class NearbyHeader extends StatelessWidget {
   final VoidCallback onSeeAll;
-  const NearbyHeader({required this.onSeeAll, Key? key}) : super(key: key);
+  const NearbyHeader({required this.onSeeAll, super.key});
 
   @override
   Widget build(BuildContext context) {

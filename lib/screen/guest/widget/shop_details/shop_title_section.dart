@@ -50,7 +50,7 @@ class ShopTitleSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isOpen ? _freshMintGreen.withOpacity(0.1) : Colors.red.withOpacity(0.08),
+        color: isOpen ? _freshMintGreen.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
