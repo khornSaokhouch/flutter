@@ -44,9 +44,7 @@ class _LayoutState extends State<Layout> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-    final colorScheme = theme.colorScheme;
+    Theme.of(context);
 
     return Scaffold(
       // appBar: PreferredSize(

@@ -230,7 +230,7 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.06), // Soft shadow
+                          color: Colors.black.withValues(alpha: 0.06), // Soft shadow
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -274,14 +274,14 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
                     width: 140,
                     height: 140,
                     decoration: BoxDecoration(
-                      color: _freshMintGreen.withOpacity(0.08),
+                      color: _freshMintGreen.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
                       child: Icon(
                         Icons.location_off_rounded,
                         size: 60,
-                        color: _freshMintGreen.withOpacity(0.8),
+                        color: _freshMintGreen.withValues(alpha: 0.8),
                       ),
                     ),
                   ),
@@ -323,7 +323,7 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
                         borderRadius: BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: _freshMintGreen.withOpacity(0.4),
+                            color: _freshMintGreen.withValues(alpha: 0.4),
                             blurRadius: 10,
                             offset: const Offset(0, 5),
                           )

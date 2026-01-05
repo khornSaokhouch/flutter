@@ -15,7 +15,6 @@ class ShopDrawer extends StatelessWidget {
 
   // --- LOGOUT POPUP DIALOG ---
   void _showLogoutDialog(BuildContext context) {
-    const Color primaryGreen = Color(0xFF2E7D32);
 
     showDialog(
       context: context,

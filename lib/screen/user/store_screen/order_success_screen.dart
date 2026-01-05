@@ -53,7 +53,7 @@ class OrderSuccessScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // --- Safely extract data from orderData map ---
     final int id = (orderData['id'] is int) ? orderData['id'] as int : int.tryParse('${orderData['id'] ?? 0}') ?? 0;
-    final String status = (orderData['status'] ?? 'Placed').toString();
+    (orderData['status'] ?? 'Placed').toString();
 
     final DateTime placedAt = _parsePlacedAt(orderData['placedat'] ?? orderData['placed_at'] ?? orderData['placedAt']);
 

@@ -14,7 +14,7 @@ Widget BannerWidget() {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -62,7 +62,7 @@ class PickupDeliveryRow extends StatelessWidget {
   final VoidCallback onPickupTap;
   final VoidCallback onDeliveryTap;
 
-  const PickupDeliveryRow({required this.userId, required this.onPickupTap, required this.onDeliveryTap, Key? key}) : super(key: key);
+  const PickupDeliveryRow({required this.userId, required this.onPickupTap, required this.onDeliveryTap, super.key});
 
   @override
   Widget build(BuildContext context) {

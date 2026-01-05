@@ -70,7 +70,7 @@ class InlineOptionGroup extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _primaryGreen.withOpacity(0.1),
+                      color: _primaryGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8)
                     ),
                     child: Icon(Icons.layers_outlined, size: 20, color: _primaryGreen),
@@ -110,7 +110,7 @@ class InlineOptionGroup extends StatelessWidget {
                 children: options.map((o) {
                   final optionIsActive = isOptionActive(o['is_active']);
                   final available = optionIsActive && itemActive;
-                  final adjCents = toCents(o['price_adjust_cents']);
+                  final adjCents = toCents(o['price_adjust_cents']) ~/ 100;
                   final iconUrl = _safeString(o['icon_url']);
                   final statusId = o['status_id'];
 
@@ -121,7 +121,7 @@ class InlineOptionGroup extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))
                       ]
                     ),
                     child: Row(

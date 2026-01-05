@@ -111,7 +111,7 @@ class _EditInfoPageState extends State<EditInfoPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response.message ?? 'Success'), backgroundColor: primaryGreen),
+          SnackBar(content: Text(response.message), backgroundColor: primaryGreen),
         );
         Navigator.pop(context);
       }

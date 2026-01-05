@@ -73,7 +73,7 @@ class OwnerShopsCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                shop.name ?? "Shop Name",
+                                shop.name,
                                 style: const TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,

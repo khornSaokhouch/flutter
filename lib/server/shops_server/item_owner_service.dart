@@ -138,7 +138,7 @@ class ItemOwnerService {
 
     if (response.statusCode == 201 || response.statusCode == 200) {
       final body = response.body;
-      if (body == null || body.isEmpty) return <ItemOwnerModel>[];
+      if (body.isEmpty) return <ItemOwnerModel>[];
 
       dynamic decoded;
       try {

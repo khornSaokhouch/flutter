@@ -25,7 +25,6 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
 
   List<PromotionModel> promotions = [];
   bool _loading = false;
-  String? _error;
   final Map<int, bool> _itemBusy = {};
 
 
@@ -36,12 +35,11 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
   }
 
   Future<void> _loadPromotions() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() { _loading = true; });
     try {
       final promoList = await _service.getPromotionByShopId(widget.shopId);
       setState(() => promotions = promoList);
     } catch (e) {
-      setState(() => _error = e.toString());
     } finally {
       setState(() => _loading = false);
     }

@@ -54,7 +54,6 @@ class _PushTestPageState extends State<PushTestPage>
   /// 🔝 SLIDE-DOWN TOP BANNER
   void _showTopBanner(String title, String body) {
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     late OverlayEntry entry;
 

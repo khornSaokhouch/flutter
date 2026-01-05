@@ -24,7 +24,6 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
   // --- Emerald & Mint UI Palette ---
   final Color _deepGreen = const Color(0xFF1B4332);
   final Color _emerald = const Color(0xFF2D6A4F);
-  final Color _mint = const Color(0xFF52B788);
   final Color _softBg = const Color(0xFFF8FAF9);
 
   bool _isLoggingOut = false;
@@ -61,7 +60,7 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
     final DateTime targetDate = countDate ?? now;
     int totalOrders = _orders.length;
     int todaySales = 0;
-    var todayCountedOrders = 0;
+    late int _todayCountedOrders = 0;
     final dateFmt = DateFormat('yyyy-MM-dd HH:mm:ss');
 
     for (final o in _orders) {
@@ -82,7 +81,7 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
       }
       if (parsed != null && _isSameLocalDate(parsed, targetDate)) {
         todaySales += o.totalcents;
-        todayCountedOrders++;
+        _todayCountedOrders++;
       }
     }
     if (mounted) {
@@ -159,15 +158,33 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
                           padding: const EdgeInsets.all(3),
                           decoration: const BoxDecoration(
                               color: Colors.white30, shape: BoxShape.circle),
-                          child: CircleAvatar(
+                          child:CircleAvatar(
                             radius: 45,
                             backgroundColor: Colors.white,
-                            backgroundImage: (shop?.imageUrl != null &&
-                                    shop!.imageUrl!.isNotEmpty)
-                                ? NetworkImage(shop.imageUrl!)
-                                : const NetworkImage(
-                                    "https://via.placeholder.com/150"),
+                            child: ClipOval(
+                              child: Image.network(
+                                (shop?.imageUrl != null && shop!.imageUrl!.isNotEmpty)
+                                    ? shop.imageUrl!
+                                    : '', // empty → trigger errorBuilder
+                                width: 90,
+                                height: 90,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) {
+                                  return Container(
+                                    width: 90,
+                                    height: 90,
+                                    color: Colors.grey[200],
+                                    child: const Icon(
+                                      Icons.storefront,
+                                      size: 40,
+                                      color: Colors.grey,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                           ),
+
                         ),
                         const SizedBox(height: 12),
                         Text(shop?.name ?? "Shop Owner",

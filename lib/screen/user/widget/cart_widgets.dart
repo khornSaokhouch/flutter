@@ -17,7 +17,7 @@ Widget buildSectionHeader(String title) => Row(mainAxisAlignment: MainAxisAlignm
 ]);
 
 Widget buildItemsCard(List<Map<String,dynamic>> items, Widget Function(Map<String,dynamic>) detailBuilder) => Container(
-  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0,4))]),
+  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0,4))]),
   padding: const EdgeInsets.all(16),
   child: Column(children: items.map((it) => detailBuilder(it)).toList()),
 );
@@ -75,7 +75,7 @@ Widget buildSummaryRow(String label, double amount, {bool isRed = false}) => Row
 
 Widget buildPlaceOrderBar({required bool isDisabled, required VoidCallback onPressed, required Color freshMintGreen, required bool isLoading}) => Container(
   padding: const EdgeInsets.all(20),
-  decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+  decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))]),
   child: SizedBox(height: 55, child: ElevatedButton(onPressed: isDisabled ? null : onPressed, style: ElevatedButton.styleFrom(backgroundColor: freshMintGreen, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))), child: isLoading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text("Place Order", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
 );
 

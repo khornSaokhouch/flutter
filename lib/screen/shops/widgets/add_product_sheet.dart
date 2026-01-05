@@ -81,7 +81,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
       final List<Map<String, dynamic>> payloads = [];
       
       for (final idStr in _selectedIds) {
-        final itemMap = _items.firstWhere((e) => _extractId(e) == idStr);
+        _items.firstWhere((e) => _extractId(e) == idStr);
         int? itemId = int.tryParse(idStr);
         
         if (itemId != null) {
