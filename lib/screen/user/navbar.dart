@@ -16,7 +16,7 @@ class Navbar extends StatelessWidget {
       title: Container(
         width: 45,
         height: 45,
-        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))]),
+        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]),
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Image.asset('assets/images/img_1.png', fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => const Icon(Icons.coffee, color: Color(0xFF1B4D3E))),

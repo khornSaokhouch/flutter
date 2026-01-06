@@ -58,8 +58,11 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
 
       // 2) Position
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
+
 
       // 3) Fetch shops
       final response = await ShopService.fetchShops();

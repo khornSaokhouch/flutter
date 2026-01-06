@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../models/Item_OptionGroup.dart';
+import '../../../models/item_option_group.dart';
 import '../../../server/item_service.dart';
 import '../../auth/login_bottom_sheet.dart';
 import './order_screen.dart';
@@ -151,7 +151,7 @@ class _DetailItemState extends State<GuestDetailItem> {
             leading: Padding(
               padding: const EdgeInsets.all(8.0),
               child: CircleAvatar(
-                backgroundColor: Colors.white.withOpacity(0.9),
+                backgroundColor: Colors.white.withValues(alpha: 0.9),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new,
                       size: 18, color: Colors.black),
@@ -163,7 +163,7 @@ class _DetailItemState extends State<GuestDetailItem> {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: CircleAvatar(
-                  backgroundColor: Colors.white.withOpacity(0.9),
+                  backgroundColor: Colors.white.withValues(alpha: 0.9),
                   child: IconButton(
                     icon: Icon(Icons.favorite_border,
                         size: 20, color: _freshMintGreen),
@@ -192,7 +192,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                         colors: [
                           Colors.black12,
                           Colors.transparent,
-                          Colors.black.withOpacity(0.05)
+                          Colors.black.withValues(alpha: 0.05)
                         ],
                       ),
                     ),
@@ -222,7 +222,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                           bottom: Radius.circular(24)),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
+                            color: Colors.black.withValues(alpha: 0.03),
                             blurRadius: 10,
                             offset: const Offset(0, 4))
                       ],
@@ -358,7 +358,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? _freshMintGreen.withOpacity(0.1)
+                        ? _freshMintGreen.withValues(alpha: 0.1)
                         : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
@@ -369,13 +369,13 @@ class _DetailItemState extends State<GuestDetailItem> {
                     boxShadow: isSelected
                         ? [
                       BoxShadow(
-                          color: _freshMintGreen.withOpacity(0.2),
+                          color: _freshMintGreen.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 2))
                     ]
                         : [
                       BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 4,
                           offset: const Offset(0, 2))
                     ],
@@ -521,7 +521,7 @@ class _DetailItemState extends State<GuestDetailItem> {
                       return {
                         'group_id': g.id,
                         'group_name': g.name,
-                        'selected_option': selectedOptions[g.id]?.name ?? null,
+                        'selected_option': selectedOptions[g.id]?.name,
                         'option_id': selectedOptions[g.id]?.id
                       };
                     }).toList();

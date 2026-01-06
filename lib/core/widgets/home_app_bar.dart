@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CustomHomeAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const CustomHomeAppBar({Key? key}) : super(key: key);
+  const CustomHomeAppBar({super.key});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight); // Standard AppBar height
@@ -15,7 +15,7 @@ class CustomHomeAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: Colors.white, // Light background as in your image
       elevation: 2, // A slight shadow to match the image's raised look
-      shadowColor: Colors.grey.withOpacity(0.3), // Softer shadow color
+      shadowColor: Colors.grey.withValues(alpha: 0.3), // Softer shadow color
 
       // Left side: Hamburger Menu Icon
       leading: IconButton(
@@ -40,7 +40,6 @@ class CustomHomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           icon: Icon(Icons.shopping_bag_outlined, color: iconColor, size: iconSize),
           onPressed: () {
             // TODO: Implement action for navigating to the shopping cart
-            print('Shopping Bag tapped!');
           },
         ),
         const SizedBox(width: 8), // Add some spacing to the right
@@ -51,7 +50,7 @@ class CustomHomeAppBar extends StatelessWidget implements PreferredSizeWidget {
 
 // Example of how to use this AppBar in a Scaffold:
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key, required int userId}) : super(key: key);
+  const HomeScreen({super.key, required int userId});
 
   @override
   Widget build(BuildContext context) {

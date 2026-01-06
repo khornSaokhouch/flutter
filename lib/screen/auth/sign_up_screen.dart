@@ -485,7 +485,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           if (_isLoading)
             Positioned.fill(
               child: Container(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withValues(alpha: 0.5),
               ),
             ),
         ],
@@ -547,7 +547,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             border: Border.all(color: Colors.grey.shade200),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),

@@ -71,7 +71,7 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
             right: 20,
             child: Container(
               decoration: BoxDecoration(
-                boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                boxShadow: [BoxShadow(color: _primaryGreen.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
               ),
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context, _currentCenter),

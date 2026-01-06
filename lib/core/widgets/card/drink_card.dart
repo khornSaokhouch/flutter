@@ -6,7 +6,7 @@ class DrinkCard extends StatelessWidget {
   final String image;
   final String title;
 
-  const DrinkCard({Key? key, required this.image, required this.title}) : super(key: key);
+  const DrinkCard({super.key, required this.image, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +16,7 @@ class DrinkCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 5, offset: const Offset(0, 3)),
+          BoxShadow(color: Colors.grey.withValues(alpha: 0.2), spreadRadius: 1, blurRadius: 5, offset: const Offset(0, 3)),
         ],
       ),
       child: Column(

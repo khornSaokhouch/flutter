@@ -189,8 +189,8 @@ class _VerifyPhonePageState extends State<VerifyPhonePage> {
                         decoration: InputDecoration(
                           labelText: 'Phone Number',
                           hintText: '+85512345678',
-                          labelStyle: TextStyle(color: theme.primaryColor.withOpacity(0.8)),
-                          hintStyle: TextStyle(color: theme.colorScheme.onBackground.withOpacity(0.6)),
+                          labelStyle: TextStyle(color: theme.primaryColor.withValues(alpha: 0.8)),
+                          hintStyle: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                           prefixIcon: Icon(Icons.phone, color: theme.colorScheme.secondary),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -206,7 +206,7 @@ class _VerifyPhonePageState extends State<VerifyPhonePage> {
                         'Enter the 6-digit code sent to your phone',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: theme.colorScheme.onBackground.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                           fontSize: 16,
                         ),
                       ),
@@ -251,7 +251,7 @@ class _VerifyPhonePageState extends State<VerifyPhonePage> {
                         },
                         child: Text(
                           'Change Phone Number?',
-                          style: TextStyle(color: theme.primaryColor.withOpacity(0.8)),
+                          style: TextStyle(color: theme.primaryColor.withValues(alpha: 0.8)),
                         ),
                       ),
                     ],
@@ -287,7 +287,7 @@ class _VerifyPhonePageState extends State<VerifyPhonePage> {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: theme.colorScheme.secondary.withOpacity(0.5), width: 1),
+            borderSide: BorderSide(color: theme.colorScheme.secondary.withValues(alpha: 0.5), width: 1),
           ),
           filled: true,
           fillColor: isDarkMode ? Colors.grey[850] : Colors.grey[100],

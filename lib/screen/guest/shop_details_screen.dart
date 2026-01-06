@@ -61,7 +61,12 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
     }
     if (permission == LocationPermission.deniedForever) throw 'Location permissions are permanently denied.';
 
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+    return await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.best,
+      ),
+    );
+
   }
 
   void _computeDistanceIfPossible(Shop shop) {
@@ -122,7 +127,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                         color: _bgWhite,
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5)),
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5)),
                         ],
                       ),
                       child: Padding(

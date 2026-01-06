@@ -216,7 +216,7 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
                                 duration: const Duration(milliseconds: 200),
                                 margin: const EdgeInsets.only(bottom: 12),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? _primaryGreen.withOpacity(0.06) : Colors.white,
+                                  color: isSelected ? _primaryGreen.withValues(alpha: 0.06) : Colors.white,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(color: isSelected ? _primaryGreen : Colors.grey[200]!, width: 2),
                                 ),
@@ -232,7 +232,7 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
                                           decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
                                           child: (o.iconUrl != null && o.iconUrl!.isNotEmpty)
                                               ? ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(o.iconUrl!, fit: BoxFit.cover))
-                                              : Icon(Icons.local_cafe_outlined, color: _primaryGreen.withOpacity(0.4)), // ✅ Fixed Icon
+                                              : Icon(Icons.local_cafe_outlined, color: _primaryGreen.withValues(alpha: 0.4)), // ✅ Fixed Icon
                                         ),
                                         const SizedBox(width: 15),
                                         Expanded(
@@ -275,7 +275,7 @@ class _AddOptionSheetState extends State<AddOptionSheet> {
                   padding: const EdgeInsets.fromLTRB(25, 20, 25, 40),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 15, offset: const Offset(0, -5))],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 15, offset: const Offset(0, -5))],
                   ),
                   child: ElevatedButton(
                     onPressed: _isSubmitting || _selectedOptions.isEmpty ? null : _addAllSelectedOptions,

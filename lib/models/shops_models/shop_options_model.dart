@@ -61,7 +61,7 @@ class ShopOptions {
   }
 
   Map<String, dynamic> toJson() {
-    String? priceToString(double? p) => p == null ? null : p.toStringAsFixed(2);
+    String? priceToString(double? p) => p?.toStringAsFixed(2);
 
     int? boolToInt(bool? b) => b == null ? null : (b ? 1 : 0);
 
@@ -237,7 +237,7 @@ class OptionItem {
     'icon': icon,
     'is_active': isActive == null ? null : (isActive! ? 1 : 0),
     'price_adjust_cents':
-    priceAdjustCents == null ? null : priceAdjustCents!.toStringAsFixed(2),
+    priceAdjustCents?.toStringAsFixed(2),
     'created_at': createdAt?.toIso8601String(),
     'updated_at': updatedAt?.toIso8601String(),
     'icon_url': iconUrl,

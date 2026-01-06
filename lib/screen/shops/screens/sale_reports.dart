@@ -120,7 +120,7 @@ class _SalesReportsPageState extends State<SalesReportsPage> {
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [primaryGreen, const Color(0xFF1B5E20)]),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: primaryGreen.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: primaryGreen.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,7 +148,7 @@ class _SalesReportsPageState extends State<SalesReportsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,7 +170,7 @@ class _SalesReportsPageState extends State<SalesReportsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15)],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -187,7 +187,7 @@ class _SalesReportsPageState extends State<SalesReportsPage> {
       width: 15,
       height: 140 * heightFactor,
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [primaryGreen, primaryGreen.withOpacity(0.5)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+        gradient: LinearGradient(colors: [primaryGreen, primaryGreen.withValues(alpha: 0.5)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
         borderRadius: BorderRadius.circular(10),
       ),
     );

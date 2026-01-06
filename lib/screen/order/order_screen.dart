@@ -139,7 +139,7 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
                       return ChoiceChip(
                         label: Text(status[0].toUpperCase() + status.substring(1)),
                         selected: isSelected,
-                        selectedColor: _freshMintGreen.withOpacity(0.2),
+                        selectedColor: _freshMintGreen.withValues(alpha: 0.2),
                         backgroundColor: Colors.grey[100],
                         labelStyle: TextStyle(
                           color: isSelected ? _freshMintGreen : Colors.black87,
@@ -353,16 +353,16 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
     final bool isCancelled = order.status.toLowerCase() == "cancelled";
 
     Color statusColor = Colors.orange;
-    Color statusBg = Colors.orange.withOpacity(0.1);
+    Color statusBg = Colors.orange.withValues(alpha: 0.1);
     IconData statusIcon = Icons.access_time_rounded;
 
     if (isCompleted) {
       statusColor = _freshMintGreen;
-      statusBg = _freshMintGreen.withOpacity(0.1);
+      statusBg = _freshMintGreen.withValues(alpha: 0.1);
       statusIcon = Icons.check_circle_rounded;
     } else if (isCancelled) {
       statusColor = Colors.red;
-      statusBg = Colors.red.withOpacity(0.1);
+      statusBg = Colors.red.withValues(alpha: 0.1);
       statusIcon = Icons.cancel_rounded;
     }
 
@@ -387,7 +387,7 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -537,7 +537,7 @@ class _AllOrdersScreenState extends State<AllOrdersScreen> {
                         label: const Text("Reorder"),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _espressoBrown,
-                          side: BorderSide(color: _espressoBrown.withOpacity(0.3)),
+                          side: BorderSide(color: _espressoBrown.withValues(alpha: 0.3)),
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),

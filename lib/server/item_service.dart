@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_endpoints.dart';
-import '../models/Item_OptionGroup.dart';
+import '../models/item_option_group.dart';
 import '../models/item_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

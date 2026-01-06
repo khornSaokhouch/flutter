@@ -60,9 +60,8 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
     final DateTime targetDate = countDate ?? now;
     int totalOrders = _orders.length;
     int todaySales = 0;
-    late int _todayCountedOrders = 0;
+    late int todayCountedOrders = 0;
     final dateFmt = DateFormat('yyyy-MM-dd HH:mm:ss');
-
     for (final o in _orders) {
       if (onlyCompleted && o.status.toLowerCase() != 'completed') continue;
       if (o.totalcents < minTotalCents) continue;
@@ -81,7 +80,7 @@ class _ShopsProfilePageState extends State<ShopsProfilePage> {
       }
       if (parsed != null && _isSameLocalDate(parsed, targetDate)) {
         todaySales += o.totalcents;
-        _todayCountedOrders++;
+        todayCountedOrders++;
       }
     }
     if (mounted) {

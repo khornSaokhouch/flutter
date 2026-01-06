@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/models/Item_OptionGroup.dart';
+import 'package:frontend/models/item_option_group.dart';
 
 import '../../../server/shops_server/shop_option_service.dart';
 import '../widgets/add_option_sheet.dart';
@@ -71,7 +71,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
   }
 
   List<Map<String, dynamic>> _buildGroupsFromStatuses() {
-    int _normalizeStatus(dynamic s) {
+    int normalizeStatus(dynamic s) {
       if (s == null) return 0;
       if (s is bool) return s ? 1 : 0;
       if (s is num) return s == 1 ? 1 : 0;
@@ -99,7 +99,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
         };
       });
 
-      final shopStatusInt = _normalizeStatus(s.status);
+      final shopStatusInt = normalizeStatus(s.status);
       final mapped = {
         'id': oid,
         'item_option_group_id': o.itemOptionGroupId,
@@ -255,7 +255,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, -5),
                       ),
@@ -365,7 +365,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -5)),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, -5)),
                 ],
               ),
               child: Row(
@@ -408,7 +408,7 @@ class _ShopProductDetailPageState extends State<ShopProductDetailPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isAvailable ? _primaryGreen.withOpacity(0.1) : Colors.red.withOpacity(0.08),
+        color: isAvailable ? _primaryGreen.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

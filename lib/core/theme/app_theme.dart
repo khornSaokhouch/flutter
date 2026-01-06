@@ -8,11 +8,10 @@ class AppTheme {
     primaryColor: const Color(0xFF4B2C20), // Espresso Brown
     colorScheme: const ColorScheme.light(
       primary: Color(0xFF4B2C20),
-      secondary: Color(0xFF4E8D7C), // Fresh Mint
-      background: Color(0xFFF6F2ED),
+      secondary: Color(0xFF4E8D7C),
       surface: Color(0xFFD5BBA2), // Creamy Latte
       onPrimary: Colors.white,
-      onBackground: Color(0xFF272727), // Black
+      onSurface: Color(0xFF272727), // Black
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF4B2C20),
@@ -37,11 +36,10 @@ class AppTheme {
     primaryColor: const Color(0xFF332920), // Dark Roast
     colorScheme: const ColorScheme.dark(
       primary: Color(0xFF332920),
-      secondary: Color(0xFF3C7266), // Moonlight Mint
-      background: Color(0xFF1E1410),
+      secondary: Color(0xFF3C7266),
       surface: Color(0xFF2E2A27), // Charcoal Foam
       onPrimary: Color(0xFFF6F2ED),
-      onBackground: Color(0xFF989898), // Light Grey
+      onSurface: Color(0xFF989898), // Light Grey
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF332920),

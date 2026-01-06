@@ -165,7 +165,7 @@ class _ShopsProductsPageState extends State<ShopsProductsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Stack(
         children: [
@@ -189,7 +189,7 @@ class _ShopsProductsPageState extends State<ShopsProductsPage> {
             ),
             trailing: Switch(
               value: isActive,
-              activeColor: _freshMintGreen,
+              activeThumbColor: _freshMintGreen,
               onChanged: busy ? null : (v) => _toggleActiveOptimistic(index, v),
             ),
             onTap: () {},
@@ -198,7 +198,7 @@ class _ShopsProductsPageState extends State<ShopsProductsPage> {
           if (!isActive)
             Positioned.fill(
               child: Container(
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.7), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(12)),
                 child: const Center(child: Icon(Icons.visibility_off, size: 28, color: Colors.black45)),
               ),
             ),
@@ -206,7 +206,7 @@ class _ShopsProductsPageState extends State<ShopsProductsPage> {
           if (busy)
             Positioned.fill(
               child: Container(
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.06), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12)),
                 child: const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2))),
               ),
             ),

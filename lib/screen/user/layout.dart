@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:frontend/screen/user/store_screen/no_store_nearby_screen.dart';
 import '../account/account_page.dart';
-import 'coffeeAppHome.dart';
+import 'coffee_app_home.dart';
 import 'scan_pay_screen.dart';
 import '../../routes/footer_nav_routes.dart';
 import 'store_screen/history_screen.dart';
@@ -93,7 +93,7 @@ class _LayoutState extends State<Layout> {
 
 class PlaceholderWidget extends StatelessWidget {
   final String text;
-  const PlaceholderWidget({Key? key, required this.text}) : super(key: key);
+  const PlaceholderWidget({super.key, required this.text});
 
   @override
   Widget build(BuildContext context) => Center(

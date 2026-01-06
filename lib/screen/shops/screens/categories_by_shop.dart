@@ -248,7 +248,7 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                                       duration: const Duration(milliseconds: 200),
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: selected ? _freshMintGreen.withOpacity(0.05) : Colors.white,
+                                        color: selected ? _freshMintGreen.withValues(alpha: 0.05) : Colors.white,
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(color: selected ? _freshMintGreen : Colors.grey.shade200, width: selected ? 1.5 : 1),
                                       ),
@@ -290,7 +290,7 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           border: Border(top: BorderSide(color: Colors.grey.shade100)),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
                         ),
                         child: SizedBox(
                           width: double.infinity,
@@ -491,7 +491,7 @@ class _ShopsCategoriesPageState extends State<ShopsCategoriesPage> {
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)]),
+              decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15)]),
               child: Icon(Icons.category_outlined, size: 60, color: Colors.grey[300]),
             ),
             const SizedBox(height: 24),

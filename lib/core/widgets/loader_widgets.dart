@@ -14,7 +14,7 @@ Widget buildFullScreenLoader(bool isLoading) {
             // Dim + blur background
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-              child: Container(color: Colors.black.withOpacity(0.35)),
+              child: Container(color: Colors.black.withValues(alpha: 0.35)),
             ),
 
             // Center card
@@ -23,11 +23,11 @@ Widget buildFullScreenLoader(bool isLoading) {
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 margin: const EdgeInsets.symmetric(horizontal: 40),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
+                  color: Colors.white.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withValues(alpha: 0.15),
                       blurRadius: 18,
                       offset: const Offset(0, 8),
                     ),

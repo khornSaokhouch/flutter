@@ -39,7 +39,6 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
     try {
       final promoList = await _service.getPromotionByShopId(widget.shopId);
       setState(() => promotions = promoList);
-    } catch (e) {
     } finally {
       setState(() => _loading = false);
     }
@@ -178,7 +177,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [_emerald, _mint], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: _emerald.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: _emerald.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
       ),
       child: Row(
         children: [
@@ -194,7 +193,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
             child: Column(
               children: [
                 Text('${promotions.length}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
@@ -278,7 +277,7 @@ Widget _buildBody() {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.confirmation_number_outlined, size: 64, color: _mint.withOpacity(0.3)),
+          Icon(Icons.confirmation_number_outlined, size: 64, color: _mint.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           const Text("No promotions created yet", style: TextStyle(color: Colors.grey)),
         ],

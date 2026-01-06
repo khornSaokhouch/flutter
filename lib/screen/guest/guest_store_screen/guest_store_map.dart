@@ -135,9 +135,9 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> with TickerProvid
                 left: 20, right: 20, bottom: 20
               ),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(25)),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15)],
               ),
               child: Row(
                 children: [
@@ -218,7 +218,7 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> with TickerProvid
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
       ),
       child: IconButton(
         icon: Icon(icon, color: _primaryGreen, size: 22),
@@ -272,8 +272,13 @@ class _GuestStoreMapPageState extends State<GuestStoreMapPage> with TickerProvid
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(isActive ? 0.1 : 0.05), blurRadius: 15, offset: const Offset(0, 5))
+          BoxShadow(
+            color: Colors.black.withOpacity(isActive ? 0.1 : 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          )
         ],
+
       ),
       child: Row(
         children: [

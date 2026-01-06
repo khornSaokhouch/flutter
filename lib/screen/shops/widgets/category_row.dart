@@ -14,14 +14,14 @@ class CategoryRow extends StatefulWidget {
   final void Function(String action)? onMenuSelected;
 
   const CategoryRow({
-    Key? key,
+    super.key,
     required this.index,
     required this.item,
     required this.accentColor,
     this.onTap,
     this.onStatusChanged,
     this.onMenuSelected,
-  }) : super(key: key);
+  });
 
   @override
   State<CategoryRow> createState() => _CategoryRowState();
@@ -49,7 +49,7 @@ class _CategoryRowState extends State<CategoryRow> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -186,9 +186,9 @@ class _CategoryRowState extends State<CategoryRow> {
                           scale: 0.8,
                           child: Switch(
                             value: isActive,
-                            activeColor: _freshMintGreen,
+                            activeThumbColor: _freshMintGreen,
                             activeTrackColor:
-                                _freshMintGreen.withOpacity(0.2),
+                                _freshMintGreen.withValues(alpha: 0.2),
                             inactiveThumbColor: Colors.white,
                             inactiveTrackColor: Colors.grey[300],
                             onChanged: (val) async {
@@ -204,8 +204,9 @@ class _CategoryRowState extends State<CategoryRow> {
                                       content: Text('Update failed: $e')),
                                 );
                               } finally {
-                                if (mounted)
+                                if (mounted) {
                                   setState(() => _isToggling = false);
+                                }
                               }
                             },
                           ),

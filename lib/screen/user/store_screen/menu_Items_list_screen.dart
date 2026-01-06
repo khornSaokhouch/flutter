@@ -131,7 +131,9 @@ class _MenuScreenState extends State<MenuScreen> {
         if (permission != LocationPermission.denied &&
             permission != LocationPermission.deniedForever) {
           _currentPosition = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+            ),
           );
         }
       } catch (_) {
@@ -140,12 +142,13 @@ class _MenuScreenState extends State<MenuScreen> {
 
       if (!mounted) return;
 
-      // 3) Open bottom sheet with stores
+      // 3) Open bottom sheet safely
       _openSelectStoreSheet(context, _stores);
     } catch (e) {
       debugPrint('Error preparing stores for select sheet: $e');
     }
   }
+
 
   /// Bottom sheet — same behavior as Guest
   void _openSelectStoreSheet(BuildContext context, List<Shop> stores) {
@@ -368,7 +371,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           categories.firstWhere((c) => c.name == entry.key);
                           final String categoryId = categoryForSection.id.toString();
 
-                          return Container(
+                          return SizedBox(
                             key: _categoryKeys[categoryId],
                             width: double.infinity,
                             child: Column(

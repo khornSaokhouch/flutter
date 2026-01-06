@@ -180,7 +180,7 @@ class _EditInfoPageState extends State<EditInfoPage> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 4),
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15)],
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 15)],
                             image: DecorationImage(
                               fit: BoxFit.cover,
                               image: _selectedImage != null
