@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../models/item_option_group.dart';
 import '../../../server/item_service.dart';
 import '../../auth/login_bottom_sheet.dart';
-import './order_screen.dart';
+import './order_screen.dart'; // Ensure this matches your Cart/Order screen path
 import '../../../core/widgets/loading/logo_loading.dart';
 
 class GuestDetailItem extends StatefulWidget {
@@ -54,7 +54,14 @@ class _DetailItemState extends State<GuestDetailItem> {
           final g = status.optionGroup;
           final o = status.option;
           if (!groupMap.containsKey(g.id)) {
-            groupMap[g.id] = OptionGroup(id: g.id, name: g.name, type: g.type, isRequired: g.isRequired, createdAt: g.createdAt, updatedAt: g.updatedAt, options: []);
+            groupMap[g.id] = OptionGroup(
+                id: g.id,
+                name: g.name,
+                type: g.type,
+                isRequired: g.isRequired,
+                createdAt: g.createdAt,
+                updatedAt: g.updatedAt,
+                options: []);
           }
           final existingGroup = groupMap[g.id]!;
           if (!existingGroup.options.any((opt) => opt.id == o.id)) existingGroup.options.add(o);
@@ -90,15 +97,15 @@ class _DetailItemState extends State<GuestDetailItem> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(),
         slivers: [
           // 1. IMAGE HEADER
           SliverAppBar(
-            expandedHeight: 400,
+            expandedHeight: 420,
             pinned: true,
             stretch: true,
             elevation: 0,
-            backgroundColor: Colors.white, // appBar color when pinned
+            backgroundColor: Colors.white,
             leadingWidth: 80,
             leading: _buildHeaderBtn(Icons.arrow_back_ios_new, () => Navigator.pop(context)),
             actions: [_buildHeaderBtn(Icons.favorite_border, () {}, isAction: true)],
@@ -107,14 +114,16 @@ class _DetailItemState extends State<GuestDetailItem> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(item.imageUrl, fit: BoxFit.cover),
-                  // Dark overlay at the top for button visibility
+                  Hero(
+                    tag: 'item_${item.id}',
+                    child: Image.network(item.imageUrl, fit: BoxFit.cover),
+                  ),
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
-                        end: Alignment.center,
-                        colors: [Colors.black26, Colors.transparent],
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black38, Colors.transparent, Colors.transparent],
                       ),
                     ),
                   ),
@@ -123,42 +132,37 @@ class _DetailItemState extends State<GuestDetailItem> {
             ),
           ),
 
-          // 2. INFORMATION CARD (The one with the Radius)
+          // 2. CONTENT CARD
           SliverToBoxAdapter(
             child: Container(
-              // The negative translation pulls the card OVER the image
-              transform: Matrix4.translationValues(0, -40, 0), 
-              padding: const EdgeInsets.fromLTRB(24, 35, 24, 140),
-              decoration: BoxDecoration(
+              transform: Matrix4.translationValues(0, -35, 0),
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 150),
+              decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(40), // CLEAN PREMIUM RADIUS
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 20,
-                    offset: const Offset(0, -10),
-                  ),
-                ],
+                borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title & Price Section
+                  // Item Name & Base Price
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
                           item.name,
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: _espresso, letterSpacing: -0.5),
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: _espresso,
+                            letterSpacing: -0.5,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 10),
                       Text(
                         "\$${(item.priceCents / 100).toStringAsFixed(2)}",
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _mintGreen),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _mintGreen),
                       ),
                     ],
                   ),
@@ -166,15 +170,15 @@ class _DetailItemState extends State<GuestDetailItem> {
                   if (item.description.isNotEmpty)
                     Text(
                       item.description,
-                      style: TextStyle(fontSize: 15, color: Colors.grey[500], height: 1.5, fontWeight: FontWeight.w400),
+                      style: TextStyle(fontSize: 15, color: Colors.grey[500], height: 1.5),
                     ),
-                  
+
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Divider(thickness: 1, color: Color(0xFFF5F5F5)),
+                    padding: EdgeInsets.symmetric(vertical: 28),
+                    child: Divider(thickness: 1, color: Color(0xFFF2F2F2)),
                   ),
 
-                  // Option Groups (Sizes, Sugar, etc.)
+                  // Option Sections
                   ...groups.map((g) => _buildOptionSection(g)),
                 ],
               ),
@@ -190,15 +194,17 @@ class _DetailItemState extends State<GuestDetailItem> {
     return Padding(
       padding: EdgeInsets.only(left: isAction ? 0 : 20, right: isAction ? 20 : 0),
       child: Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(50),
+        child: GestureDetector(
+          onTap: onTap,
           child: Container(
-            height: 44, width: 44,
-            color: Colors.white.withOpacity(0.9),
-            child: IconButton(
-              icon: Icon(icon, size: 20, color: _espresso),
-              onPressed: onTap,
+            height: 44,
+            width: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
             ),
+            child: Icon(icon, size: 18, color: _espresso),
           ),
         ),
       ),
@@ -206,28 +212,62 @@ class _DetailItemState extends State<GuestDetailItem> {
   }
 
   Widget _buildOptionSection(OptionGroup group) {
+    final bool isSizeGroup = group.name.toLowerCase().contains('size');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(group.name.toUpperCase(), 
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: _espresso, letterSpacing: 1.2)),
-            const SizedBox(width: 8),
-            if (group.isRequired)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: _mintGreen.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
-                child: Text("REQUIRED", style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: _mintGreen)),
+        // --- HEADER SECTION ---
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    group.name.toUpperCase(),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: _espresso, letterSpacing: 1.5),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    group.isRequired ? "Required • Select one" : "Optional",
+                    style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
-          ],
+              if (group.isRequired)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: _mintGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Text("REQUIRED", style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: _mintGreen)),
+                ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: group.options.map((option) {
+        const SizedBox(height: 18),
+
+        // --- GRID SECTION ---
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: isSizeGroup ? 2.2 : 0.85,
+          ),
+          itemCount: group.options.length,
+          itemBuilder: (context, index) {
+            final option = group.options[index];
             final isSelected = selectedOptions[group.id]?.id == option.id;
+
+            // ✅ ROBUST URL CHECK: Ensures string isn't empty AND is a real URL
+            final String rawUrl = option.icon_url ?? "";
+            final bool hasValidIcon = rawUrl.trim().isNotEmpty && rawUrl.startsWith('http');
+
             return GestureDetector(
               onTap: () {
                 HapticFeedback.lightImpact();
@@ -238,29 +278,70 @@ class _DetailItemState extends State<GuestDetailItem> {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                curve: Curves.easeInOut,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isSelected ? _mintGreen : _lightBg,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: isSelected ? [BoxShadow(color: _mintGreen.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+                  color: isSelected ? Colors.white : _lightBg,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: isSelected ? _mintGreen : Colors.transparent, width: 2),
+                  boxShadow: isSelected ? [BoxShadow(color: _mintGreen.withOpacity(0.12), blurRadius: 12, offset: const Offset(0, 6))] : [],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      option.name,
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isSelected ? Colors.white : _espresso),
-                    ),
-                    if (option.priceAdjust > 0)
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (!isSizeGroup) ...[
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? _mintGreen.withOpacity(0.1) : Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          // ✅ Use the new hasValidIcon check here
+                          child: hasValidIcon
+                              ? Image.network(
+                            rawUrl,
+                            width: 24,
+                            height: 24,
+                            color: isSelected ? _mintGreen : _espresso.withOpacity(0.7),
+                            errorBuilder: (_, __, ___) => Icon(Icons.restaurant_menu, size: 18, color: Colors.grey[300]),
+                          )
+                              : Icon(Icons.radio_button_unchecked, size: 18, color: Colors.grey[300]),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
                       Text(
-                        " (+\$${(option.priceAdjust/100).toStringAsFixed(2)})",
-                        style: TextStyle(fontSize: 13, color: isSelected ? Colors.white70 : Colors.grey[500], fontWeight: FontWeight.w500),
+                        option.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: isSizeGroup ? 14 : 13,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: _espresso,
+                        ),
                       ),
-                  ],
+
+                      if (option.priceAdjust > 0)
+                        Text(
+                          "+\$${(option.priceAdjust / 100).toStringAsFixed(2)}",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected ? _mintGreen : Colors.grey[500],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             );
-          }).toList(),
+          },
         ),
         const SizedBox(height: 32),
       ],
@@ -273,30 +354,32 @@ class _DetailItemState extends State<GuestDetailItem> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 30, offset: const Offset(0, -10))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -10))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("${quantity}x Total Price", style: TextStyle(color: Colors.grey[400], fontSize: 13, fontWeight: FontWeight.w600)),
-                    Text("\$${subtotal.toStringAsFixed(2)}",
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: _espresso)),
-                  ],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("TOTAL PRICE", style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.0)),
+                  Text("\$${subtotal.toStringAsFixed(2)}", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: _espresso)),
+                ],
               ),
+              const Spacer(),
               Container(
-                height: 52,
-                decoration: BoxDecoration(color: _lightBg, borderRadius: BorderRadius.circular(18)),
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(color: _lightBg, borderRadius: BorderRadius.circular(15)),
                 child: Row(
                   children: [
                     _qtyAction(Icons.remove, () { if (quantity > 1) setState(() { quantity--; _calculateSubtotal(); }); }),
-                    Text("$quantity", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text("$quantity", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _espresso)),
+                    ),
                     _qtyAction(Icons.add, () { setState(() { quantity++; _calculateSubtotal(); }); }),
                   ],
                 ),
@@ -306,16 +389,16 @@ class _DetailItemState extends State<GuestDetailItem> {
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            height: 64,
+            height: 60,
             child: ElevatedButton(
               onPressed: _handleAddToCart,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _mintGreen,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                 elevation: 0,
               ),
-              child: const Text("Checkout Now",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: Colors.white)),
+              child: const Text("CHECKOUT NOW", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
             ),
           ),
         ],
@@ -324,7 +407,11 @@ class _DetailItemState extends State<GuestDetailItem> {
   }
 
   Widget _qtyAction(IconData icon, VoidCallback onTap) {
-    return IconButton(onPressed: onTap, icon: Icon(icon, size: 20, color: _espresso), splashRadius: 20);
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18, color: _espresso),
+      constraints: const BoxConstraints(minWidth: 40),
+    );
   }
 
   Future<void> _handleAddToCart() async {

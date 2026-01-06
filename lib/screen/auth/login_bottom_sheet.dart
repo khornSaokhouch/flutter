@@ -366,7 +366,7 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Don't have an account? ",
+                      "Don't have an account?",
                       style: TextStyle(
                         color: _freshMintGreen,
                         fontSize: 15,
@@ -384,7 +384,7 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
                         );
                       },
                       child: Text(
-                        "Create new account",
+                        "Create account",
                         style: TextStyle(
                           fontSize: 15,
                           color: _espressoBrown,
