@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:latlong2/latlong.dart'; 
+import 'package:latlong2/latlong.dart';
 import 'package:frontend/models/shop.dart';
 import '../../../server/shops_server/shop_service.dart';
 import 'package:frontend/response/shops_response/shop_response.dart';
@@ -21,8 +21,7 @@ class _EditInfoPageState extends State<EditInfoPage> {
   File? _selectedImage;
 
   late TextEditingController _nameController;
-  late TextEditingController _locationController;
-  late TextEditingController _googleMapUrlController;
+  late TextEditingController _addressController;
   late TextEditingController _openTimeController;
   late TextEditingController _closeTimeController;
 
@@ -46,12 +45,22 @@ class _EditInfoPageState extends State<EditInfoPage> {
   void dispose() {
     if (_initialized) {
       _nameController.dispose();
-      _locationController.dispose();
-      _googleMapUrlController.dispose();
+      _addressController.dispose();
       _openTimeController.dispose();
       _closeTimeController.dispose();
     }
     super.dispose();
+  }
+
+  // Helper to parse "HH:mm" string to TimeOfDay
+  TimeOfDay _parseTime(String timeStr) {
+    try {
+      if (timeStr.isEmpty) return TimeOfDay.now();
+      final parts = timeStr.split(':');
+      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    } catch (e) {
+      return TimeOfDay.now();
+    }
   }
 
   Future<void> _pickImage() async {
@@ -60,9 +69,7 @@ class _EditInfoPageState extends State<EditInfoPage> {
     if (pickedFile != null) setState(() => _selectedImage = File(pickedFile.path));
   }
 
-  // --- UPDATED MAP PICKER LOGIC ---
   Future<void> _openMapPicker() async {
-    // Current position or default
     LatLng initial = LatLng(_lat ?? 11.5564, _lng ?? 104.9282);
 
     final LatLng? result = await Navigator.push(
@@ -74,30 +81,29 @@ class _EditInfoPageState extends State<EditInfoPage> {
       setState(() {
         _lat = result.latitude;
         _lng = result.longitude;
-
-        // 1. Auto-generate the Google Maps Link
-        _googleMapUrlController.text = "https://www.google.com/maps/search/?api=1&query=${result.latitude},${result.longitude}";
-
-        // 2. Auto-fill Physical Address with Coordinates (User can still edit this to a name)
-        _locationController.text = "Location at ${result.latitude.toStringAsFixed(5)}, ${result.longitude.toStringAsFixed(5)}";
       });
-      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text("Location and Link updated!"), backgroundColor: primaryGreen),
+        SnackBar(content: const Text("GPS Coordinates Updated!"), backgroundColor: primaryGreen),
       );
     }
   }
 
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_lat == null || _lng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please pin a location on the map"), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
 
     final payload = {
       'name': _nameController.text.trim(),
-      'location': _locationController.text.trim(),
+      'location': _addressController.text.trim(),
       'latitude': _lat.toString(),
       'longitude': _lng.toString(),
-      'google_map_url': _googleMapUrlController.text.trim(),
       'open_time': _openTimeController.text.trim(),
       'close_time': _closeTimeController.text.trim(),
     };
@@ -116,7 +122,9 @@ class _EditInfoPageState extends State<EditInfoPage> {
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -127,7 +135,8 @@ class _EditInfoPageState extends State<EditInfoPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Edit Branch Profile', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black, fontSize: 18)),
+        title: const Text('Edit Branch Profile', 
+          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black, fontSize: 18)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -136,15 +145,16 @@ class _EditInfoPageState extends State<EditInfoPage> {
       body: FutureBuilder<Shop?>(
         future: _shopFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return Center(child: CircularProgressIndicator(color: primaryGreen));
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator(color: primaryGreen));
+          }
           
           final shop = snapshot.data;
           if (shop == null) return const Center(child: Text("Shop not found"));
 
           if (!_initialized) {
             _nameController = TextEditingController(text: shop.name);
-            _locationController = TextEditingController(text: shop.location);
-            _googleMapUrlController = TextEditingController(text: shop.googleMapUrl ?? '');
+            _addressController = TextEditingController(text: shop.location);
             _openTimeController = TextEditingController(text: shop.openTime ?? '');
             _closeTimeController = TextEditingController(text: shop.closeTime ?? '');
             _lat = shop.latitude;
@@ -181,14 +191,18 @@ class _EditInfoPageState extends State<EditInfoPage> {
                         ),
                         Positioned(bottom: 0, right: 0, child: GestureDetector(
                           onTap: _pickImage,
-                          child: CircleAvatar(backgroundColor: primaryGreen, radius: 18, child: const Icon(Icons.camera_alt, color: Colors.white, size: 16)),
+                          child: CircleAvatar(
+                            backgroundColor: primaryGreen, 
+                            radius: 18, 
+                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 16)
+                          ),
                         )),
                       ],
                     ),
                   ),
                   
                   const SizedBox(height: 30),
-                  _buildSectionTitle('Branch Information'),
+                  _buildSectionTitle('General Information'),
 
                   _buildTextField(
                     controller: _nameController, 
@@ -197,30 +211,50 @@ class _EditInfoPageState extends State<EditInfoPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // PHYSICAL ADDRESS (Can be typed OR set by Map)
+                  // MANUAL ADDRESS INPUT
                   _buildTextField(
-                    controller: _locationController,
-                    label: 'Physical Address',
-                    icon: Icons.location_on_rounded,
-                    suffixIcon: IconButton(
-                      icon: Icon(Icons.map_rounded, color: primaryGreen),
-                      onPressed: _openMapPicker, // Opens Map Picker
-                      tooltip: "Select from Map",
-                    ),
+                    controller: _addressController,
+                    label: 'Physical Address (Street/Building)',
+                    icon: Icons.location_city_rounded,
                   ),
 
                   const SizedBox(height: 20),
 
-                  // GOOGLE MAPS LINK (Auto-filled by Map or manually pasted)
-                  _buildTextField(
-                    controller: _googleMapUrlController,
-                    label: 'Google Maps URL',
-                    icon: Icons.add_link_rounded,
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.copy_all_rounded, color: Colors.grey),
-                      onPressed: () {
-                        // Optional: logic to verify link
-                      },
+                  // MAP PICKER BUTTON
+                  _buildSectionTitle('Map Location'),
+                  InkWell(
+                    onTap: _openMapPicker,
+                    borderRadius: BorderRadius.circular(15),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                      decoration: BoxDecoration(
+                        color: bgGrey,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.grey.shade100),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.map_rounded, color: primaryGreen),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _lat != null ? "Location Pinned" : "Select Location",
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                if (_lat != null)
+                                  Text(
+                                    "${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)}",
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.edit_location_alt_rounded, color: primaryGreen, size: 20),
+                        ],
+                      ),
                     ),
                   ),
                   
@@ -263,18 +297,20 @@ class _EditInfoPageState extends State<EditInfoPage> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 5),
-      child: Text(title.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey[400], letterSpacing: 1.5)),
+      child: Text(title.toUpperCase(), 
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey[400], letterSpacing: 1.5)),
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, Widget? suffixIcon}) {
+  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon}) {
     return TextFormField(
       controller: controller,
+      readOnly: false,
+      enabled: true,
       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: primaryGreen, size: 20),
-        suffixIcon: suffixIcon,
         filled: true, fillColor: bgGrey,
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade100)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: primaryGreen)),
@@ -287,18 +323,26 @@ class _EditInfoPageState extends State<EditInfoPage> {
     return TextFormField(
       controller: controller,
       readOnly: true,
+      style: const TextStyle(fontWeight: FontWeight.bold),
       onTap: () async {
-        final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-        if (time != null) {
-          controller.text = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+        TimeOfDay initial = _parseTime(controller.text);
+        final TimeOfDay? picked = await showTimePicker(
+          context: context,
+          initialTime: initial,
+        );
+
+        if (picked != null) {
+          setState(() {
+            controller.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+          });
         }
       },
-      style: const TextStyle(fontWeight: FontWeight.bold),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(Icons.access_time_filled_rounded, color: primaryGreen, size: 20),
         filled: true, fillColor: bgGrey,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade100)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: primaryGreen)),
       ),
     );
   }
