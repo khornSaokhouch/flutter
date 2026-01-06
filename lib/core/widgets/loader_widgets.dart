@@ -1,6 +1,5 @@
-import 'dart:ui'; // for ImageFilter
 import 'package:flutter/material.dart';
-Widget buildFullScreenLoader(bool isLoading) {
+Widget buildFullScreenLoader(bool isLoading, {Color? indicatorColor}) {
   if (!isLoading) return const SizedBox.shrink();
 
   return Positioned.fill(
@@ -11,48 +10,36 @@ Widget buildFullScreenLoader(bool isLoading) {
         duration: const Duration(milliseconds: 200),
         child: Stack(
           children: [
-            // Dim + blur background
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-              child: Container(color: Colors.black.withValues(alpha: 0.35)),
-            ),
-
             // Center card
             Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 margin: const EdgeInsets.symmetric(horizontal: 40),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.95),
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     SizedBox(
                       height: 36,
                       width: 36,
                       child: CircularProgressIndicator(
                         strokeWidth: 3,
+                        color: indicatorColor,
                       ),
                     ),
-                    SizedBox(height: 16),
-                    Text(
+                    const SizedBox(height: 16),
+                    const Text(
                       'Signing you in…',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 6),
-                    Text(
+                    const SizedBox(height: 6),
+                    const Text(
                       'Please wait a moment',
                       style: TextStyle(
                         fontSize: 13,

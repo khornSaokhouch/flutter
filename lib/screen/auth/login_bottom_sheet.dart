@@ -362,21 +362,37 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
                 ),
                 const SizedBox(height: 24),
                 // Create new account
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => const SignUpScreen(),
-                    );
-                  },
-                  child: Text("Create new account",
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Don't have an account? ",
                       style: TextStyle(
-                          fontSize: 16,
+                        color: _freshMintGreen,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => const SignUpScreen(),
+                        );
+                      },
+                      child: Text(
+                        "Create new account",
+                        style: TextStyle(
+                          fontSize: 15,
                           color: _espressoBrown,
-                          fontWeight: FontWeight.w600)),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -414,7 +430,7 @@ class _LoginBottomSheetState extends State<LoginBottomSheet> {
             ),
           ),
           // Loading indicator
-          buildFullScreenLoader(_isLoading), // ← now works!
+          buildFullScreenLoader(_isLoading, indicatorColor: _freshMintGreen), // ← now works!
         ],
       ),
     );
