@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/promotion_model.dart';
@@ -51,7 +50,7 @@ class _PromotionFormSheetState extends State<PromotionFormSheet> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: type,
+                      initialValue: type,
                       decoration: _inputDecoration("Type", Icons.tune),
                       items: const [
                         DropdownMenuItem(value: "percent", child: Text("Percent %")),
@@ -82,7 +81,7 @@ class _PromotionFormSheetState extends State<PromotionFormSheet> {
                 value: isActive,
                 onChanged: (v) => setState(() => isActive = v),
                 title: const Text("Activate Now", style: TextStyle(fontWeight: FontWeight.bold)),
-                activeColor: _mint,
+                activeThumbColor: _mint,
               ),
               
               const SizedBox(height: 20),
@@ -128,7 +127,7 @@ class _PromotionFormSheetState extends State<PromotionFormSheet> {
       labelStyle: TextStyle(color: _emerald, fontWeight: FontWeight.bold),
       prefixIcon: Icon(icon, color: _mint, size: 20),
       filled: true,
-      fillColor: _emerald.withOpacity(0.05),
+      fillColor: _emerald.withValues(alpha: 0.05),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
     );
   }

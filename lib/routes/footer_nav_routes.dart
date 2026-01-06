@@ -6,10 +6,10 @@ class FooterNav extends StatelessWidget {
   final Function(int) onItemTapped;
 
   const FooterNav({
-    Key? key,
+    super.key,
     required this.selectedIndex,
     required this.onItemTapped,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class FooterNav extends StatelessWidget {
         // Subtle shadow to separate from content
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),

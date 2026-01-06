@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 //import 'package:permission_handler/permission_handler.dart';
 
 import '../../screen/guest/guest_screen.dart';
-import '../../screen/user/coffeeAppHome.dart';
+import '../../screen/user/coffee_app_home.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

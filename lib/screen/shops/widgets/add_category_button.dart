@@ -23,7 +23,7 @@ class AddCategoryButton extends StatelessWidget {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: (isOpen ? Colors.grey : _greenColor).withOpacity(0.25),
+            color: (isOpen ? Colors.grey : _greenColor).withValues(alpha: 0.25),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),

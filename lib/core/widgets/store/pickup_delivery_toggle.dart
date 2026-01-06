@@ -29,7 +29,7 @@ class PickupDeliveryToggle extends StatelessWidget {
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(20.0),
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 3)]
+              ? [BoxShadow(color: Colors.grey.withValues(alpha: 0.2), spreadRadius: 1, blurRadius: 3)]
               : null,
         ),
         child: Text(

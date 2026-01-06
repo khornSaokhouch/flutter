@@ -98,7 +98,7 @@ class ShopDrawer extends StatelessWidget {
                       ),
                       Text(
                         "ID: $userId",
-                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
                       ),
                     ],
                   ),
@@ -190,7 +190,7 @@ class ShopDrawer extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: color, size: 20),
       ),
       title: Text(

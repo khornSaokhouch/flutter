@@ -35,7 +35,7 @@ class OwnerShopsCard extends StatelessWidget {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black12.withOpacity(0.05),
+                color: Colors.black12.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
               )
@@ -90,8 +90,8 @@ class OwnerShopsCard extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: isOpen
-                                    ? Colors.green.withOpacity(0.12)
-                                    : Colors.red.withOpacity(0.12),
+                                    ? Colors.green.withValues(alpha: 0.12)
+                                    : Colors.red.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(

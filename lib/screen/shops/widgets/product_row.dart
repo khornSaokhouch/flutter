@@ -69,7 +69,7 @@ class _ProductRowState extends State<ProductRow> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
         border: Border.all(color: isActive ? Colors.transparent : Colors.grey.shade200),
       ),

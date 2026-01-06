@@ -5,7 +5,8 @@ import '../../../models/shop.dart';
 
 
 /// Banner widget used at top of HomeScreen
-Widget BannerWidget() {
+/// Banner widget used at top of HomeScreen
+Widget bannerWidget() {
   return Padding(
     padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 20.0),
     child: Container(
@@ -36,8 +37,8 @@ Widget BannerWidget() {
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
+          children: const [
+            Text(
               'Join the Rewards program to enjoy free beverages!',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -48,13 +49,14 @@ Widget BannerWidget() {
                 shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
               ),
             ),
-            const Spacer(),
+            Spacer(),
           ],
         ),
       ),
     ),
   );
 }
+
 
 /// Pickup & Delivery cards row
 class PickupDeliveryRow extends StatelessWidget {

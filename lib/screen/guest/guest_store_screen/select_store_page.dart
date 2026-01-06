@@ -95,7 +95,6 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
         setState(() => loading = false);
       }
     } catch (e) {
-      print('Error loading shops or location: $e');
       setState(() => loading = false);
     }
   }
@@ -207,7 +206,7 @@ class _GuestSelectStorePageState extends State<GuestSelectStorePage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),

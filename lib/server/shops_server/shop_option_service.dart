@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/api_endpoints.dart';
-import '../../models/Item_OptionGroup.dart';
+import '../../models/item_option_group.dart';
 import '../../models/shops_models/shop_create_options.dart';
 import '../../models/shops_models/shop_options_model.dart';
 

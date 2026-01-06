@@ -227,7 +227,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             decoration: BoxDecoration(
-                              color: isSelected ? _freshMintGreen.withOpacity(0.05) : Colors.white,
+                              color: isSelected ? _freshMintGreen.withValues(alpha: 0.05) : Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: isSelected ? _freshMintGreen : Colors.grey.shade200,
@@ -320,7 +320,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   )

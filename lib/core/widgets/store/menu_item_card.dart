@@ -19,8 +19,8 @@ class MenuItemCard extends StatelessWidget {
     final shopId = shopItem.shopId;
 
     // Theme Colors
-    final Color _freshMintGreen = const Color(0xFF4E8D7C);
-    final Color _espressoBrown = const Color(0xFF4B2C20);
+    final Color freshMintGreen = const Color(0xFF4E8D7C);
+    final Color espressoBrown = const Color(0xFF4B2C20);
 
     return GestureDetector(
       onTap: () {
@@ -43,7 +43,7 @@ class MenuItemCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -77,7 +77,7 @@ class MenuItemCard extends StatelessWidget {
                         width: 20, 
                         height: 20,
                         child: CircularProgressIndicator(
-                          color: _freshMintGreen,
+                          color: freshMintGreen,
                           strokeWidth: 2,
                         ),
                       ),
@@ -105,7 +105,7 @@ class MenuItemCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: _espressoBrown,
+                            color: espressoBrown,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -131,17 +131,17 @@ class MenuItemCard extends StatelessWidget {
                           '\$${(product.priceCents / 100).toStringAsFixed(2)}', 
                           style: TextStyle(
                             fontSize: 16,
-                            color: _freshMintGreen,
+                            color: freshMintGreen,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: _freshMintGreen.withOpacity(0.1),
+                            color: freshMintGreen.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.add, size: 20, color: _freshMintGreen),
+                          child: Icon(Icons.add, size: 20, color: freshMintGreen),
                         )
                       ],
                     ),

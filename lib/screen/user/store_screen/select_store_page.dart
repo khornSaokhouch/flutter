@@ -125,11 +125,14 @@ class _SelectStorePageState extends State<SelectStorePage> {
                     permission == LocationPermission.deniedForever) {
                   return;
                 }
-                final pos = await Geolocator.getCurrentPosition(
-                  desiredAccuracy: LocationAccuracy.high,
+                final position = await Geolocator.getCurrentPosition(
+                  locationSettings: const LocationSettings(
+                    accuracy: LocationAccuracy.high,
+                  ),
                 );
+
                 setState(() {
-                  userPosition = pos;
+                  userPosition = position;
                 });
                 _computeDistancesAndSort();
               } catch (_) {}

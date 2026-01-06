@@ -96,7 +96,7 @@ class _SecurityPageState extends State<SecurityPage> {
                 style: TextStyle(color: _emerald, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 1.1)),
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: _emerald.withOpacity(0.05),
+                backgroundColor: _emerald.withValues(alpha: 0.05),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -167,7 +167,7 @@ class _SecurityPageState extends State<SecurityPage> {
           value: value,
           onChanged: onChanged,
           activeColor: _mint,
-          activeTrackColor: _mint.withOpacity(0.3),
+          activeTrackColor: _mint.withValues(alpha: 0.3),
         ),
       ),
     );

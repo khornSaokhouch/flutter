@@ -183,11 +183,11 @@ class InlineOptionGroup extends StatelessWidget {
                           scale: 0.75,
                           child: Switch(
                             value: optionIsActive,
-                            activeColor: Colors.white,
+                            activeThumbColor: Colors.white,
                             activeTrackColor: _primaryGreen,
                             inactiveThumbColor: Colors.white,
                             inactiveTrackColor: Colors.grey[200],
-                            trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
+                            trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
                             onChanged: (onToggleOptionActive != null && itemActive && !isToggling && statusId != null)
                                 ? (val) async {
                                     await ShopItemOptionStatusService.updateStatus(statusId, val);

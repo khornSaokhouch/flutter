@@ -251,7 +251,7 @@ class _ScanPayScreenState extends State<ScanPayScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: _freshMintGreen.withOpacity(0.3),
+            color: _freshMintGreen.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),

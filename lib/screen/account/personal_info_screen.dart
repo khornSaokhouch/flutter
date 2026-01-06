@@ -191,7 +191,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       elevation: 0,
-                      disabledBackgroundColor: _freshMintGreen.withOpacity(0.5),
+                      disabledBackgroundColor: _freshMintGreen.withValues(alpha: 0.5),
                     ),
                     child: _isSaving
                         ? const SizedBox(
@@ -231,7 +231,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: _freshMintGreen.withOpacity(0.3), width: 1),
+            border: Border.all(color: _freshMintGreen.withValues(alpha: 0.3), width: 1),
           ),
           child: CircleAvatar(
             radius: 60,
