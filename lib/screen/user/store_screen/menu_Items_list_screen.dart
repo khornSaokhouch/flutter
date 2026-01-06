@@ -13,6 +13,7 @@ import '../../../server/item_service.dart';
 import '../../../server/shop_service.dart';
 import '../layout.dart';
 import 'select_store_page.dart';
+import '../../../core/widgets/loading/logo_loading.dart';
 
 class MenuScreen extends StatefulWidget {
   final int userId;
@@ -78,7 +79,7 @@ class _MenuScreenState extends State<MenuScreen> {
     try {
       final fetchedShop = await ShopService.fetchShopById(widget.shopId);
       final fetchedItems =
-      await ItemService.fetchItemsByShopCheckToken(widget.shopId);
+          await ItemService.fetchItemsByShopCheckToken(widget.shopId);
 
       if (fetchedItems != null) {
         shopItems = fetchedItems.data;
@@ -97,7 +98,7 @@ class _MenuScreenState extends State<MenuScreen> {
         }
 
         _selectedCategoryId =
-        categories.isNotEmpty ? categories.first.id.toString() : null;
+            categories.isNotEmpty ? categories.first.id.toString() : null;
       }
 
       setState(() {
@@ -148,7 +149,6 @@ class _MenuScreenState extends State<MenuScreen> {
       debugPrint('Error preparing stores for select sheet: $e');
     }
   }
-
 
   /// Bottom sheet — same behavior as Guest
   void _openSelectStoreSheet(BuildContext context, List<Shop> stores) {
@@ -237,7 +237,8 @@ class _MenuScreenState extends State<MenuScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new,
+              size: 20, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -248,14 +249,15 @@ class _MenuScreenState extends State<MenuScreen> {
             letterSpacing: 1.2,
           ),
         ),
-         actions: [
+        actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => SearchPage(shopId:widget.shopId, userId: widget.userId), // 👉 your next page
+                  builder: (_) =>
+                      SearchPage(shopId: widget.shopId, userId: widget.userId),
                 ),
               );
             },
@@ -266,161 +268,188 @@ class _MenuScreenState extends State<MenuScreen> {
           child: Container(color: Colors.grey[100], height: 1),
         ),
       ),
-      body: loading
-          ? Center(child: CircularProgressIndicator(color: _freshMintGreen))
-          : Column(
+      body: Stack(
         children: [
-          // ===========================================
-          // 1. Store Selection & Toggle Bar (Guest style)
-          // ===========================================
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  offset: const Offset(0, 4),
-                  blurRadius: 10,
-                )
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Store Selector
-                InkWell(
-                  onTap: () => _handleSelectStoreTap(context),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06), // Soft shadow
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.storefront_rounded, color: _freshMintGreen, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          shop?.name ?? 'Select Store',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: _espressoBrown,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.keyboard_arrow_down, color: _espressoBrown, size: 18),
-                      ],
-                    ),
-                  ),
+          // --- Main UI ---
+          Column(
+            children: [
+              // 1. Store Selection & Toggle Bar
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 12.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      offset: const Offset(0, 4),
+                      blurRadius: 10,
+                    )
+                  ],
                 ),
-
-                // Toggle
-                PickupDeliveryToggle(
-                  isPickupSelected: isPickupSelected,
-                  onToggle: (val) => setState(() => isPickupSelected = val),
-                ),
-              ],
-            ),
-          ),
-
-          // ===========================================
-          // 2. Menu Content (Split View like Guest)
-          // ===========================================
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // --- Left Sidebar (Categories) ---
-                Container(
-                  width: 90,
-                  color: _sidebarBg,
-                  child: ListView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = categories[index];
-                      final isSelected = _selectedCategoryId == cat.id.toString();
-
-                      return _buildSideCategoryItem(cat, isSelected);
-                    },
-                  ),
-                ),
-
-                // --- Right: Items content ---
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: loadShop,
-                    color: _freshMintGreen,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(bottom: 80),
-                      child: Column(
-                        children: groupedItems.entries.map((entry) {
-                          final categoryForSection =
-                          categories.firstWhere((c) => c.name == entry.key);
-                          final String categoryId = categoryForSection.id.toString();
-
-                          return SizedBox(
-                            key: _categoryKeys[categoryId],
-                            width: double.infinity,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Section Header
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
-                                  color: Colors.white,
-                                  child: Text(
-                                    entry.key,
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: _espressoBrown,
-                                    ),
-                                  ),
-                                ),
-
-                                // Items List
-                                ...entry.value.map(
-                                      (shopItem) => Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-                                    child: MenuItemCard(
-                                      item: MenuItem(
-                                        id: shopItem.item.id.toString(),
-                                        categoryId: shopItem.category.id.toString(),
-                                        name: shopItem.item.name,
-                                        price:
-                                        '\$${(shopItem.item.priceCents / 100).toStringAsFixed(2)}',
-                                        imageUrl: shopItem.item.imageUrl,
-                                      ),
-                                      shopItem: shopItem,
-                                      userId: widget.userId,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Store Selector
+                    InkWell(
+                      onTap: () => _handleSelectStoreTap(context),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 12.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
                             ),
-                          );
-                        }).toList(),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.storefront_rounded,
+                                color: _freshMintGreen, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              shop?.name ?? 'Select Store',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: _espressoBrown,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.keyboard_arrow_down,
+                                color: _espressoBrown, size: 18),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+
+                    // Toggle
+                    PickupDeliveryToggle(
+                      isPickupSelected: isPickupSelected,
+                      onToggle: (val) => setState(() => isPickupSelected = val),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+
+              // 2. Menu Content
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left Sidebar (Categories)
+                    Container(
+                      width: 90,
+                      color: _sidebarBg,
+                      child: ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: categories.length,
+                        itemBuilder: (context, index) {
+                          final cat = categories[index];
+                          final isSelected =
+                              _selectedCategoryId == cat.id.toString();
+                          return _buildSideCategoryItem(cat, isSelected);
+                        },
+                      ),
+                    ),
+
+                    // Right: Items
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: loadShop,
+                        color: _freshMintGreen,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 80),
+                          child: Column(
+                            children: groupedItems.entries.map((entry) {
+                              final categoryForSection = categories
+                                  .firstWhere((c) => c.name == entry.key);
+                              final String categoryId =
+                                  categoryForSection.id.toString();
+
+                              return SizedBox(
+                                key: _categoryKeys[categoryId],
+                                width: double.infinity,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.fromLTRB(
+                                          16, 20, 16, 10),
+                                      color: Colors.white,
+                                      child: Text(
+                                        entry.key,
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          color: _espressoBrown,
+                                        ),
+                                      ),
+                                    ),
+                                    ...entry.value.map(
+                                      (shopItem) => Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12.0, vertical: 6.0),
+                                        child: MenuItemCard(
+                                          item: MenuItem(
+                                            id: shopItem.item.id.toString(),
+                                            categoryId:
+                                                shopItem.category.id.toString(),
+                                            name: shopItem.item.name,
+                                            price:
+                                                '\$${(shopItem.item.priceCents / 100).toStringAsFixed(2)}',
+                                            imageUrl: shopItem.item.imageUrl,
+                                          ),
+                                          shopItem: shopItem,
+                                          userId: widget.userId,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+
+          // --- Loading overlay ---
+          // --- Loading overlay (transparent background) ---
+          if (loading)
+            Positioned.fill(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    LogoLoading(size: 60),
+                    const SizedBox(height: 16), // spacing
+                    const Text(
+                      'Loading menu...',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: FooterNav(
@@ -441,7 +470,9 @@ class _MenuScreenState extends State<MenuScreen> {
         height: 100,
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : _sidebarBg,
-          border: isSelected ? Border(left: BorderSide(color: _freshMintGreen, width: 4)) : null,
+          border: isSelected
+              ? Border(left: BorderSide(color: _freshMintGreen, width: 4))
+              : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -452,19 +483,22 @@ class _MenuScreenState extends State<MenuScreen> {
               height: 50,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isSelected ? _freshMintGreen.withValues(alpha: 0.1) : Colors.white,
+                color: isSelected
+                    ? _freshMintGreen.withValues(alpha: 0.1)
+                    : Colors.white,
                 shape: BoxShape.circle,
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(50),
                 child: (cat.imageUrl != null && cat.imageUrl!.isNotEmpty)
                     ? Image.network(
-                  cat.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      Icon(Icons.coffee, color: isSelected ? _freshMintGreen : Colors.grey),
-                )
-                    : Icon(Icons.coffee, color: isSelected ? _freshMintGreen : Colors.grey),
+                        cat.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(Icons.coffee,
+                            color: isSelected ? _freshMintGreen : Colors.grey),
+                      )
+                    : Icon(Icons.coffee,
+                        color: isSelected ? _freshMintGreen : Colors.grey),
               ),
             ),
             const SizedBox(height: 8),

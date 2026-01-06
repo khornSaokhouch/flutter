@@ -5,6 +5,8 @@ import '../../../core/widgets/store/pickup_delivery_toggle.dart';
 import '../../../models/shop.dart';
 import '../../../server/shop_service.dart';
 import 'select_store_page.dart';
+import '../../../core/widgets/loading/logo_loading.dart';
+
 
 class NoStoreNearbyScreen extends StatefulWidget {
   final int userId;
@@ -180,24 +182,25 @@ class _NoStoreNearbyScreenState extends State<NoStoreNearbyScreen> {
   Widget build(BuildContext context) {
     // Loading UI (matches Guest look)
     if (_checkingLocation) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _buildAppBar(),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: _freshMintGreen),
-              const SizedBox(height: 16),
-              Text(
-                "Locating nearby stores...",
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ],
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: _buildAppBar(),
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          LogoLoading(size: 70),
+          SizedBox(height: 20),
+          Text(
+            "Locating nearby stores...",
+            style: TextStyle(color: Colors.grey),
           ),
-        ),
-      );
-    }
+        ],
+      ),
+    ),
+  );
+}
+
 
     // If the bottom sheet is auto-opened and not closed yet: keep scaffold blank (sheet is on top)
     if (_hasNearbyStore && !_bottomSheetClosed) {
