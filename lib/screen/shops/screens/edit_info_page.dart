@@ -325,25 +325,83 @@ class _EditInfoPageState extends State<EditInfoPage> {
       readOnly: true,
       style: const TextStyle(fontWeight: FontWeight.bold),
       onTap: () async {
-        TimeOfDay initial = _parseTime(controller.text);
+        FocusScope.of(context).unfocus();
+
+        final TimeOfDay initial = _parseTime(controller.text);
+
         final TimeOfDay? picked = await showTimePicker(
           context: context,
           initialTime: initial,
+          useRootNavigator: false,
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                timePickerTheme: TimePickerThemeData(
+                  backgroundColor: Colors.white,
+
+                  // Hour / minute box
+                  hourMinuteColor: primaryGreen.withOpacity(0.15),
+                  hourMinuteTextColor: primaryGreen,
+
+                  // AM / PM
+                  dayPeriodColor: primaryGreen.withOpacity(0.15),
+                  dayPeriodTextColor: primaryGreen,
+                  dayPeriodBorderSide:
+                  BorderSide(color: primaryGreen),
+
+                  // Dial
+                  dialHandColor: primaryGreen,
+                  dialBackgroundColor:
+                  primaryGreen.withOpacity(0.08),
+                  dialTextColor: Colors.black,
+
+                  // Buttons
+                  confirmButtonStyle: TextButton.styleFrom(
+                    foregroundColor: primaryGreen,
+                    textStyle:
+                    const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  cancelButtonStyle: TextButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                  ),
+                ),
+                colorScheme: ColorScheme.light(
+                  primary: primaryGreen,
+                  onPrimary: Colors.white,
+                  onSurface: Colors.black,
+                ),
+              ),
+              child: child!,
+            );
+          },
         );
 
         if (picked != null) {
           setState(() {
-            controller.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+            controller.text =
+            '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
           });
         }
       },
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(Icons.access_time_filled_rounded, color: primaryGreen, size: 20),
-        filled: true, fillColor: bgGrey,
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade100)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: primaryGreen)),
+        prefixIcon: Icon(
+          Icons.access_time_filled_rounded,
+          color: primaryGreen,
+          size: 20,
+        ),
+        filled: true,
+        fillColor: bgGrey,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.grey.shade100),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: primaryGreen),
+        ),
       ),
     );
   }
+
 }
