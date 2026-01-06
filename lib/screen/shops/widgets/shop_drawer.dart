@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screen/guest/guest_screen.dart';
+import 'package:frontend/screen/shops/screens/shops_profile_page.dart';
 import '../screens/sale_reports.dart';
 
 class ShopDrawer extends StatelessWidget {
@@ -14,44 +16,94 @@ class ShopDrawer extends StatelessWidget {
   });
 
   // --- LOGOUT POPUP DIALOG ---
-  void _showLogoutDialog(BuildContext context) {
 
+
+  void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Row(
             children: [
               Icon(Icons.logout_rounded, color: Colors.redAccent),
               SizedBox(width: 10),
-              Text("Logout", style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                "Logout",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
-          content: const Text("Are you sure you want to sign out from the Manager Hub?"),
+          content: const Text(
+            "Are you sure you want to sign out from the Manager Hub?",
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context), // Close Dialog
-              child: const Text("CANCEL", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text(
+                "CANCEL",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             ElevatedButton(
-              onPressed: () {
-                // TODO: Add your actual logout logic here (clear tokens, etc.)
-                Navigator.pop(context); // Close Dialog
-                Navigator.pop(context); // Close Drawer
-                // Example: Navigator.pushReplacementNamed(context, '/login');
+              onPressed: () async {
+                try {
+                  // ✅ Call logout API
+                  await UserService.logout();
+
+                  if (!context.mounted) return;
+
+                  // 1️⃣ Close dialog
+                  Navigator.pop(dialogContext);
+
+                  // 2️⃣ Close drawer
+                  Navigator.pop(context);
+
+                  // 3️⃣ Navigate and clear stack
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GuestLayout()),
+                        (_) => false,
+                  );
+                } catch (e) {
+                  if (!context.mounted) return;
+
+                  Navigator.pop(dialogContext);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Logout failed: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
               },
+
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: const Text("LOGOUT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                "LOGOUT",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
       },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -119,19 +171,19 @@ class ShopDrawer extends StatelessWidget {
                   onTap: () => Navigator.pop(context)
                 ),
                 _buildDrawerItem(
-  icon: Icons.analytics_outlined,
-  label: "Sales Reports",
-  color: accentAmber,
-  onTap: () {
-    Navigator.pop(context); // close drawer
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const SalesReportsPage(),
-      ),
-    );
-  },
-),
+                icon: Icons.analytics_outlined,
+                label: "Sales Reports",
+                color: accentAmber,
+                onTap: () {
+                  Navigator.pop(context); // close drawer
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SalesReportsPage(),
+                    ),
+                  );
+                },
+              ),
 
                 
                 const SizedBox(height: 20),
